@@ -121,10 +121,16 @@ def init_db():
             tg_user_id INTEGER NOT NULL,
             source_id TEXT NOT NULL,
             enabled INTEGER DEFAULT 1,
+            max_per_hour INTEGER DEFAULT 5,
             created_at REAL,
             PRIMARY KEY (tg_user_id, source_id)
         )
     """)
+    # Migration: add max_per_hour if missing
+    try:
+        c.execute("ALTER TABLE news_subscriptions ADD COLUMN max_per_hour INTEGER DEFAULT 5")
+    except Exception:
+        pass
     c.execute("CREATE INDEX IF NOT EXISTS idx_newssub_user ON news_subscriptions(tg_user_id)")
     c.execute("""
         CREATE TABLE IF NOT EXISTS news_delivered (
@@ -143,8 +149,9 @@ def init_db():
     c.execute("""
         INSERT OR IGNORE INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, poll_interval_sec, created_at)
         VALUES ('free_crypto_news', 'Crypto News (Free)', 'https://modelcontextprotocol.name/mcp/free-crypto-news',
-                'get_latest_news', 'crypto', 1, 120, ?)
+                'get_latest_news', 'crypto', 1, 600, ?)
     """, (time.time(),))
+    c.execute("UPDATE news_sources SET poll_interval_sec = 600 WHERE id = 'free_crypto_news'")
     conn.commit()
     conn.close()
 
@@ -162,7 +169,8 @@ def get_news_sources(enabled_only=True) -> list:
 def get_user_subscriptions(tg_user_id: int) -> list:
     conn = get_conn()
     rows = conn.execute("""
-        SELECT ns.*, COALESCE(sub.enabled, ns.is_default) as subscribed
+        SELECT ns.*, COALESCE(sub.enabled, ns.is_default) as subscribed,
+               COALESCE(sub.max_per_hour, 5) as user_max_per_hour
         FROM news_sources ns
         LEFT JOIN news_subscriptions sub ON ns.id = sub.source_id AND sub.tg_user_id = ?
         WHERE ns.enabled = 1
@@ -189,10 +197,67 @@ def is_user_subscribed(tg_user_id: int, source_id: str) -> bool:
 def set_user_subscription(tg_user_id: int, source_id: str, enabled: bool):
     conn = get_conn()
     conn.execute(
-        "INSERT INTO news_subscriptions (tg_user_id, source_id, enabled, created_at) "
-        "VALUES (?, ?, ?, ?) ON CONFLICT(tg_user_id, source_id) DO UPDATE SET enabled = ?",
+        "INSERT INTO news_subscriptions (tg_user_id, source_id, enabled, max_per_hour, created_at) "
+        "VALUES (?, ?, ?, 5, ?) ON CONFLICT(tg_user_id, source_id) DO UPDATE SET enabled = ?",
         (tg_user_id, source_id, int(enabled), time.time(), int(enabled)),
     )
+    conn.commit()
+    conn.close()
+
+
+def set_user_news_frequency(tg_user_id: int, source_id: str, max_per_hour: int):
+    """Set how many pushes per hour this user wants from this source."""
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO news_subscriptions (tg_user_id, source_id, enabled, max_per_hour, created_at) "
+        "VALUES (?, ?, 1, ?, ?) ON CONFLICT(tg_user_id, source_id) DO UPDATE SET max_per_hour = ?",
+        (tg_user_id, source_id, max_per_hour, time.time(), max_per_hour),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_user_news_frequency(tg_user_id: int, source_id: str) -> int:
+    """Get this user's max pushes per hour for a source. Default 5."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT max_per_hour FROM news_subscriptions WHERE tg_user_id = ? AND source_id = ?",
+        (tg_user_id, source_id),
+    ).fetchone()
+    conn.close()
+    return row["max_per_hour"] if row and row["max_per_hour"] else 5
+
+
+def add_news_source(source_id: str, name: str, mcp_url: str, mcp_tool: str = "get_latest_news",
+                    category: str = "crypto", poll_interval_sec: int = 600) -> bool:
+    """Add a new MCP news source. Returns True if added, False if already exists."""
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, enabled, poll_interval_sec, created_at) "
+            "VALUES (?, ?, ?, ?, ?, 0, 1, ?, ?)",
+            (source_id, name, mcp_url, mcp_tool, category, poll_interval_sec, time.time()),
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        conn.close()
+        return False
+
+
+def remove_news_source(source_id: str):
+    """Disable a news source (don't delete, just disable)."""
+    conn = get_conn()
+    conn.execute("UPDATE news_sources SET enabled = 0 WHERE id = ?", (source_id,))
+    conn.commit()
+    conn.close()
+
+
+def enable_news_source(source_id: str):
+    """Re-enable a disabled news source."""
+    conn = get_conn()
+    conn.execute("UPDATE news_sources SET enabled = 1 WHERE id = ?", (source_id,))
     conn.commit()
     conn.close()
 

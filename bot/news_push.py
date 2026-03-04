@@ -27,6 +27,8 @@ FACTORY_API_KEY = os.environ.get("FACTORY_API_KEY", "")
 
 # Track last poll time per source
 _last_poll = {}
+# Per-user per-source push count tracking: {(user_id, source_id): [timestamp, ...]}
+_user_push_times = {}
 # Store bot instance for sending messages
 _bot_instance = None
 _news_loop_task = None
@@ -36,6 +38,26 @@ def set_bot(bot):
     """Set the Telegram bot instance for sending push notifications."""
     global _bot_instance
     _bot_instance = bot
+
+
+def _can_push_to_user(user_id: int, source_id: str) -> bool:
+    """Check if user hasn't exceeded their per-source max_per_hour."""
+    max_per_hour = db.get_user_news_frequency(user_id, source_id)
+    if max_per_hour <= 0:
+        return False
+    now = time.time()
+    cutoff = now - 3600
+    key = (user_id, source_id)
+    times = _user_push_times.get(key, [])
+    times = [t for t in times if t > cutoff]
+    _user_push_times[key] = times
+    return len(times) < max_per_hour
+
+
+def _record_push(user_id: int, source_id: str):
+    """Record a push event for rate limiting."""
+    key = (user_id, source_id)
+    _user_push_times.setdefault(key, []).append(time.time())
 
 
 async def fetch_mcp_news(mcp_url: str, tool: str, limit: int = 5) -> list:
@@ -222,8 +244,10 @@ async def analyze_news_with_ai(article: dict) -> Optional[dict]:
         if not isinstance(analysis, dict):
             return None
 
-        # Validate
+        # Validate: skip NONE actions, NEUTRAL sentiment, LOW confidence
         if analysis.get("action") == "NONE" or analysis.get("sentiment") == "NEUTRAL":
+            return None
+        if analysis.get("confidence") == "LOW":
             return None
         if not analysis.get("asset") or analysis["asset"] not in CONTRACTS:
             return None
@@ -337,6 +361,8 @@ async def poll_and_push():
             for user_id in subscribers:
                 if db.is_news_delivered(nhash, user_id):
                     continue
+                if not _can_push_to_user(user_id, source_id):
+                    continue
 
                 # Analyze only once (lazy)
                 if analysis is None:
@@ -359,6 +385,7 @@ async def poll_and_push():
                         disable_web_page_preview=True,
                     )
                     db.mark_news_delivered(nhash, user_id, article.get("title", ""), source_id, analysis_json)
+                    _record_push(user_id, source_id)
                     logger.info(f"News pushed to {user_id}: {article.get('title', '')[:60]}")
                 except Exception as e:
                     logger.warning(f"Failed to push news to {user_id}: {e}")

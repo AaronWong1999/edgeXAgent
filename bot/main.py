@@ -1309,18 +1309,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         # ── News alert callbacks ──
         if query.data == "news_settings":
-            subs = db.get_user_subscriptions(user_id)
-            msg = "\U0001f4f0 **News Alerts**\n\nBreaking crypto & market news analyzed by AI with trade buttons.\n\n"
-            buttons = []
-            for s in subs:
-                is_on = bool(s.get("subscribed"))
-                status = "\u2705 ON" if is_on else "\u274c OFF"
-                toggle = "off" if is_on else "on"
-                msg += f"\u2022 {s['name']} \u2014 {status}\n"
-                btn_text = f"\U0001f515 Unsubscribe {s['name']}" if is_on else f"\U0001f514 Subscribe {s['name']}"
-                buttons.append([InlineKeyboardButton(btn_text, callback_data=f"news_toggle_{s['id']}_{toggle}")])
-            buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            msg, keyboard = _news_main_menu(user_id)
+            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_toggle_"):
@@ -1328,19 +1318,101 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             source_id = parts[2]
             enable = parts[3] == "on"
             db.set_user_subscription(user_id, source_id, enable)
-            status = "\u2705 Subscribed" if enable else "\U0001f515 Unsubscribed"
+            # Return to news main menu
+            msg, keyboard = _news_main_menu(user_id)
+            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            return
+
+        if query.data.startswith("news_freq_"):
+            source_id = query.data[len("news_freq_"):]
+            current = db.get_user_news_frequency(user_id, source_id)
+            # Show frequency options
+            options = [1, 2, 3, 5, 10]
+            buttons = []
+            row = []
+            for n in options:
+                label = f"{'> ' if n == current else ''}{n}/hr"
+                row.append(InlineKeyboardButton(label, callback_data=f"news_setfreq_{source_id}_{n}"))
+                if len(row) == 3:
+                    buttons.append(row)
+                    row = []
+            if row:
+                buttons.append(row)
+            buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")])
             await query.edit_message_text(
-                f"{status} to news alerts.\n\nUse the News button or /news to manage.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]),
+                f"\u23f1 **Push Frequency**\n\nHow many news alerts per hour?\nCurrent: **{current}/hr**",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
             )
+            return
+
+        if query.data.startswith("news_setfreq_"):
+            # news_setfreq_{source_id}_{max_per_hour}
+            parts = query.data.split("_")
+            source_id = parts[2]
+            max_per_hour = int(parts[3])
+            db.set_user_news_frequency(user_id, source_id, max_per_hour)
+            msg, keyboard = _news_main_menu(user_id)
+            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            return
+
+        if query.data.startswith("news_remove_"):
+            source_id = query.data[len("news_remove_"):]
+            # Don't allow removing the default source, just unsubscribe
+            sources = db.get_news_sources(enabled_only=False)
+            src = next((s for s in sources if s["id"] == source_id), None)
+            if src and src.get("is_default"):
+                db.set_user_subscription(user_id, source_id, False)
+            else:
+                db.remove_news_source(source_id)
+            msg, keyboard = _news_main_menu(user_id)
+            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            return
+
+        if query.data == "news_add":
+            # Show available MCP tools to add
+            buttons = [
+                [InlineKeyboardButton("\U0001f4b0 Bitcoin News", callback_data="news_addsrc_btc")],
+                [InlineKeyboardButton("\U0001f4a0 Ethereum News", callback_data="news_addsrc_eth")],
+                [InlineKeyboardButton("\U0001f30d DeFi News", callback_data="news_addsrc_defi")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
+            ]
+            await query.edit_message_text(
+                "\u2795 **Add News Source**\n\n"
+                "Choose a topic to subscribe to.\n"
+                "Each source pushes relevant news analyzed by AI.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
+            return
+
+        if query.data.startswith("news_addsrc_"):
+            topic = query.data[len("news_addsrc_"):]
+            # Map topics to MCP tools
+            topic_map = {
+                "btc": ("bitcoin_news", "Bitcoin News", "get_bitcoin_news"),
+                "eth": ("ethereum_news", "Ethereum News", "get_ethereum_news"),
+                "defi": ("defi_news", "DeFi News", "get_defi_news"),
+            }
+            if topic in topic_map:
+                sid, name, tool = topic_map[topic]
+                added = db.add_news_source(
+                    source_id=sid, name=name,
+                    mcp_url="https://modelcontextprotocol.name/mcp/free-crypto-news",
+                    mcp_tool=tool, category="crypto",
+                )
+                if added:
+                    db.set_user_subscription(user_id, sid, True)
+            msg, keyboard = _news_main_menu(user_id)
+            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_mute_"):
             source_id = query.data[len("news_mute_"):]
             db.set_user_subscription(user_id, source_id, False)
             await query.edit_message_text(
-                "\U0001f515 News source muted. Use /news to re-enable.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]),
+                "\U0001f515 News source muted. Use /news to manage.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings"), InlineKeyboardButton("\U0001f3e0 Menu", callback_data="back_to_dashboard")]]),
             )
             return
 
@@ -2046,29 +2118,42 @@ async def cmd_logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # /news — News alerts subscription management
 # ──────────────────────────────────────────
 
-async def cmd_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+def _news_main_menu(user_id: int) -> tuple:
+    """Build the news management main menu message + keyboard."""
     subs = db.get_user_subscriptions(user_id)
-    if not subs:
-        await update.message.reply_text(
-            "\U0001f4f0 **News Alerts**\n\nNo news sources available yet.",
-            parse_mode="Markdown",
-            reply_markup=_quick_actions_keyboard(),
-        )
-        return
+    freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr", 99: "unlimited"}
 
-    msg = "\U0001f4f0 **News Alerts**\n\nBreaking crypto & market news, analyzed by AI with instant trade buttons.\n\n"
+    msg = "\U0001f4f0 **News Alerts**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
+    if not subs:
+        msg += "_No news sources configured yet._\n"
+    for s in subs:
+        is_on = bool(s.get("subscribed"))
+        status = "\u2705" if is_on else "\u274c"
+        mph = s.get("user_max_per_hour", 5)
+        freq = freq_labels.get(mph, f"{mph}/hr")
+        msg += f"{status} **{s['name']}** \u2014 {freq}\n"
+
     buttons = []
     for s in subs:
         is_on = bool(s.get("subscribed"))
-        status = "\u2705 ON" if is_on else "\u274c OFF"
-        toggle = "off" if is_on else "on"
-        msg += f"\u2022 {s['name']} \u2014 {status}\n"
-        btn_text = f"\U0001f515 Unsubscribe {s['name']}" if is_on else f"\U0001f514 Subscribe {s['name']}"
-        buttons.append([InlineKeyboardButton(btn_text, callback_data=f"news_toggle_{s['id']}_{toggle}")])
+        sid = s["id"]
+        row = []
+        if is_on:
+            row.append(InlineKeyboardButton(f"\u274c {s['name'][:12]}", callback_data=f"news_toggle_{sid}_off"))
+        else:
+            row.append(InlineKeyboardButton(f"\u2705 {s['name'][:12]}", callback_data=f"news_toggle_{sid}_on"))
+        row.append(InlineKeyboardButton("\u23f1 Frequency", callback_data=f"news_freq_{sid}"))
+        row.append(InlineKeyboardButton("\U0001f5d1", callback_data=f"news_remove_{sid}"))
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("\u2795 Add News Source", callback_data="news_add")])
     buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
+    return msg, InlineKeyboardMarkup(buttons)
 
-    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+
+async def cmd_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    msg, keyboard = _news_main_menu(user_id)
+    await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboard)
 
 
 # ──────────────────────────────────────────
