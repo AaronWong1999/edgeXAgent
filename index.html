@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>edgeX Agent — Your Own OpenClaw for Crypto & Stocks</title>
-<meta name="description" content="Your own AI trading agent — like having a personal OpenClaw. Analyzes markets, generates trade plans, executes on edgeX. All inside Telegram. No signup required to try.">
+<title>edgeX Agent — Your AI Trading Agent in Telegram</title>
+<meta name="description" content="Your own AI trading agent. Analyzes markets, generates trade plans, executes on edgeX — all inside Telegram. Multilingual. No signup required.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -40,12 +40,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 48px;height:56px;d
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .hero h1{font-size:4.4em;font-weight:900;letter-spacing:-4px;line-height:1.05;margin-bottom:20px;}
 .hero h1 .hl{color:var(--g);}
-.hero-sub{font-size:1.15em;color:var(--t2);max-width:560px;margin-bottom:12px;line-height:1.9;}
+.hero-sub{font-size:1.15em;color:var(--t2);max-width:600px;margin-bottom:12px;line-height:1.9;}
 .hero-sub2{font-size:0.92em;color:var(--m);max-width:500px;margin-bottom:40px;line-height:1.7;}
 .hero-cta{display:flex;gap:12px;margin-bottom:48px;}
 
-.phone-wrap{position:relative;margin-top:20px;}
-.phone{max-width:380px;width:100%;margin:0 auto;background:#0c0c14;border:1.5px solid #1a1e2a;border-radius:22px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.02);}
+/* Phone mockup */
+.phone-wrap{position:relative;margin-top:20px;width:100%;display:flex;justify-content:center;}
+.phone{max-width:400px;width:100%;background:#0c0c14;border:1.5px solid #1a1e2a;border-radius:22px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.02);}
 .phone-top{background:#0f0f18;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #181c26;}
 .phone-av{width:32px;height:32px;border-radius:50%;background:#1a1e2a;display:flex;align-items:center;justify-content:center;}
 .phone-av svg{width:18px;height:18px;}
@@ -53,21 +54,38 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 48px;height:56px;d
 .phone-name{font-weight:600;font-size:0.88em;}
 .phone-st{font-size:0.68em;color:var(--g);display:flex;align-items:center;gap:4px;}
 .phone-st::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--g);animation:pulse 2s infinite;}
-.phone-chat{padding:14px;display:flex;flex-direction:column;gap:9px;}
+.phone-chat{padding:14px;display:flex;flex-direction:column;gap:9px;max-height:620px;overflow-y:auto;}
+.phone-chat::-webkit-scrollbar{width:0;}
 .m{max-width:88%;padding:9px 13px;border-radius:14px;font-size:0.82em;line-height:1.6;}
 .mu{align-self:flex-end;background:#2a5cdb;color:#fff;border-bottom-right-radius:4px;}
 .mb{align-self:flex-start;background:#161822;color:var(--t);border-bottom-left-radius:4px;}
-.mb .lbl{font-size:0.65em;color:var(--g);font-weight:600;margin-bottom:3px;font-family:var(--mono);letter-spacing:0.5px;}
-.mb .tr{background:#0a1210;border:1px solid rgba(0,255,136,0.12);border-radius:7px;padding:7px 10px;margin-top:5px;font-family:var(--mono);font-size:0.8em;line-height:1.8;}
+.mb .lbl{font-size:0.62em;color:var(--g);font-weight:600;margin-bottom:3px;font-family:var(--mono);letter-spacing:0.5px;}
+.mb .tr{background:#0a1210;border:1px solid rgba(0,255,136,0.12);border-radius:7px;padding:7px 10px;margin-top:5px;font-family:var(--mono);font-size:0.78em;line-height:1.8;}
 .mb .pnl{font-family:var(--mono);font-size:0.88em;color:var(--g);font-weight:700;margin-top:5px;}
-.mb .btns{display:flex;gap:5px;margin-top:6px;}
-.mb .btns span{padding:5px 12px;border-radius:6px;font-size:0.75em;font-weight:600;}
+.mb .pnl.neg{color:var(--r);}
+.mb .btns{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;}
+.mb .btns span{padding:5px 12px;border-radius:6px;font-size:0.72em;font-weight:600;cursor:default;}
 .mb .btns .yes{background:rgba(0,255,136,0.1);color:var(--g);border:1px solid rgba(0,255,136,0.18);}
 .mb .btns .no{background:rgba(255,59,92,0.08);color:var(--r);border:1px solid rgba(255,59,92,0.15);}
-.mb .btns .adj{background:rgba(77,142,255,0.08);color:var(--bl);border:1px solid rgba(77,142,255,0.15);}
+.mb .btns .act{background:rgba(77,142,255,0.08);color:var(--bl);border:1px solid rgba(77,142,255,0.15);}
+.mb .btns .dim{background:rgba(90,90,110,0.08);color:var(--m);border:1px solid rgba(90,90,110,0.2);}
+.mb .news-box{background:#0d0a14;border:1px solid rgba(255,208,0,0.15);border-radius:7px;padding:8px 10px;margin-top:5px;font-size:0.85em;line-height:1.6;}
+.mb .news-box .nt{color:var(--y);font-family:var(--mono);font-size:0.72em;font-weight:600;margin-bottom:3px;}
+.mb .conf{font-family:var(--mono);font-size:0.78em;margin-top:3px;color:var(--m);}
+.mb .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;}
+.mb .dash-grid span{padding:6px 0;border-radius:6px;font-size:0.72em;font-weight:600;text-align:center;cursor:default;}
 .phone-input{padding:10px 14px;border-top:1px solid #181c26;display:flex;align-items:center;gap:8px;}
 .phone-input-box{flex:1;background:#0f0f18;border:1px solid #181c26;border-radius:18px;padding:7px 12px;font-size:0.75em;color:var(--m);}
 .phone-input-send{color:var(--g);font-size:1.1em;}
+
+/* Carousel */
+.phone-scenes{position:relative;}
+.phone-scene{display:none;}
+.phone-scene.active{display:flex;flex-direction:column;gap:9px;}
+.scene-dots{display:flex;justify-content:center;gap:8px;margin-top:12px;padding-bottom:4px;}
+.scene-dot{width:8px;height:8px;border-radius:50%;background:var(--d);cursor:pointer;transition:all .3s;}
+.scene-dot.active{background:var(--g);box-shadow:0 0 8px rgba(0,255,136,0.3);}
+.scene-label{text-align:center;font-family:var(--mono);font-size:0.62em;color:var(--m);margin-top:4px;letter-spacing:1px;}
 
 .sec{padding:120px 0;position:relative;}
 .sec::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--b);}
@@ -147,52 +165,246 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge fi d1">No signup required &mdash; try it now</div>
-  <h1 class="fi d2">Your own <span class="hl">OpenClaw.</span><br>In Telegram.</h1>
-  <p class="hero-sub fi d3">A personal AI trading agent that watches markets 24/7, analyzes opportunities in real time, and executes trades on edgeX &mdash; all from your Telegram chat.</p>
-  <p class="hero-sub2 fi d3">BTC &bull; ETH &bull; SOL &bull; CRCL &bull; GOLD &bull; NVDA &bull; TSLA &bull; and hundreds more</p>
+  <h1 class="fi d2">Your own <span class="hl">AI trader.</span><br>In Telegram.</h1>
+  <p class="hero-sub fi d3">A personal AI trading agent that analyzes markets, generates trade plans with entry/TP/SL, and executes on edgeX &mdash; all from a Telegram chat. Speaks your language.</p>
+  <p class="hero-sub2 fi d3">BTC &bull; ETH &bull; SOL &bull; GOLD &bull; SILVER &bull; NVDA &bull; TSLA &bull; CRCL &bull; 290+ assets</p>
   <div class="hero-cta fi d4">
     <a href="https://t.me/edgeXAgentBot" target="_blank" class="btn btn-p">Try Agent free &rarr;</a>
     <a href="#how" class="btn btn-g">See how it works &darr;</a>
   </div>
 
+  <!-- Phone with carousel scenes -->
   <div class="phone-wrap fi d5">
     <div class="phone">
       <div class="phone-top">
         <div class="phone-av"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></div>
         <div class="phone-info">
           <div class="phone-name">edgeX Agent</div>
-          <div class="phone-st">analyzing markets</div>
+          <div class="phone-st">online</div>
         </div>
       </div>
-      <div class="phone-chat">
-        <div class="m mu">SOL looks strong, any good entry?</div>
-        <div class="m mb">
-          <div class="lbl">YOUR AGENT</div>
-          Agreed. SOL TVL +18% this week, DEX volume at ATH. Here's my plan:
-          <div class="tr">
-            <span style="color:var(--g);">LONG</span> SOL-PERP<br>
-            Entry: $178.40 (wait for dip)<br>
-            Size: $250 &times; 3x<br>
-            Stop: $168.50 (-5.5%)<br>
-            Take: $205.00 (+14.9%)
+      <div class="phone-chat phone-scenes">
+
+        <!-- Scene 1: Trade flow -->
+        <div class="phone-scene active" data-scene="0">
+          <div class="m mu">BTC broke 90k, should I ape in?</div>
+          <div class="m mb">
+            <div class="lbl">&#x2728; YOUR AGENT</div>
+            BTC at $90,240 right now. 24h volume up 34%, funding rate +0.012% &mdash; slightly overheated but momentum is strong. RSI at 68, not overbought yet.<br><br>
+            I'd suggest a conservative long with tight risk:
+            <div class="tr">
+              <span style="color:var(--g);">&#x1F7E2; Trade Plan: BUY BTC</span><br>
+              &#x251C; Entry: <code>$90,240</code><br>
+              &#x251C; Size: <code>0.005</code> (3x)<br>
+              &#x251C; Value: <code>$451</code><br>
+              &#x251C; TP: <code>$96,500</code><br>
+              &#x2514; SL: <code>$87,100</code><br><br>
+              Confidence: &#x2588;&#x2588;&#x2588;&#x2591;&#x2591; MEDIUM
+            </div>
+            <div class="btns">
+              <span class="yes">&check; Confirm Execute</span>
+              <span class="no">&times; Cancel</span>
+            </div>
           </div>
-          <div class="btns">
-            <span class="yes">&check; Confirm</span>
-            <span class="no">&times; Skip</span>
-            <span class="adj">&#9881; Adjust</span>
+          <div class="m mu" style="font-size:0.9em;">&check;</div>
+          <div class="m mb">
+            <div class="lbl">&#x2728; YOUR AGENT</div>
+            <span style="color:var(--g);">&#x1F7E2; BTC BUY opened</span><br>
+            0.005 BTC &times; 3x @ $90,240<br>
+            Order ID: <code>482991</code>
+            <div class="pnl">Unrealized: +$62.40 (+2.8%) &#x1F4C8;</div>
+            <div class="btns">
+              <span class="act">&#x1F4CA; Status</span>
+              <span class="act">&#x1F4C8; P&amp;L</span>
+              <span class="dim">&#x1F534; Close</span>
+            </div>
           </div>
         </div>
-        <div class="m mu">&check;</div>
-        <div class="m mb">
-          <div class="lbl">YOUR AGENT</div>
-          <span style="color:var(--g);">&check; SOL-PERP LONG opened</span><br>
-          $250 &times; 3x @ $178.42
-          <div class="pnl">+$38.60 (+5.1%) &nbsp;&#x1F4C8;</div>
-          Watching for exit signals.
+
+        <!-- Scene 2: News alert + one-tap trade -->
+        <div class="phone-scene" data-scene="1">
+          <div class="m mb">
+            <div class="lbl">&#x1F4F0; BREAKING NEWS</div>
+            <div class="news-box">
+              <div class="nt">&#x1F4F0; Breaking News</div>
+              Bitcoin Soars: Digital Asset Surpasses $90,000 Milestone in Stunning Rally<br><br>
+              &#x1F7E2; <strong>BTC</strong> | BULLISH | &#x2588;&#x2588;&#x2588; HIGH<br><br>
+              <span style="color:var(--t2);font-size:0.9em;">BTC broke key resistance at $90K with massive volume. Institutional inflows accelerating.</span>
+            </div>
+            <div class="btns" style="margin-top:8px;">
+              <span class="yes">&#x1F4C8; LONG BTC (small)</span>
+              <span class="yes">&#x1F4C8; LONG BTC (medium)</span>
+            </div>
+            <div class="btns">
+              <span class="dim">&#x1F515; Mute source</span>
+              <span class="dim">&times; Dismiss</span>
+            </div>
+          </div>
+          <div class="m mu">&#x1F4C8; LONG BTC (small)</div>
+          <div class="m mb">
+            <div class="lbl">&#x2728; YOUR AGENT</div>
+            <span style="color:var(--g);">&#x1F7E2; BTC BUY opened</span><br>
+            0.0015 BTC &times; 2x @ $90,013
+            <div class="btns">
+              <span class="act">&#x1F4CA; Status</span>
+              <span class="act">&#x1F4C8; P&amp;L</span>
+              <span class="act">&#x1F3E0; Menu</span>
+            </div>
+          </div>
         </div>
+
+        <!-- Scene 3: News management -->
+        <div class="phone-scene" data-scene="2">
+          <div class="m mb">
+            <div class="lbl">&#x1F4F0; NEWS ALERTS</div>
+            &#x1F4F0; <strong>News Alerts</strong><br>
+            AI-analyzed news with one-tap trade buttons.<br><br>
+            &#x2705; <strong>Crypto News (Free)</strong> &mdash; 5/hr<br>
+            &#x2705; <strong>Bitcoin News</strong> &mdash; 3/hr<br>
+            &#x274C; <strong>DeFi News</strong> &mdash; off
+            <div class="dash-grid" style="grid-template-columns:1fr 1fr 0.4fr;margin-top:8px;">
+              <span class="no" style="font-size:0.62em;">&#x274C; Crypto News</span>
+              <span class="act" style="font-size:0.62em;">&#x23F1; Frequency</span>
+              <span class="dim" style="font-size:0.62em;">&#x1F5D1;</span>
+              <span class="no" style="font-size:0.62em;">&#x274C; Bitcoin</span>
+              <span class="act" style="font-size:0.62em;">&#x23F1; Frequency</span>
+              <span class="dim" style="font-size:0.62em;">&#x1F5D1;</span>
+              <span class="yes" style="font-size:0.62em;">&#x2705; DeFi News</span>
+              <span class="act" style="font-size:0.62em;">&#x23F1; Frequency</span>
+              <span class="dim" style="font-size:0.62em;">&#x1F5D1;</span>
+            </div>
+            <div class="btns" style="margin-top:6px;">
+              <span class="act">&#x2795; Add News Source</span>
+            </div>
+            <div class="btns">
+              <span class="dim">&#x1F3E0; Main Menu</span>
+            </div>
+          </div>
+          <div class="m mu">&#x23F1; Frequency</div>
+          <div class="m mb">
+            <div class="lbl">&#x23F1; PUSH FREQUENCY</div>
+            How many news alerts per hour?<br>
+            Current: <strong>5/hr</strong>
+            <div class="btns" style="margin-top:6px;">
+              <span class="dim">1/hr</span>
+              <span class="dim">2/hr</span>
+              <span class="act">3/hr</span>
+              <span class="yes">> 5/hr</span>
+              <span class="dim">10/hr</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 4: Dashboard + P&L -->
+        <div class="phone-scene" data-scene="3">
+          <div class="m mb">
+            <div class="lbl">&#x1F916; EDGEX AGENT</div>
+            &#x1F916; <strong>edgeX Agent</strong><br><br>
+            &#x1F464; edgeX: <code>0x8a...f2c1</code> &#x2705;<br>
+            &#x2728; AI: active &#x2705;<br><br>
+            &#x1F447; Tap a button or just type:
+            <div class="dash-grid">
+              <span class="yes">&#x1F4CA; Status</span>
+              <span class="yes">&#x1F4C8; P&amp;L</span>
+              <span class="act">&#x1F4DC; History</span>
+              <span class="no">&#x1F534; Close</span>
+              <span class="dim">&#x1F4DD; Memory</span>
+              <span class="dim">&#x1F3AD; Personality</span>
+              <span class="dim">&#x1F4F0; News</span>
+              <span class="dim">&#x2699; Settings</span>
+            </div>
+          </div>
+          <div class="m mu">&#x1F4C8; P&amp;L</div>
+          <div class="m mb">
+            <div class="lbl">&#x2728; YOUR AGENT</div>
+            &#x1F4C8; <strong>P&amp;L Report</strong><br><br>
+            Total Equity: <code>$4,521.80</code><br>
+            Available: <code>$3,204.15</code><br><br>
+            &#x1F7E2; BTC &mdash; +$62.40 (+2.8%)<br>
+            &#x1F7E2; SOL &mdash; +$18.90 (+4.1%)<br>
+            &#x1F534; ETH &mdash; -$12.30 (-1.2%)<br><br>
+            <span style="color:var(--g);">Net unrealized: +$69.00</span>
+            <div class="btns">
+              <span class="act">&#x1F4CA; Status</span>
+              <span class="dim">&#x1F534; Close</span>
+              <span class="dim">&#x1F3E0; Menu</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 5: Multilingual + personality -->
+        <div class="phone-scene" data-scene="4">
+          <div class="m mu">SOL &#xC9C0;&#xAE08; &#xC0AC;&#xB3C4; &#xB420;&#xAE4C;?</div>
+          <div class="m mb">
+            <div class="lbl">&#x1F525; DEGEN MODE</div>
+            SOL&#xC774; $178&#xC5D0; &#xC788;&#xACE0; DEX &#xBCFC;&#xB968;&#xC774; ATH &#xCC0D;&#xC5C8;&#xC5B4;&#xC694;. TVL +18% &#xC774;&#xBC88; &#xC8FC;&#xC5D0;. &#xC774;&#xAC70; &#xB2EC;&#xB9AC;&#xAE30; &#xC804;&#xC5D0; &#xD0C0;&#xC57C; &#xD558;&#xB294; &#xAC70; &#xC544;&#xB2C8;&#xC5D0;&#xC694;?<br><br>
+            Funding rate -0.003% &mdash; shorts getting squeezed. &#x1F680;
+            <div class="tr">
+              <span style="color:var(--g);">&#x1F7E2; Trade Plan: BUY SOL</span><br>
+              &#x251C; Entry: <code>$178.40</code><br>
+              &#x251C; Size: <code>1.4</code> (3x)<br>
+              &#x251C; TP: <code>$205.00</code><br>
+              &#x2514; SL: <code>$168.50</code>
+            </div>
+            <div class="btns">
+              <span class="yes">&check; Confirm Execute</span>
+              <span class="no">&times; Cancel</span>
+            </div>
+          </div>
+          <div class="m mu">switch to Wolf personality</div>
+          <div class="m mb">
+            <div class="lbl">&#x1F43A; WOLF MODE</div>
+            &#x1F43A; <strong>Wolf personality activated.</strong><br><br>
+            The hunt begins. I see blood in the water on ETH shorts &mdash; let me stalk this prey for you. Say the word and I'll go for the throat. &#x1F3AF;
+            <div class="btns">
+              <span class="act">&#x1F4CA; Status</span>
+              <span class="act">&#x1F4C8; P&amp;L</span>
+              <span class="dim">&#x1F3E0; Menu</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene 6: Memory + close position -->
+        <div class="phone-scene" data-scene="5">
+          <div class="m mu">close my SOL position</div>
+          <div class="m mb">
+            <div class="lbl">&#x2728; YOUR AGENT</div>
+            &#x1F534; <strong>Close Position: SOL</strong><br><br>
+            Current P&amp;L: <span style="color:var(--g);">+$38.60 (+5.1%)</span><br>
+            Size: 1.4 SOL &times; 3x<br><br>
+            <em>Nice trade! Taking profits is always the right call when you're up 5%.</em>
+            <div class="btns">
+              <span class="yes">&check; Confirm Close</span>
+              <span class="no">&times; Keep Open</span>
+            </div>
+          </div>
+          <div class="m mu">&check;</div>
+          <div class="m mb">
+            <div class="lbl">&#x2728; YOUR AGENT</div>
+            &#x2705; <strong>SOL position closed</strong><br>
+            Realized P&amp;L: <span style="color:var(--g);">+$38.60</span><br><br>
+            <span style="color:var(--m);font-size:0.85em;">&#x1F4DD; I'll remember you like taking profits around +5%. Your style: disciplined swing trader.</span>
+            <div class="btns">
+              <span class="act">&#x1F4CA; Status</span>
+              <span class="act">&#x1F4C8; P&amp;L</span>
+              <span class="act">&#x1F4DC; History</span>
+              <span class="dim">&#x1F3E0; Menu</span>
+            </div>
+          </div>
+        </div>
+
       </div>
+      <div class="scene-dots">
+        <div class="scene-dot active" data-scene="0"></div>
+        <div class="scene-dot" data-scene="1"></div>
+        <div class="scene-dot" data-scene="2"></div>
+        <div class="scene-dot" data-scene="3"></div>
+        <div class="scene-dot" data-scene="4"></div>
+        <div class="scene-dot" data-scene="5"></div>
+      </div>
+      <div class="scene-label">TRADE &bull; NEWS &bull; MANAGE &bull; DASHBOARD &bull; MULTILINGUAL &bull; MEMORY</div>
       <div class="phone-input">
-        <div class="phone-input-box">What do you think about BTC?</div>
+        <div class="phone-input-box">Talk to your agent...</div>
         <div class="phone-input-send">&#x27A4;</div>
       </div>
     </div>
@@ -215,12 +427,12 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
     <div class="step">
       <div class="step-n">2</div>
       <h4>Talk to it</h4>
-      <p>&ldquo;What's BTC at?&rdquo; &ldquo;SOL looks bullish.&rdquo; &ldquo;&#x5E2E;&#x6211;&#x505A;&#x591A;ETH&rdquo;. Your Agent analyzes the market and generates a trade plan with entry, stop-loss, and take-profit.</p>
+      <p>&ldquo;BTC broke 90k, what do I do?&rdquo; &mdash; in English, Korean, Japanese, Russian, or any language. Your Agent analyzes the market and proposes a trade plan.</p>
     </div>
     <div class="step">
       <div class="step-n">3</div>
       <h4>Confirm &amp; trade</h4>
-      <p>Connect your edgeX account when you're ready to trade. Review the plan, tap &ldquo;Confirm&rdquo; &mdash; your Agent executes. One tap.</p>
+      <p>Connect your edgeX account when ready. Review the plan with entry, TP, SL &mdash; tap Confirm. Your Agent executes. One tap.</p>
     </div>
   </div>
 </div>
@@ -237,32 +449,42 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
     <div class="feat">
       <div class="feat-icon">&#x1F9E0;</div>
       <h4>Natural language &rarr; trade plan</h4>
-      <p>Say what you think in English or Chinese. Your Agent pulls real-time data, analyzes the market, and proposes a precise trade plan.</p>
+      <p>Say what you think in any language. Your Agent pulls real-time prices, funding rates, and volume &mdash; then proposes a trade plan with entry, TP, SL, and confidence level.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">&#x1F310;</div>
-      <h4>Crypto, stocks, commodities</h4>
-      <p>BTC, ETH, SOL, CRCL, DOGE, GOLD, NVDA, TSLA, AAPL and hundreds more. Crypto perpetuals, US stock perpetuals, and commodities on edgeX. Trade anytime.</p>
+      <h4>290+ assets, one interface</h4>
+      <p>BTC, ETH, SOL, DOGE, GOLD, SILVER, NVDA, TSLA, AAPL, CRCL, and hundreds more. Crypto perpetuals, US stock perpetuals, and commodities. Trade everything from one chat.</p>
     </div>
     <div class="feat">
-      <div class="feat-icon">&#x2705;</div>
-      <h4>You confirm, it executes</h4>
-      <p>Every trade needs your tap. Direction, size, leverage, stops &mdash; all shown clearly before you confirm. No surprises, no autonomous trading.</p>
+      <div class="feat-icon">&#x1F4F0;</div>
+      <h4>Real-time news alerts</h4>
+      <p>Breaking news pushed in real time, auto-analyzed by AI with sentiment and one-tap trade buttons. Add sources (BTC, ETH, DeFi), control frequency per source, mute or remove anytime.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F4DD;</div>
+      <h4>Agent memory</h4>
+      <p>Your Agent remembers your trading style, risk preferences, and past conversations. It learns that you like 3x leverage, prefer swing trades, and take profits at +5%.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F30D;</div>
+      <h4>Speaks your language</h4>
+      <p>English, Chinese, Korean, Japanese, Russian &mdash; talk in whatever language you're comfortable with. Your Agent replies in the same language, naturally.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">&#x1F3AD;</div>
-      <h4>Choose a personality</h4>
-      <p>Professional analyst. Tech geek. Degen trader. Even an anime-style assistant. Pick how your Agent talks to you. Analysis stays sharp.</p>
+      <h4>7 personalities</h4>
+      <p>Degen, Sensei, Cold Blood, Shitposter, Professor, Wolf, Moe &mdash; pick how your Agent talks. Analysis stays sharp regardless of personality.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F4CA;</div>
+      <h4>Full portfolio dashboard</h4>
+      <p>Status, P&amp;L, trade history, close positions &mdash; all accessible via buttons. No need to open edgeX. Manage your entire portfolio from Telegram.</p>
     </div>
     <div class="feat">
       <div class="feat-icon">&#x1F4B3;</div>
       <h4>Free to start</h4>
-      <p>1,000 free AI calls per day, powered by Claude Sonnet 4.5. Or plug in your own API key (OpenAI, DeepSeek, Gemini, Anthropic) for unlimited use.</p>
-    </div>
-    <div class="feat">
-      <div class="feat-icon">&#x1F512;</div>
-      <h4>No edgeX? No problem.</h4>
-      <p>Try the Agent without any account. Ask about prices, get analysis, explore strategies. Connect edgeX only when you're ready to trade.</p>
+      <p>Powered by Claude Sonnet. Or bring your own API key (OpenAI, DeepSeek, Gemini, Anthropic, Groq) for unlimited use. No edgeX account needed to explore.</p>
     </div>
   </div>
 </div>
@@ -273,17 +495,17 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
 <div class="container">
   <div class="stag reveal">// built-in safety</div>
   <h2 class="sh reveal">Your money. Your control.<br>Always.</h2>
-  <p class="sd reveal">Trading with AI doesn't mean trading blind. Every safeguard is on by default.</p>
+  <p class="sd reveal">Every trade requires your explicit confirmation. The AI proposes &mdash; you decide.</p>
   <div class="safety-grid reveal">
     <div class="safe">
       <div class="num">&check;</div>
       <h4>Confirm mode</h4>
-      <p>Every trade needs your tap. Zero autonomous execution.</p>
+      <p>Every single trade needs your tap. Zero autonomous execution. Full plan shown before you confirm.</p>
     </div>
     <div class="safe">
       <div class="num">$500</div>
       <h4>Max per trade</h4>
-      <p>Hard cap per position. Small enough to experiment safely.</p>
+      <p>Hard cap per position. Balance and minimum order size checked before execution.</p>
     </div>
     <div class="safe">
       <div class="num">5x</div>
@@ -292,8 +514,8 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
     </div>
     <div class="safe">
       <div class="num">&#x26A0;</div>
-      <h4>AI disclaimer</h4>
-      <p>All analysis comes from AI, not edgeX. Shown clearly at every step.</p>
+      <h4>Pre-trade checks</h4>
+      <p>Balance, min order size, and contract validation &mdash; all verified before any order hits edgeX.</p>
     </div>
   </div>
 </div>
@@ -344,7 +566,7 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
     <div class="step">
       <div class="step-n">&ne;</div>
       <h4>Not PepeBoost</h4>
-      <p>You tell it what to buy. It executes. It doesn't think for you.<br><br><strong style="color:var(--g);">edgeX Agent: Your AI thinks, analyzes, and plans. You confirm.</strong></p>
+      <p>You tell it what to buy. It executes. It doesn't think for you.<br><br><strong style="color:var(--g);">edgeX Agent: AI thinks, analyzes, and plans. You confirm.</strong></p>
     </div>
     <div class="step">
       <div class="step-n">&ne;</div>
@@ -376,8 +598,37 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
 
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
+  // Reveal on scroll
   const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});},{threshold:0.12});
   document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+  // Phone carousel
+  const scenes=document.querySelectorAll('.phone-scene');
+  const dots=document.querySelectorAll('.scene-dot');
+  let current=0;
+  let autoTimer;
+
+  function showScene(idx){
+    scenes.forEach(s=>s.classList.remove('active'));
+    dots.forEach(d=>d.classList.remove('active'));
+    scenes[idx].classList.add('active');
+    dots[idx].classList.add('active');
+    current=idx;
+  }
+
+  function nextScene(){
+    showScene((current+1)%scenes.length);
+  }
+
+  dots.forEach(d=>{
+    d.addEventListener('click',()=>{
+      showScene(parseInt(d.dataset.scene));
+      clearInterval(autoTimer);
+      autoTimer=setInterval(nextScene,6000);
+    });
+  });
+
+  autoTimer=setInterval(nextScene,5000);
 });
 </script>
 </body>
