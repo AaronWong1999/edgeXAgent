@@ -102,6 +102,154 @@ def init_db():
             updated_at REAL
         )
     """)
+    # News push system tables
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS news_sources (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            mcp_url TEXT NOT NULL,
+            mcp_tool TEXT NOT NULL DEFAULT 'get_latest_news',
+            category TEXT DEFAULT 'crypto',
+            is_default INTEGER DEFAULT 0,
+            enabled INTEGER DEFAULT 1,
+            poll_interval_sec INTEGER DEFAULT 120,
+            created_at REAL
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS news_subscriptions (
+            tg_user_id INTEGER NOT NULL,
+            source_id TEXT NOT NULL,
+            enabled INTEGER DEFAULT 1,
+            created_at REAL,
+            PRIMARY KEY (tg_user_id, source_id)
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_newssub_user ON news_subscriptions(tg_user_id)")
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS news_delivered (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            news_hash TEXT NOT NULL,
+            tg_user_id INTEGER NOT NULL,
+            title TEXT,
+            source_id TEXT,
+            ai_analysis TEXT,
+            delivered_at REAL
+        )
+    """)
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_news_hash_user ON news_delivered(news_hash, tg_user_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_news_delivered_time ON news_delivered(delivered_at DESC)")
+    # Seed default news source
+    c.execute("""
+        INSERT OR IGNORE INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, poll_interval_sec, created_at)
+        VALUES ('free_crypto_news', 'Crypto News (Free)', 'https://modelcontextprotocol.name/mcp/free-crypto-news',
+                'get_latest_news', 'crypto', 1, 120, ?)
+    """, (time.time(),))
+    conn.commit()
+    conn.close()
+
+
+def get_news_sources(enabled_only=True) -> list:
+    conn = get_conn()
+    if enabled_only:
+        rows = conn.execute("SELECT * FROM news_sources WHERE enabled = 1").fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM news_sources").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_subscriptions(tg_user_id: int) -> list:
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT ns.*, COALESCE(sub.enabled, ns.is_default) as subscribed
+        FROM news_sources ns
+        LEFT JOIN news_subscriptions sub ON ns.id = sub.source_id AND sub.tg_user_id = ?
+        WHERE ns.enabled = 1
+    """, (tg_user_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def is_user_subscribed(tg_user_id: int, source_id: str) -> bool:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT enabled FROM news_subscriptions WHERE tg_user_id = ? AND source_id = ?",
+        (tg_user_id, source_id),
+    ).fetchone()
+    if row:
+        conn.close()
+        return bool(row["enabled"])
+    # Check if it's a default source
+    src = conn.execute("SELECT is_default FROM news_sources WHERE id = ?", (source_id,)).fetchone()
+    conn.close()
+    return bool(src and src["is_default"])
+
+
+def set_user_subscription(tg_user_id: int, source_id: str, enabled: bool):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO news_subscriptions (tg_user_id, source_id, enabled, created_at) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT(tg_user_id, source_id) DO UPDATE SET enabled = ?",
+        (tg_user_id, source_id, int(enabled), time.time(), int(enabled)),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_subscribed_users(source_id: str) -> list:
+    """Get all user IDs subscribed to a source (including default subscribers)."""
+    conn = get_conn()
+    # Users who explicitly subscribed
+    explicit = conn.execute(
+        "SELECT tg_user_id FROM news_subscriptions WHERE source_id = ? AND enabled = 1",
+        (source_id,),
+    ).fetchall()
+    explicit_ids = {r["tg_user_id"] for r in explicit}
+    # Users who explicitly unsubscribed
+    unsubbed = conn.execute(
+        "SELECT tg_user_id FROM news_subscriptions WHERE source_id = ? AND enabled = 0",
+        (source_id,),
+    ).fetchall()
+    unsub_ids = {r["tg_user_id"] for r in unsubbed}
+    # Check if default source — all users with accounts are implicitly subscribed
+    src = conn.execute("SELECT is_default FROM news_sources WHERE id = ?", (source_id,)).fetchone()
+    if src and src["is_default"]:
+        all_users = conn.execute("SELECT tg_user_id FROM users WHERE account_id IS NOT NULL AND account_id != ''").fetchall()
+        default_ids = {r["tg_user_id"] for r in all_users}
+        result = (default_ids | explicit_ids) - unsub_ids
+    else:
+        result = explicit_ids
+    conn.close()
+    return list(result)
+
+
+def is_news_delivered(news_hash: str, tg_user_id: int) -> bool:
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM news_delivered WHERE news_hash = ? AND tg_user_id = ?",
+        (news_hash, tg_user_id),
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def mark_news_delivered(news_hash: str, tg_user_id: int, title: str, source_id: str, ai_analysis: str):
+    conn = get_conn()
+    conn.execute(
+        "INSERT OR IGNORE INTO news_delivered (news_hash, tg_user_id, title, source_id, ai_analysis, delivered_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (news_hash, tg_user_id, title, source_id, ai_analysis, time.time()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def cleanup_old_news(days: int = 7):
+    """Remove delivered news records older than N days."""
+    cutoff = time.time() - (days * 86400)
+    conn = get_conn()
+    conn.execute("DELETE FROM news_delivered WHERE delivered_at < ?", (cutoff,))
     conn.commit()
     conn.close()
 
