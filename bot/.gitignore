@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.db
+*.log
+*.session
+.DS_Store
+
+# Dev-only test scripts (contain hardcoded test configs)
+tg_test_login*.py
+test_droid_output.py
+check_contracts.py
+yc_*.py
+
+# Generated docs
+PROJECT_MEMORY.html

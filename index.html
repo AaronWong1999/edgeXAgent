@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>edgeX Agent — Your Own OpenClaw for Crypto & Stocks</title>
+<meta name="description" content="Your own AI trading agent — like having a personal OpenClaw. Analyzes markets, generates trade plans, executes on edgeX. All inside Telegram. No signup required to try.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+:root{
+--bg:#04060a;--s:#0a0c12;--s2:#0f1118;--b:#151820;--bh:#1c2030;
+--t:#eaeaf0;--t2:#a8a8b8;--m:#5c5c70;--d:#282838;
+--g:#00ff88;--g2:#00e07a;--gd:rgba(0,255,136,0.05);--gm:rgba(0,255,136,0.10);
+--r:#ff3b5c;--y:#ffd000;--bl:#4d8eff;
+--mono:'JetBrains Mono',monospace;--sans:'Inter',-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--bg);color:var(--t);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+::selection{background:rgba(0,255,136,0.18);color:#fff;}
+a{color:inherit;text-decoration:none;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 48px;height:56px;display:flex;align-items:center;justify-content:space-between;background:rgba(4,6,10,0.82);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-bottom:1px solid var(--b);}
+.logo{font-family:var(--mono);font-size:1.05em;font-weight:700;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;}
+.logo-mark{width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:20px;height:20px;}
+.nav-r{display:flex;align-items:center;gap:20px;}
+.nav-r a{font-family:var(--mono);font-size:0.7em;color:var(--m);transition:color .2s;}
+.nav-r a:hover{color:var(--t);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;font-family:var(--mono);font-size:0.75em;font-weight:600;border-radius:6px;transition:all .2s;cursor:pointer;border:none;letter-spacing:0.2px;}
+.btn-p{background:var(--g);color:var(--bg);}.btn-p:hover{background:var(--g2);box-shadow:0 0 40px rgba(0,255,136,0.12);}
+.btn-g{background:transparent;color:var(--m);border:1px solid var(--b);}.btn-g:hover{color:var(--t);border-color:var(--bh);}
+.container{max-width:1080px;margin:0 auto;padding:0 48px;}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:100px 48px 60px;position:relative;}
+.hero::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:900px;height:550px;background:radial-gradient(ellipse,rgba(0,255,136,0.035) 0%,rgba(0,180,255,0.015) 40%,transparent 70%);pointer-events:none;}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;background:var(--gd);border:1px solid var(--gm);border-radius:20px;font-family:var(--mono);font-size:0.65em;color:var(--g);letter-spacing:1px;margin-bottom:32px;}
+.hero-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--g);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:4.4em;font-weight:900;letter-spacing:-4px;line-height:1.05;margin-bottom:20px;}
+.hero h1 .hl{color:var(--g);}
+.hero-sub{font-size:1.15em;color:var(--t2);max-width:560px;margin-bottom:12px;line-height:1.9;}
+.hero-sub2{font-size:0.92em;color:var(--m);max-width:500px;margin-bottom:40px;line-height:1.7;}
+.hero-cta{display:flex;gap:12px;margin-bottom:48px;}
+
+.phone-wrap{position:relative;margin-top:20px;}
+.phone{max-width:380px;width:100%;margin:0 auto;background:#0c0c14;border:1.5px solid #1a1e2a;border-radius:22px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.02);}
+.phone-top{background:#0f0f18;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #181c26;}
+.phone-av{width:32px;height:32px;border-radius:50%;background:#1a1e2a;display:flex;align-items:center;justify-content:center;}
+.phone-av svg{width:18px;height:18px;}
+.phone-info{flex:1;}
+.phone-name{font-weight:600;font-size:0.88em;}
+.phone-st{font-size:0.68em;color:var(--g);display:flex;align-items:center;gap:4px;}
+.phone-st::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--g);animation:pulse 2s infinite;}
+.phone-chat{padding:14px;display:flex;flex-direction:column;gap:9px;}
+.m{max-width:88%;padding:9px 13px;border-radius:14px;font-size:0.82em;line-height:1.6;}
+.mu{align-self:flex-end;background:#2a5cdb;color:#fff;border-bottom-right-radius:4px;}
+.mb{align-self:flex-start;background:#161822;color:var(--t);border-bottom-left-radius:4px;}
+.mb .lbl{font-size:0.65em;color:var(--g);font-weight:600;margin-bottom:3px;font-family:var(--mono);letter-spacing:0.5px;}
+.mb .tr{background:#0a1210;border:1px solid rgba(0,255,136,0.12);border-radius:7px;padding:7px 10px;margin-top:5px;font-family:var(--mono);font-size:0.8em;line-height:1.8;}
+.mb .pnl{font-family:var(--mono);font-size:0.88em;color:var(--g);font-weight:700;margin-top:5px;}
+.mb .btns{display:flex;gap:5px;margin-top:6px;}
+.mb .btns span{padding:5px 12px;border-radius:6px;font-size:0.75em;font-weight:600;}
+.mb .btns .yes{background:rgba(0,255,136,0.1);color:var(--g);border:1px solid rgba(0,255,136,0.18);}
+.mb .btns .no{background:rgba(255,59,92,0.08);color:var(--r);border:1px solid rgba(255,59,92,0.15);}
+.mb .btns .adj{background:rgba(77,142,255,0.08);color:var(--bl);border:1px solid rgba(77,142,255,0.15);}
+.phone-input{padding:10px 14px;border-top:1px solid #181c26;display:flex;align-items:center;gap:8px;}
+.phone-input-box{flex:1;background:#0f0f18;border:1px solid #181c26;border-radius:18px;padding:7px 12px;font-size:0.75em;color:var(--m);}
+.phone-input-send{color:var(--g);font-size:1.1em;}
+
+.sec{padding:120px 0;position:relative;}
+.sec::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--b);}
+.stag{font-family:var(--mono);font-size:0.65em;color:var(--g);letter-spacing:2px;opacity:0.5;margin-bottom:18px;}
+.sh{font-size:2.5em;font-weight:800;letter-spacing:-2px;line-height:1.15;margin-bottom:12px;}
+.sd{font-size:1.02em;color:var(--m);max-width:540px;line-height:1.9;}
+
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px;}
+.step{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:28px;position:relative;overflow:hidden;transition:border-color .3s;}
+.step:hover{border-color:var(--bh);}
+.step-n{font-family:var(--mono);font-size:2.8em;font-weight:900;color:rgba(0,255,136,0.05);position:absolute;top:10px;right:16px;line-height:1;}
+.step h4{font-size:1em;font-weight:700;margin-bottom:6px;}
+.step p{font-size:0.86em;color:var(--m);line-height:1.7;}
+
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:44px;}
+.feat{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:28px;position:relative;overflow:hidden;transition:border-color .3s;}
+.feat:hover{border-color:var(--bh);}
+.feat-icon{font-size:1.6em;margin-bottom:12px;}
+.feat h4{font-size:0.95em;font-weight:700;margin-bottom:6px;}
+.feat p{font-size:0.84em;color:var(--m);line-height:1.7;}
+
+.safety-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px;}
+.safe{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:22px;text-align:center;}
+.safe .num{font-family:var(--mono);font-size:1.6em;font-weight:700;color:var(--g);margin-bottom:4px;}
+.safe h4{font-size:0.82em;font-weight:600;margin-bottom:4px;}
+.safe p{font-size:0.76em;color:var(--m);line-height:1.6;}
+
+.proof-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px;}
+.proof{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:24px;position:relative;overflow:hidden;}
+.proof .num{font-family:var(--mono);font-size:1.7em;font-weight:700;color:var(--g);margin-bottom:4px;}
+.proof h4{font-size:0.86em;font-weight:600;margin-bottom:5px;}
+.proof p{font-size:0.78em;color:var(--m);line-height:1.6;}
+
+.cta-sec{padding:140px 48px;text-align:center;}
+.cta-sec h2{font-size:2.6em;font-weight:800;letter-spacing:-2px;line-height:1.2;margin-bottom:10px;}
+.cta-sub{font-size:1.1em;color:var(--m);margin-bottom:36px;}
+.cta-actions{display:flex;gap:12px;justify-content:center;}
+
+footer{border-top:1px solid var(--b);padding:32px 48px;display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;}
+.footer-l{font-family:var(--mono);font-size:0.65em;color:var(--d);display:flex;align-items:center;gap:6px;}
+.footer-r{display:flex;gap:18px;align-items:center;}
+.footer-r a{font-family:var(--mono);font-size:0.65em;color:var(--d);transition:color .2s;}
+.footer-r a:hover{color:var(--m);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.fi{opacity:0;animation:fadeUp .55s ease forwards;}
+.d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}.d4{animation-delay:.24s}.d5{animation-delay:.3s}.d6{animation-delay:.36s}
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+@media(max-width:900px){
+nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
+.hero{padding:100px 20px 60px;}.hero h1{font-size:2.6em;letter-spacing:-2px;}
+.steps,.feat-grid{grid-template-columns:1fr;}.safety-grid{grid-template-columns:1fr 1fr;}
+.proof-grid{grid-template-columns:1fr 1fr;}.sec{padding:80px 0;}
+.cta-sec{padding:80px 20px;}footer{flex-direction:column;gap:14px;text-align:center;padding:32px 20px;}
+.phone{max-width:100%;margin:0 16px;}
+}
+@media(max-width:500px){
+.hero h1{font-size:2.1em;}.safety-grid,.proof-grid{grid-template-columns:1fr;}
+.hero-cta,.cta-actions{flex-direction:column;align-items:center;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo"><span class="logo-mark"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></span> edgeX Agent</a>
+  <div class="nav-r">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#proof">Why now</a>
+    <a href="https://t.me/edgeXAgentBot" target="_blank" class="btn btn-p">Try it free &rarr;</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge fi d1">No signup required &mdash; try it now</div>
+  <h1 class="fi d2">Your own <span class="hl">OpenClaw.</span><br>In Telegram.</h1>
+  <p class="hero-sub fi d3">A personal AI trading agent that watches markets 24/7, analyzes opportunities in real time, and executes trades on edgeX &mdash; all from your Telegram chat.</p>
+  <p class="hero-sub2 fi d3">BTC &bull; ETH &bull; SOL &bull; CRCL &bull; GOLD &bull; NVDA &bull; TSLA &bull; and hundreds more</p>
+  <div class="hero-cta fi d4">
+    <a href="https://t.me/edgeXAgentBot" target="_blank" class="btn btn-p">Try Agent free &rarr;</a>
+    <a href="#how" class="btn btn-g">See how it works &darr;</a>
+  </div>
+
+  <div class="phone-wrap fi d5">
+    <div class="phone">
+      <div class="phone-top">
+        <div class="phone-av"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></div>
+        <div class="phone-info">
+          <div class="phone-name">edgeX Agent</div>
+          <div class="phone-st">analyzing markets</div>
+        </div>
+      </div>
+      <div class="phone-chat">
+        <div class="m mu">SOL looks strong, any good entry?</div>
+        <div class="m mb">
+          <div class="lbl">YOUR AGENT</div>
+          Agreed. SOL TVL +18% this week, DEX volume at ATH. Here's my plan:
+          <div class="tr">
+            <span style="color:var(--g);">LONG</span> SOL-PERP<br>
+            Entry: $178.40 (wait for dip)<br>
+            Size: $250 &times; 3x<br>
+            Stop: $168.50 (-5.5%)<br>
+            Take: $205.00 (+14.9%)
+          </div>
+          <div class="btns">
+            <span class="yes">&check; Confirm</span>
+            <span class="no">&times; Skip</span>
+            <span class="adj">&#9881; Adjust</span>
+          </div>
+        </div>
+        <div class="m mu">&check;</div>
+        <div class="m mb">
+          <div class="lbl">YOUR AGENT</div>
+          <span style="color:var(--g);">&check; SOL-PERP LONG opened</span><br>
+          $250 &times; 3x @ $178.42
+          <div class="pnl">+$38.60 (+5.1%) &nbsp;&#x1F4C8;</div>
+          Watching for exit signals.
+        </div>
+      </div>
+      <div class="phone-input">
+        <div class="phone-input-box">What do you think about BTC?</div>
+        <div class="phone-input-send">&#x27A4;</div>
+      </div>
+    </div>
+  </div>
+  <p class="fi d6" style="color:var(--d);font-size:0.78em;margin-top:18px;font-family:var(--mono);">Real trades. Real P&L. On edgeX.</p>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="sec" id="how">
+<div class="container">
+  <div class="stag reveal">// how it works</div>
+  <h2 class="sh reveal">Start in 10 seconds.<br>No signup required.</h2>
+  <p class="sd reveal">Open Telegram. Talk to your Agent. That's it.</p>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-n">1</div>
+      <h4>Open the bot</h4>
+      <p>Tap <strong>&ldquo;Try Agent free&rdquo;</strong> above. No registration, no email, no wallet. Your Agent activates instantly with free AI credits.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <h4>Talk to it</h4>
+      <p>&ldquo;What's BTC at?&rdquo; &ldquo;SOL looks bullish.&rdquo; &ldquo;&#x5E2E;&#x6211;&#x505A;&#x591A;ETH&rdquo;. Your Agent analyzes the market and generates a trade plan with entry, stop-loss, and take-profit.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <h4>Confirm &amp; trade</h4>
+      <p>Connect your edgeX account when you're ready to trade. Review the plan, tap &ldquo;Confirm&rdquo; &mdash; your Agent executes. One tap.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" id="features">
+<div class="container">
+  <div class="stag reveal">// what your agent can do</div>
+  <h2 class="sh reveal">Not a chatbot.<br>An AI that <span style="color:var(--g);">actually trades.</span></h2>
+  <p class="sd reveal">Your Agent thinks, analyzes, plans, and executes. You give direction. It handles the rest.</p>
+
+  <div class="feat-grid reveal">
+    <div class="feat">
+      <div class="feat-icon">&#x1F9E0;</div>
+      <h4>Natural language &rarr; trade plan</h4>
+      <p>Say what you think in English or Chinese. Your Agent pulls real-time data, analyzes the market, and proposes a precise trade plan.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F310;</div>
+      <h4>Crypto, stocks, commodities</h4>
+      <p>BTC, ETH, SOL, CRCL, DOGE, GOLD, NVDA, TSLA, AAPL and hundreds more. Crypto perpetuals, US stock perpetuals, and commodities on edgeX. Trade anytime.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x2705;</div>
+      <h4>You confirm, it executes</h4>
+      <p>Every trade needs your tap. Direction, size, leverage, stops &mdash; all shown clearly before you confirm. No surprises, no autonomous trading.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F3AD;</div>
+      <h4>Choose a personality</h4>
+      <p>Professional analyst. Tech geek. Degen trader. Even an anime-style assistant. Pick how your Agent talks to you. Analysis stays sharp.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F4B3;</div>
+      <h4>Free to start</h4>
+      <p>1,000 free AI calls per day, powered by Claude Sonnet 4.5. Or plug in your own API key (OpenAI, DeepSeek, Gemini, Anthropic) for unlimited use.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">&#x1F512;</div>
+      <h4>No edgeX? No problem.</h4>
+      <p>Try the Agent without any account. Ask about prices, get analysis, explore strategies. Connect edgeX only when you're ready to trade.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- SAFETY -->
+<section class="sec">
+<div class="container">
+  <div class="stag reveal">// built-in safety</div>
+  <h2 class="sh reveal">Your money. Your control.<br>Always.</h2>
+  <p class="sd reveal">Trading with AI doesn't mean trading blind. Every safeguard is on by default.</p>
+  <div class="safety-grid reveal">
+    <div class="safe">
+      <div class="num">&check;</div>
+      <h4>Confirm mode</h4>
+      <p>Every trade needs your tap. Zero autonomous execution.</p>
+    </div>
+    <div class="safe">
+      <div class="num">$500</div>
+      <h4>Max per trade</h4>
+      <p>Hard cap per position. Small enough to experiment safely.</p>
+    </div>
+    <div class="safe">
+      <div class="num">5x</div>
+      <h4>Max leverage</h4>
+      <p>No degen 50x. Enough edge without the blowup risk.</p>
+    </div>
+    <div class="safe">
+      <div class="num">&#x26A0;</div>
+      <h4>AI disclaimer</h4>
+      <p>All analysis comes from AI, not edgeX. Shown clearly at every step.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- PROOF -->
+<section class="sec" id="proof">
+<div class="container">
+  <div class="stag reveal">// why now</div>
+  <h2 class="sh reveal">AI trading isn't future.<br>It's <span style="color:var(--g);">now.</span></h2>
+  <p class="sd reveal">The models are ready. The rails are ready. The users are ready.</p>
+  <div class="proof-grid reveal">
+    <div class="proof">
+      <div class="num">+46%</div>
+      <h4>AI trading returns</h4>
+      <p>DeepSeek V3.1 returned +46% in live crypto AI arena competitions. These models can trade.</p>
+    </div>
+    <div class="proof">
+      <div class="num">13M</div>
+      <h4>Views, one tweet</h4>
+      <p>&ldquo;We gave 6 AIs $60K to trade.&rdquo; 13M impressions. Zero spend. AI trading is the narrative.</p>
+    </div>
+    <div class="proof">
+      <div class="num">700K</div>
+      <h4>TG bot users</h4>
+      <p>Banana Gun: 700K users, $146M weekly. Crypto lives in Telegram. No app download needed.</p>
+    </div>
+    <div class="proof">
+      <div class="num">$200B</div>
+      <h4>Daily perp volume</h4>
+      <p>On-chain perpetuals: $200B+ daily. Crypto, stocks, commodities. 24/7 global access.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- DIFFERENTIATOR -->
+<section class="sec">
+<div class="container">
+  <div class="stag reveal">// why edgeX Agent</div>
+  <h2 class="sh reveal">Everyone does a piece.<br>No one does <span style="color:var(--g);">this.</span></h2>
+  <div class="steps reveal" style="margin-top:28px;">
+    <div class="step">
+      <div class="step-n">&ne;</div>
+      <h4>Not OpenClaw</h4>
+      <p>You watch AIs compete. You can't participate. You're the audience.<br><br><strong style="color:var(--g);">edgeX Agent: Your own agent. Your thesis. Your P&L.</strong></p>
+    </div>
+    <div class="step">
+      <div class="step-n">&ne;</div>
+      <h4>Not PepeBoost</h4>
+      <p>You tell it what to buy. It executes. It doesn't think for you.<br><br><strong style="color:var(--g);">edgeX Agent: Your AI thinks, analyzes, and plans. You confirm.</strong></p>
+    </div>
+    <div class="step">
+      <div class="step-n">&ne;</div>
+      <h4>Not Bloomberg Terminal</h4>
+      <p>$30K/year for data. You still pull the trigger yourself.<br><br><strong style="color:var(--g);">edgeX Agent: AI pulls the trigger. Free to start.</strong></p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- CTA -->
+<section class="cta-sec">
+  <h2 class="reveal">Your agent is waiting.</h2>
+  <p class="cta-sub reveal">No signup. No API keys. Just open Telegram and talk.</p>
+  <div class="cta-actions reveal">
+    <a href="https://t.me/edgeXAgentBot" target="_blank" class="btn btn-p" style="padding:14px 36px;font-size:0.86em;">Try Agent free &rarr;</a>
+    <a href="mailto:gm@edgex.exchange" class="btn btn-g" style="padding:14px 36px;font-size:0.86em;">Contact us</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-l"><span class="logo-mark" style="width:18px;height:18px;"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></span> edgeX Agent &copy; 2026</div>
+  <div class="footer-r">
+    <a href="mailto:gm@edgex.exchange">gm@edgex.exchange</a>
+    <a href="https://twitter.com/edaboratory" target="_blank">X</a>
+    <a href="https://t.me/edgeXAgentBot" target="_blank">Telegram</a>
+  </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});},{threshold:0.12});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+});
+</script>
+</body>
+</html>
