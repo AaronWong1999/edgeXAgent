@@ -220,14 +220,15 @@ Symbol format: BTC, btc, BTCUSD, or contract ID 10000001 all work.
 - For stock perpetuals during market closure: ONLY suggest limit orders
 
 ## Minimum Order Sizes (CRITICAL — orders below these will be REJECTED by edgeX)
-- BTC: min 0.001 (~$70)
-- ETH: min 0.01 (~$20)
-- SOL: min 1 (~$90)
-- DOGE: min 300 (~$28)
+- BTC: min 0.003 (~$270)
+- ETH: min 0.05 (~$100)
+- SOL: min 1 (~$130)
+- DOGE: min 300 (~$50)
 - PEPE: min 1000000
-- XAUT (Gold): min 0.001 (~$5)
-- SILVER: min 1 (~$86)
-- TSLA/AAPL/NVDA: min 0.01 (~$2-4)
+- XAUT (Gold): min 0.003 (~$10)
+- SILVER: min 3 (~$100)
+- TSLA/AAPL/NVDA: min 0.1 (~$20-40)
+- CRCL: min 3
 - For any other asset: use `edgex order max-size <symbol>` to check
 - If user doesn't specify a size, pick a reasonable default based on the minimum and $50-100 position value
 - If user's size is below minimum, auto-adjust to minimum and tell them

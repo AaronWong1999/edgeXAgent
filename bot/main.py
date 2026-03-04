@@ -357,27 +357,20 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         db.save_user(update.effective_user.id, config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
         masked = config.DEMO_ACCOUNT_ID[:4] + "..." + config.DEMO_ACCOUNT_ID[-4:]
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id)
-        if user_ai:
-            keyboard = _dashboard_keyboard(True, has_ai=True)
-            await query.edit_message_text(
-                f"\u2705 **edgeX Connected!** (Aaron's edgeX)\n\n"
-                f"\U0001f464 Account: `{masked}`\n"
-                f"\u2728 AI: active \u2705\n\n"
-                f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
-                f"_\"BTC's looking juicy, should I ape in?\"_\n"
-                f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
-                f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
-                f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_",
-                parse_mode="Markdown",
-                reply_markup=keyboard)
-        else:
-            await query.edit_message_text(
-                f"\u2705 **edgeX Connected!** (Aaron's edgeX \u2014 temp)\n\n"
-                f"\U0001f464 edgeX Account: `{masked}`\n\n"
-                f"This is a shared edgeX trading account for beta testing.\n\n"
-                f"Now activate your AI Agent:",
-                parse_mode="Markdown",
-                reply_markup=_ai_activate_keyboard())
+        if not user_ai:
+            ai_trader.save_user_ai_config(update.effective_user.id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
+        keyboard = _dashboard_keyboard(True, has_ai=True)
+        await query.edit_message_text(
+            f"\u2705 **edgeX Connected!** (Aaron's edgeX)\n\n"
+            f"\U0001f464 Account: `{masked}`\n"
+            f"\u2728 AI: active \u2705\n\n"
+            f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
+            f"_\"BTC's looking juicy, should I ape in?\"_\n"
+            f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
+            f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
+            f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_",
+            parse_mode="Markdown",
+            reply_markup=keyboard)
         return ConversationHandler.END
 
     if query.data == "login_api":
@@ -1046,8 +1039,16 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 summary = await edgex_client.get_account_summary(client)
                 assets = summary.get("assets", {})
-                total_equity = assets.get("totalEquityValue", "0")
-                available = assets.get("availableBalance", "0")
+                total_equity_raw = assets.get("totalEquityValue", "0")
+                available_raw = assets.get("availableBalance", "0")
+                try:
+                    total_equity = f"{float(total_equity_raw):.2f}"
+                except (ValueError, TypeError):
+                    total_equity = total_equity_raw
+                try:
+                    available = f"{float(available_raw):.2f}"
+                except (ValueError, TypeError):
+                    available = available_raw
                 positions = summary.get("positions", [])
                 open_pos = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
 
@@ -1680,6 +1681,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     f"{preflight['error']}\n\n"
                     f"{preflight.get('suggestion', 'Try again with different parameters.')}",
                     parse_mode="Markdown",
+                    reply_markup=_quick_actions_keyboard(),
                 )
                 return
 
@@ -2129,7 +2131,7 @@ def _news_main_menu(user_id: int) -> tuple:
     for s in subs:
         is_on = bool(s.get("subscribed"))
         status = "\u2705" if is_on else "\u274c"
-        mph = s.get("user_max_per_hour", 5)
+        mph = s.get("user_max_per_hour", 2)
         freq = freq_labels.get(mph, f"{mph}/hr")
         msg += f"{status} **{s['name']}** \u2014 {freq}\n"
 

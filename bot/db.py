@@ -121,14 +121,14 @@ def init_db():
             tg_user_id INTEGER NOT NULL,
             source_id TEXT NOT NULL,
             enabled INTEGER DEFAULT 1,
-            max_per_hour INTEGER DEFAULT 5,
+            max_per_hour INTEGER DEFAULT 2,
             created_at REAL,
             PRIMARY KEY (tg_user_id, source_id)
         )
     """)
     # Migration: add max_per_hour if missing
     try:
-        c.execute("ALTER TABLE news_subscriptions ADD COLUMN max_per_hour INTEGER DEFAULT 5")
+        c.execute("ALTER TABLE news_subscriptions ADD COLUMN max_per_hour INTEGER DEFAULT 2")
     except Exception:
         pass
     c.execute("CREATE INDEX IF NOT EXISTS idx_newssub_user ON news_subscriptions(tg_user_id)")
@@ -170,7 +170,7 @@ def get_user_subscriptions(tg_user_id: int) -> list:
     conn = get_conn()
     rows = conn.execute("""
         SELECT ns.*, COALESCE(sub.enabled, ns.is_default) as subscribed,
-               COALESCE(sub.max_per_hour, 5) as user_max_per_hour
+               COALESCE(sub.max_per_hour, 2) as user_max_per_hour
         FROM news_sources ns
         LEFT JOIN news_subscriptions sub ON ns.id = sub.source_id AND sub.tg_user_id = ?
         WHERE ns.enabled = 1
@@ -225,7 +225,7 @@ def get_user_news_frequency(tg_user_id: int, source_id: str) -> int:
         (tg_user_id, source_id),
     ).fetchone()
     conn.close()
-    return row["max_per_hour"] if row and row["max_per_hour"] else 5
+    return row["max_per_hour"] if row and row["max_per_hour"] else 2
 
 
 def add_news_source(source_id: str, name: str, mcp_url: str, mcp_tool: str = "get_latest_news",
