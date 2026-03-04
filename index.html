@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>edgeX Agent — Your AI trader. It lives in your Telegram.</title>
 <meta name="description" content="Tell it what you think about the market. It watches 24/7, decides when to trade, and executes on edgeX — all inside Telegram.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 :root{
@@ -23,7 +24,8 @@ a{color:inherit;text-decoration:none;}
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 48px;height:56px;display:flex;align-items:center;justify-content:space-between;background:rgba(4,6,10,0.82);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-bottom:1px solid var(--b);}
 .logo{font-family:var(--mono);font-size:1.05em;font-weight:700;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;}
-.logo-mark{width:24px;height:24px;border-radius:5px;background:linear-gradient(135deg,var(--g),#00b4ff);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--bg);}
+.logo-mark{width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:20px;height:20px;}
 .nav-r{display:flex;align-items:center;gap:20px;}
 .nav-r a{font-family:var(--mono);font-size:0.7em;color:var(--m);transition:color .2s;}
 .nav-r a:hover{color:var(--t);}
@@ -47,7 +49,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 48px;height:56px;d
 .phone-wrap{position:relative;margin-top:20px;}
 .phone{max-width:380px;width:100%;margin:0 auto;background:#0c0c14;border:1.5px solid #1a1e2a;border-radius:22px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.02);}
 .phone-top{background:#0f0f18;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #181c26;}
-.phone-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--g),#00b4ff);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--bg);}
+.phone-av{width:32px;height:32px;border-radius:50%;background:#1a1e2a;display:flex;align-items:center;justify-content:center;}
+.phone-av svg{width:18px;height:18px;}
 .phone-info{flex:1;}
 .phone-name{font-weight:600;font-size:0.88em;}
 .phone-st{font-size:0.68em;color:var(--g);display:flex;align-items:center;gap:4px;}
@@ -156,7 +159,7 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
 <body>
 
 <nav>
-  <a href="#" class="logo"><span class="logo-mark">eX</span> edgeX Agent</a>
+  <a href="#" class="logo"><span class="logo-mark"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></span> edgeX Agent</a>
   <div class="nav-r">
     <a href="#how">How it works</a>
     <a href="#features">Features</a>
@@ -178,7 +181,7 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
   <div class="phone-wrap fi d5">
     <div class="phone">
       <div class="phone-top">
-        <div class="phone-av">eX</div>
+        <div class="phone-av"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></div>
         <div class="phone-info">
           <div class="phone-name">edgeX Agent</div>
           <div class="phone-st">trading live</div>
@@ -427,7 +430,7 @@ nav{padding:0 20px;}.nav-r a:not(.btn){display:none;}.container{padding:0 20px;}
 </section>
 
 <footer>
-  <div class="footer-l"><span class="logo-mark" style="width:18px;height:18px;font-size:8px;border-radius:4px;">eX</span> edgeX Agent &copy; 2026</div>
+  <div class="footer-l"><span class="logo-mark" style="width:18px;height:18px;"><svg viewBox="0 0 207 180" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M206.98 179.25L103.49 0L0 179.25H163.15H206.98ZM21.9 141.381L125.342 38L163.15 179.25L21.9 141.381Z" fill="white"/></svg></span> edgeX Agent &copy; 2026</div>
   <div class="footer-r">
     <a href="mailto:gm@edgex.exchange">gm@edgex.exchange</a>
     <a href="https://twitter.com/edaboratory" target="_blank">X</a>
