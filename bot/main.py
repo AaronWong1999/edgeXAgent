@@ -570,10 +570,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     message=text,
                 )
                 await update.message.reply_text(
-                    "\u2705 **Got it!** Your feedback has been recorded.\n\n"
-                    "We'll review it and may reach out if we have questions. Thanks!",
+                    "\u2705 **Got it!** Your feedback has been recorded. Thanks!",
                     parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard(),
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    ]),
                 )
                 return
 
@@ -643,21 +644,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if len(reply_text) > 4000:
                 reply_text = reply_text[:4000] + "..."
             has_edgex = _has_edgex(user)
-            # Smart buttons: if AI mentions balance/margin, add deposit + close
             reply_lower = reply_text.lower()
+            # Context-aware buttons: only show what's relevant
             if has_edgex and ("balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower):
                 kb = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
                         InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
                     ],
-                    [
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
-                    ],
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    [InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio")],
                 ])
             else:
-                kb = _quick_actions_keyboard(has_edgex)
+                # Regular chat: just Main Menu — keep it clean
+                kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ])
             await update.message.reply_text(
                 reply_text,
                 reply_markup=kb,
@@ -681,10 +682,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_text = ai_trader._strip_json_wrapper(reply_text)
             if len(reply_text) > 4000:
                 reply_text = reply_text[:4000] + "..."
-            has_edgex = _has_edgex(user)
             await update.message.reply_text(
                 reply_text,
-                reply_markup=_quick_actions_keyboard(has_edgex),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ]),
             )
             return
 
@@ -1068,6 +1070,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = update.effective_chat.id
 
     try:
+        # ── Cancel feedback ──
+        if query.data == "cancel_feedback":
+            context.user_data.pop("awaiting_feedback", None)
+            await query.edit_message_text("\u274c Feedback cancelled.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+            return
+
         # ── Dashboard quick actions ──
         if query.data == "quick_status":
             await query.answer()
@@ -2598,17 +2607,23 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/feedback \u2014 suggest features or report bugs\n"
         "/logout \u2014 disconnect",
         parse_mode="Markdown",
-        reply_markup=_quick_actions_keyboard(),
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+        ]),
     )
 
 
 async def cmd_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_feedback"] = True
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("\u274c Cancel", callback_data="cancel_feedback")],
+    ])
     await update.message.reply_text(
         "\U0001f4ac **Feedback**\n\n"
         "Tell us what you'd like to see, or what's not working well.\n"
-        "Type your feedback below (or /cancel to abort):",
+        "Type your feedback below:",
         parse_mode="Markdown",
+        reply_markup=kb,
     )
 
 
