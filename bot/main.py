@@ -697,17 +697,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         pending_plans[update.effective_user.id] = plan
 
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
-                InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade"),
-            ]
-        ])
+        side_word = "LONG" if plan.get("side") == "BUY" else "SHORT"
+        side_emoji = "\u2b06\ufe0f" if plan.get("side") == "BUY" else "\u2b07\ufe0f"
+        asset = plan.get("asset", "?")
+        leverage = plan.get("leverage", "1")
+        value = plan.get("position_value_usd", "?")
+        tp = plan.get("take_profit", "")
+        sl = plan.get("stop_loss", "")
+        btn_label = f"{side_emoji} {side_word} {asset} ${value} {leverage}x"
+        if tp:
+            btn_label += f" TP:${tp}"
+        if sl:
+            btn_label += f" SL:${sl}"
+
+        reasoning = plan.get("reasoning", "")
+        reply_text = f"\u2728 {reasoning}" if reasoning else f"\u2728 {side_word} {asset} looks good."
 
         await update.message.reply_text(
-            ai_trader.format_trade_plan(plan),
-            parse_mode="Markdown",
-            reply_markup=keyboard,
+            reply_text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(btn_label, callback_data="show_trade_plan")],
+                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+            ]),
         )
     except Exception as e:
         logger.error(f"handle_message error: {e}", exc_info=True)
@@ -1863,13 +1874,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                             await safe_send(context, chat_id, f"\u26a0\ufe0f {error}", reply_markup=_quick_actions_keyboard())
                             return
                         pending_plans[user_id] = plan
-                        keyboard = InlineKeyboardMarkup([
-                            [
-                                InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
-                                InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade"),
-                            ]
-                        ])
-                        await safe_send(context, chat_id, ai_trader.format_trade_plan(plan), parse_mode="Markdown", reply_markup=keyboard)
+                        await safe_send(context, chat_id,
+                            ai_trader.format_trade_plan(plan),
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup([
+                                [InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
+                                 InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade")],
+                            ]))
                     else:
                         reply = plan.get("reply", "Could not generate trade plan. Try asking directly.")
                         if reply.lstrip().startswith("{") and '"action"' in reply:
@@ -2040,10 +2051,24 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.answer("\u274c Cancelled", show_alert=False)
             await safe_edit(query,
                 "\u274c *Trade Cancelled \u2014 Trade on edgeX*\n\nNo order was placed.",
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
+            return
+
+        if query.data == "show_trade_plan":
+            plan = pending_plans.get(user_id)
+            if not plan:
+                await query.answer()
+                await safe_edit(query,
+                    "\u274c *Trade Expired \u2014 Trade on edgeX*\n\nSend a new request.",
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
+                return
+            await query.answer()
+            await safe_edit(query,
+                ai_trader.format_trade_plan(plan),
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4c8 Trade on edgeX", callback_data="trade_hub"),
-                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    [InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
+                     InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade")],
                 ]))
             return
 
@@ -2115,37 +2140,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not preflight["ok"]:
                 error = preflight["error"]
                 suggestion = preflight.get("suggestion", "")
-                # Build smart action buttons based on error type
-                action_rows = []
-                if "balance" in error.lower() or "not enough" in error.lower():
-                    try:
-                        summary = await edgex_client.get_account_summary(client)
-                        assets = summary.get("assets", {})
-                        avail = float(assets.get("availableBalance", "0"))
-                        avail_str = f"${avail:.2f}"
-                    except Exception:
-                        avail_str = "unknown"
-                    action_rows.append([
-                        InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
-                        InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
-                    ])
-                    action_rows.append([
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
-                    ])
-                    error = f"Insufficient balance (available: {avail_str})"
-                elif "minimum" in error.lower() or "below" in error.lower():
-                    action_rows.append([
-                        InlineKeyboardButton("\U0001f4ac Try Different Size", callback_data="back_to_dashboard"),
-                    ])
-                action_rows.append([
-                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
-                ])
                 await _edit_exec(
-                    f"\u274c *Trade Blocked \u2014 Trade on edgeX*\n\n"
-                    f"{error}\n{suggestion}",
-                    parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup(action_rows))
+                    f"\u274c *Trade Failed \u2014 Trade on edgeX*\n\n{error}\n{suggestion}",
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
                 return
 
             result = await edgex_client.place_order(
@@ -2189,38 +2186,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     msg += f"\u251c SL: `${sl}`\n"
                 msg += f"\u2514 Order ID: `{order_id}`"
 
-                # Post-trade action buttons
-                post_trade_kb = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(f"\U0001f4ca {plan['asset']} Position", callback_data="quick_status"),
-                        InlineKeyboardButton("\U0001f4c8 Live P&L", callback_data="quick_pnl"),
-                    ],
-                    [
-                        InlineKeyboardButton(f"\U0001f534 Close {plan['asset']}", callback_data=f"close_{contract_id}"),
-                        InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
-                    ],
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ])
-                await _edit_exec(msg, parse_mode="Markdown", reply_markup=post_trade_kb)
+                await _edit_exec(msg, parse_mode="Markdown", reply_markup=_main_menu_kb)
             else:
                 error_msg = result.get("msg") or result.get("error", "Unknown error")
                 friendly = _friendly_order_error(error_msg, plan)
-                error_rows = []
-                err_lower = error_msg.lower()
-                if "balance" in err_lower or "insufficient" in err_lower or "margin" in err_lower:
-                    error_rows.append([
-                        InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
-                        InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
-                    ])
-                    error_rows.append([
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
-                    ])
-                error_rows.append([
-                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
-                ])
-                await _edit_exec(friendly, parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup(error_rows))
+                await _edit_exec(friendly, parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         # ── Close confirmation (second step) ──
@@ -2479,20 +2449,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 label = symbol
 
             if result.get("code") == "SUCCESS":
-                btns = []
-                if target_id != "all":
-                    btns.append([InlineKeyboardButton(f"\U0001f534 Close {symbol}", callback_data=f"close_{target_id}")])
-                btns.append([
-                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
-                ])
                 await safe_send(context, chat_id,
-                    f"\u2705 {label} orders cancelled! Margin freed.",
-                    reply_markup=InlineKeyboardMarkup(btns))
+                    f"\u2705 *Orders Cancelled \u2014 Trade on edgeX*\n\n\u2705 {label} orders cancelled.",
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
             else:
                 await safe_send(context, chat_id,
-                    f"\u274c Failed to cancel orders: {result.get('error', 'Unknown')}",
-                    reply_markup=_quick_actions_keyboard())
+                    f"\u274c *Cancel Failed \u2014 Trade on edgeX*\n\n{result.get('error', 'Unknown')}",
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         # ── View open orders for a contract ──
@@ -2559,7 +2522,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                             o_size = o.get("size", "?")
                             o_type = o.get("type", "LIMIT")
                             sym = edgex_client.resolve_symbol(o.get("contractId", ""))
-                            detail = f"\n\n\u251c {sym} {o_side} {o_type}\n\u251c Size: `{o_size}` | Price: `${o_price}`\n\u2514 Order ID: `{order_id[:16]}...`"
+                            detail = f"\n\n\u251c {sym} {o_side} {o_type}\n\u251c Size: `{o_size}` | Price: `${o_price}`\n\u2514 Order ID: `{order_id}`"
                             break
                 except Exception:
                     pass
@@ -2626,7 +2589,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
             if result.get("code") == "SUCCESS":
                 await safe_edit(query,
-                    f"\u2705 *Order Cancelled \u2014 Trade on edgeX*\n\nOrder `{order_id[:16]}...` cancelled successfully.",
+                    f"\u2705 *Order Cancelled \u2014 Trade on edgeX*\n\nOrder `{order_id}` cancelled successfully.",
                     parse_mode="Markdown", reply_markup=_main_menu_kb)
             else:
                 await safe_edit(query,
