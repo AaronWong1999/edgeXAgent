@@ -551,6 +551,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Process any text message as a potential trading thesis or AI chat."""
     chat_id = update.effective_chat.id
     try:
+        # Check if user is in feedback mode
+        if context.user_data.get("awaiting_feedback"):
+            text = update.message.text.strip()
+            if text.startswith("/"):
+                context.user_data.pop("awaiting_feedback", None)
+                # Fall through to normal handling
+            elif len(text) < 3:
+                await update.message.reply_text("\u274c Too short. Please describe your feedback in more detail:")
+                return
+            else:
+                context.user_data.pop("awaiting_feedback", None)
+                u = update.effective_user
+                db.save_feedback(
+                    tg_user_id=u.id,
+                    tg_username=u.username or "",
+                    tg_first_name=u.first_name or "",
+                    message=text,
+                )
+                await update.message.reply_text(
+                    "\u2705 **Got it!** Your feedback has been recorded.\n\n"
+                    "We'll review it and may reach out if we have questions. Thanks!",
+                    parse_mode="Markdown",
+                    reply_markup=_quick_actions_keyboard(),
+                )
+                return
+
         user = db.get_user(update.effective_user.id)
         if not user:
             # Silently create minimal user record so they can proceed
@@ -2196,7 +2222,8 @@ async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user = db.get_user(update.effective_user.id)
         if not user or not user.get("account_id") or len(user.get("account_id", "")) < 5:
-            await update.message.reply_text("\U0001f517 Connect your edgeX account first.\nUse /start to connect.")
+            await update.message.reply_text("\U0001f517 Connect your edgeX account first.\nUse /start to connect.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")]]))
             return
 
         client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
@@ -2245,7 +2272,8 @@ async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user = db.get_user(update.effective_user.id)
         if not user or not user.get("account_id") or len(user.get("account_id", "")) < 5:
-            await update.message.reply_text("\U0001f517 Connect your edgeX account first to manage positions.\nUse /start to connect.")
+            await update.message.reply_text("\U0001f517 Connect your edgeX account first to manage positions.\nUse /start to connect.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")]]))
             return
 
         await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -2268,7 +2296,8 @@ async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
 
         if not open_positions:
-            await update.message.reply_text("No open positions to close.")
+            await update.message.reply_text("No open positions to close.",
+                reply_markup=_quick_actions_keyboard())
             return
 
         buttons = []
@@ -2305,7 +2334,8 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user = db.get_user(update.effective_user.id)
         if not user or not user.get("account_id") or len(user.get("account_id", "")) < 5:
-            await update.message.reply_text("\U0001f517 Connect your edgeX account first to see trade history.\nUse /start to connect.")
+            await update.message.reply_text("\U0001f517 Connect your edgeX account first to see trade history.\nUse /start to connect.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")]]))
             return
 
         await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -2316,7 +2346,8 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not orders:
             trades = db.get_user_trades(update.effective_user.id, limit=10)
             if not trades:
-                await update.message.reply_text("No trade history yet. Tell me your market view to start!")
+                await update.message.reply_text("No trade history yet. Tell me your market view to start!",
+                    reply_markup=_quick_actions_keyboard())
                 return
 
             msg = "\U0001f4dc **Recent Trades (Local)**\n"
@@ -2372,7 +2403,8 @@ async def cmd_pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user = db.get_user(update.effective_user.id)
         if not user or not user.get("account_id") or len(user.get("account_id", "")) < 5:
-            await update.message.reply_text("\U0001f517 Connect your edgeX account first to see P&L.\nUse /start to connect.")
+            await update.message.reply_text("\U0001f517 Connect your edgeX account first to see P&L.\nUse /start to connect.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")]]))
             return
 
         await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -2570,38 +2602,14 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-WAITING_FEEDBACK = 20
-
-
 async def cmd_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["awaiting_feedback"] = True
     await update.message.reply_text(
         "\U0001f4ac **Feedback**\n\n"
         "Tell us what you'd like to see, or what's not working well.\n"
         "Type your feedback below (or /cancel to abort):",
         parse_mode="Markdown",
     )
-    return WAITING_FEEDBACK
-
-
-async def receive_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    if len(text) < 3:
-        await update.message.reply_text("\u274c Too short. Please describe your feedback in more detail:")
-        return WAITING_FEEDBACK
-
-    user = update.effective_user
-    db.save_feedback(
-        tg_user_id=user.id,
-        tg_username=user.username or "",
-        tg_first_name=user.first_name or "",
-        message=text,
-    )
-    await update.message.reply_text(
-        "\u2705 **Got it!** Your feedback has been recorded.\n\n"
-        "We'll review it and may reach out if we have questions. Thanks!",
-        parse_mode="Markdown",
-    )
-    return ConversationHandler.END
 
 
 # ──────────────────────────────────────────
@@ -2735,7 +2743,6 @@ def main():
             CommandHandler("memory", cmd_memory),
             CommandHandler("logout", cmd_logout),
             CommandHandler("help", cmd_help),
-            CommandHandler("feedback", cmd_feedback),
             CommandHandler("cancel", cancel_setup),
         ],
         per_message=False,
@@ -2762,18 +2769,9 @@ def main():
         per_message=False,
     )
 
-    feedback_handler = ConversationHandler(
-        entry_points=[CommandHandler("feedback", cmd_feedback)],
-        states={
-            WAITING_FEEDBACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_feedback)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel_setup)],
-        per_message=False,
-    )
-
     app.add_handler(setup_handler)
     app.add_handler(ai_setup_handler)
-    app.add_handler(feedback_handler)
+    app.add_handler(CommandHandler("feedback", cmd_feedback))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("close", cmd_close))
     app.add_handler(CommandHandler("orders", cmd_orders))
