@@ -67,6 +67,8 @@ def _back_button(label: str = "\U0001f519 Back", cb: str = "back_to_dashboard") 
     """Single Back button — standard for all sub-screens."""
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data=cb)]])
 
+_main_menu_kb = InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]])
+
 
 def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
     """Shortcut buttons for command-based screens (e.g. /status, /pnl)."""
@@ -244,8 +246,8 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         conn.commit()
         conn.close()
         await safe_edit(query,
-            "\U0001f6aa *Disconnect \u2014 Trade on edgeX*\n\n\u2705 Successfully logged out.\nPress *Start* to reconnect.",
-            parse_mode="Markdown")
+            "\U0001f6aa *Disconnect \u2014 Trade on edgeX*\n\n\u2705 Successfully logged out.",
+            parse_mode="Markdown", reply_markup=_main_menu_kb)
         return ConversationHandler.END
 
     if query.data == "logout_no":
@@ -1674,14 +1676,14 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.commit()
             conn.close()
             await safe_edit(query,
-                "\U0001f6aa *Disconnect \u2014 Trade on edgeX*\n\n\u2705 Successfully logged out.\nPress *Start* to reconnect.",
-                parse_mode="Markdown")
+                "\U0001f6aa *Disconnect \u2014 Trade on edgeX*\n\n\u2705 Successfully logged out.",
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         if query.data == "logout_no":
             await safe_edit(query,
                 "\U0001f6aa *Disconnect \u2014 Trade on edgeX*\n\n\u274c Logout cancelled. Your account is still connected.",
-                parse_mode="Markdown")
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         if query.data == "show_login":
@@ -2178,13 +2180,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory.clear()
             await safe_edit(query,
                 f"\U0001f5d1 *Clear Memory \u2014 AI Agent*\n\n\u2705 Memory cleared.\n\u251c Deleted: `{count}` messages\n\u2514 Preferences: reset",
-                parse_mode="Markdown")
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         if query.data == "memory_clear_no":
             await safe_edit(query,
                 "\U0001f5d1 *Clear Memory \u2014 AI Agent*\n\n\u274c Cancelled. Memory kept intact.",
-                parse_mode="Markdown")
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         if query.data == "cancel_trade":
@@ -2404,7 +2406,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data == "close_cancel":
             await safe_edit(query,
                 "\U0001f4b0 *Position \u2014 Trade on edgeX*\n\n\u274c Close cancelled. No positions were closed.",
-                parse_mode="Markdown")
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         # ── Close all positions ──
@@ -2432,9 +2434,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         msg += f"\u2705 {sym} closed\n"
                     else:
                         msg += f"\u274c {sym}: {r.get('error', r.get('msg', 'failed'))[:60]}\n"
-                await safe_edit(query, msg, parse_mode="Markdown")
+                await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_main_menu_kb)
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}")
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_main_menu_kb)
             return
 
         if query.data.startswith("close_"):
@@ -2542,12 +2544,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 if order_id:
                     msg += f"\u2514 Order ID: `{order_id}`"
 
-                await safe_edit(query, msg, parse_mode="Markdown")
+                await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_main_menu_kb)
             else:
                 error_msg = result.get("msg", result.get("error", "Unknown"))
                 await safe_edit(query,
                     f"\u274c *Close Failed \u2014 Trade on edgeX*\n\n{error_msg}",
-                    parse_mode="Markdown")
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         # ── Cancel orders for a contract ──
@@ -2661,7 +2663,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data == "cancel_dismiss":
             await safe_edit(query,
                 "\U0001f4cb *Orders \u2014 Trade on edgeX*\n\n\u274c Cancelled. Orders kept.",
-                parse_mode="Markdown")
+                parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         # ── Cancel a single order (edits modal) ──
@@ -2680,11 +2682,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if result.get("code") == "SUCCESS":
                 await safe_edit(query,
                     f"\u2705 *Order Cancelled \u2014 Trade on edgeX*\n\nOrder `{order_id[:16]}...` cancelled successfully.",
-                    parse_mode="Markdown")
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
             else:
                 await safe_edit(query,
                     f"\u274c *Cancel Failed \u2014 Trade on edgeX*\n\n{result.get('error', 'Unknown')}",
-                    parse_mode="Markdown")
+                    parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
     except Exception as e:
