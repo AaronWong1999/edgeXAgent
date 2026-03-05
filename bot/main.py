@@ -228,13 +228,12 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "logout_confirm":
         keyboard = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("\u2705 Yes, disconnect", callback_data="logout_yes"),
+                InlineKeyboardButton("\u2705 Yes, logout", callback_data="logout_yes"),
                 InlineKeyboardButton("\u274c Cancel", callback_data="logout_no"),
             ]
         ])
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
-            "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\nThis will remove your API key. Are you sure?",
+        await safe_edit(query,
+            "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\nThis will log out your edgeX account. Are you sure?",
             parse_mode="Markdown", reply_markup=keyboard)
         return WAITING_LOGIN_CHOICE
 
@@ -244,22 +243,28 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         conn.execute("DELETE FROM ai_usage WHERE tg_user_id = ?", (update.effective_user.id,))
         conn.commit()
         conn.close()
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
-            "\u2705 Disconnected. Use /start to reconnect.",
+        await safe_edit(query,
+            "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\n\u2705 Logged out. Use /start to reconnect.",
+            parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
         return ConversationHandler.END
 
     if query.data == "logout_no":
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id, "\u2705 Cancelled.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+        user = db.get_user(update.effective_user.id)
+        user_ai = ai_trader.get_user_ai_config(update.effective_user.id) if user else None
+        has_edgex = _has_edgex(user)
+        await safe_edit(query, _dashboard_text(user, user_ai),
+            parse_mode="Markdown",
+            reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
         return ConversationHandler.END
 
     if query.data == "back_to_start":
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id, "Use /start or tap below:",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+        user = db.get_user(update.effective_user.id)
+        user_ai = ai_trader.get_user_ai_config(update.effective_user.id) if user else None
+        has_edgex = _has_edgex(user)
+        await safe_edit(query, _dashboard_text(user, user_ai),
+            parse_mode="Markdown",
+            reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
         return ConversationHandler.END
 
     if query.data == "back_to_dashboard":
@@ -275,63 +280,55 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         existing = db.get_user(update.effective_user.id)
         if not existing:
             db.save_user(update.effective_user.id, "", "")
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
+        await safe_edit(query,
             "\u2728 **Activate AI \u2014 edgeX Agent**\n\nChoose how to power your Agent:",
             parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
         return ConversationHandler.END
 
     if query.data == "show_login":
         rows = [
-            [InlineKeyboardButton("\u26a1 One-Click Login (coming soon)", callback_data="login_oauth")],
+            [InlineKeyboardButton("\u26a1 One-Click OAuth (soon)", callback_data="login_oauth")],
             [InlineKeyboardButton("\U0001f511 Connect with API Key", callback_data="login_api")],
         ]
         if config.DEMO_ACCOUNT_ID and config.DEMO_STARK_KEY:
-            rows.append([InlineKeyboardButton("\U0001f464 Use Aaron's edgeX Account (temp)", callback_data="login_demo")])
-        rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start")])
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
+            rows.append([InlineKeyboardButton("\U0001f464 Aaron's Account (temp)", callback_data="login_demo")])
+        rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
+        await safe_edit(query,
             "\U0001f517 **Connect edgeX \u2014 edgeX Agent**\n\nChoose how to connect:",
             parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
         return WAITING_LOGIN_CHOICE
 
     if query.data == "login_oauth":
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
-            "\u26a1 **One-Click Login** \u2014 Coming Soon!\n\n"
-            "For now, use **Connect with API Key**.",
+        await safe_edit(query,
+            "\u26a1 **One-Click Login \u2014 edgeX Agent**\n\nComing Soon!\nFor now, use **Connect with API Key**.",
             parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start")]]))
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
         return ConversationHandler.END
 
     if query.data == "login_demo":
-        chat_id = update.effective_chat.id
         if not config.DEMO_ACCOUNT_ID or not config.DEMO_STARK_KEY:
-            await safe_send(context, chat_id, "\u274c Demo account not available. Use /start.")
+            await query.answer("\u274c Demo account not available.", show_alert=True)
             return ConversationHandler.END
-        await safe_send(context, chat_id, "\U0001f504 Connecting to Aaron's edgeX account...")
+        await safe_edit(query, "\U0001f504 Connecting to Aaron's edgeX account...")
         result = await edgex_client.validate_credentials(config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
         if not result["valid"]:
-            await safe_send(context, chat_id, "\u274c Connection failed. Use /start.")
+            await safe_edit(query, "\u274c Connection failed.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
             return ConversationHandler.END
         db.save_user(update.effective_user.id, config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
-        masked = config.DEMO_ACCOUNT_ID[:4] + "..." + config.DEMO_ACCOUNT_ID[-4:]
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id)
         if not user_ai:
             ai_trader.save_user_ai_config(update.effective_user.id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
-        keyboard = _dashboard_keyboard(True, has_ai=True)
-        await safe_send(context, chat_id,
-            f"\u2705 **edgeX Connected!**\n\n"
-            f"\U0001f464 Account: `{masked}`\n"
-            f"\u2728 AI: active \u2705\n\n"
-            f"Just talk to me, or tap a button:",
-            parse_mode="Markdown", reply_markup=keyboard)
+        user = db.get_user(update.effective_user.id)
+        user_ai = ai_trader.get_user_ai_config(update.effective_user.id)
+        await safe_edit(query, _dashboard_text(user, user_ai),
+            parse_mode="Markdown",
+            reply_markup=_dashboard_keyboard(True, has_ai=True))
         return ConversationHandler.END
 
     if query.data == "login_api":
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
-            "\U0001f511 **Connect with API Key**\n\n"
+        await safe_edit(query,
+            "\U0001f511 **Connect with API Key \u2014 edgeX Agent**\n\n"
             "Go to edgex.exchange \u2192 **API Management**\n"
             "Copy your **Account ID** and send it to me:",
             parse_mode="Markdown")
@@ -2733,7 +2730,7 @@ async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("\U0001f5d1 Clear Memory", callback_data="memory_clear_confirm"),
-            InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start"),
+            InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard"),
         ]
     ])
 

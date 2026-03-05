@@ -165,9 +165,9 @@ html+=`<div class="tree-item"><div class="flow-row">${P('login_oauth','⚡ One-C
   'Connect → here. callback_data: show_login (back)', 3)}</div></div>`;
 
 html+=`<div class="tree-item"><div class="flow-row">${P('login_api','🔑 Connect with API Key',
-  `🔑 <b>Connect with API Key — edgeX Agent</b>\n\nPlease use the /start command, then choose <b>Connect with API Key</b>.\nThe API key setup requires a conversation flow.`,
-  [{t:'🔙 Back',c:'bk f'}],
-  'Connect → here. In ConvHandler: prompts for Account ID then Private Key. callback_data: show_login (back)', 3)}</div></div>`;
+  `🔑 <b>Connect with API Key — edgeX Agent</b>\n\nGo to edgex.exchange → <b>API Management</b>\nCopy your <b>Account ID</b> and send it to me:`,
+  [],
+  'Connect → here. Enters text-input flow: WAITING_ACCOUNT_ID → WAITING_PRIVATE_KEY. No buttons (user types).', 3)}</div></div>`;
 
 html+=`<div class="tree-item"><div class="flow-row">${P('login_demo','👤 Aaron\'s Account (temp)',
   `🔄 Connecting to Aaron's edgeX account...\n\n✅ Connected → returns to Dashboard (full state)`,
