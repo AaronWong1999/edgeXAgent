@@ -112,6 +112,27 @@ def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardM
     return InlineKeyboardMarkup(rows)
 
 
+def _dashboard_text(user, user_ai) -> str:
+    """Build the dashboard message text (same as /start)."""
+    has_edgex = _has_edgex(user)
+    if has_edgex:
+        acct = user["account_id"]
+        edgex_line = f"\U0001f464 edgeX: `{acct[:4]}...{acct[-4:]}` \u2705"
+    else:
+        edgex_line = "\U0001f464 edgeX: not connected"
+    ai_line = "\u2728 AI: active \u2705" if user_ai else "\u2728 AI: not activated"
+    return (
+        f"\U0001f916 *edgeX Agent \u2014 Your Own AI Trading Agent*\n\n"
+        f"{edgex_line}\n{ai_line}\n\n"
+        f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
+        f"_\"BTC's looking juicy, should I ape in?\"_\n"
+        f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
+        f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
+        f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_\n"
+        f"_\"\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 NVDA \u043d\u0430 100$\"_"
+    )
+
+
 def _friendly_order_error(raw_error: str, plan: dict) -> str:
     """Convert technical edgeX errors into user-friendly messages."""
     asset = plan.get("asset", "?")
@@ -196,33 +217,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = db.get_user(update.effective_user.id)
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id) if user else None
         has_edgex = _has_edgex(user)
-
-        # Build status line
-        if has_edgex:
-            acct = user["account_id"]
-            edgex_line = f"\U0001f464 edgeX: `{acct[:4]}...{acct[-4:]}` \u2705"
-        else:
-            edgex_line = "\U0001f464 edgeX: not connected"
-
-        if user_ai:
-            ai_line = "\u2728 AI: active \u2705"
-        else:
-            ai_line = "\u2728 AI: not activated"
-
-        keyboard = _dashboard_keyboard(has_edgex, has_ai=bool(user_ai))
-
         await update.message.reply_text(
-            f"\U0001f916 **edgeX Agent \u2014 Your Own AI Trading Agent**\n\n"
-            f"{edgex_line}\n"
-            f"{ai_line}\n\n"
-            f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
-            f"_\"BTC's looking juicy, should I ape in?\"_\n"
-            f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
-            f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
-            f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_\n"
-            f"_\"\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 NVDA \u043d\u0430 100$\"_",
+            _dashboard_text(user, user_ai),
             parse_mode="Markdown",
-            reply_markup=keyboard,
+            reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)),
         )
         return WAITING_LOGIN_CHOICE
     except Exception as e:
@@ -285,7 +283,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         has_edgex = _has_edgex(user)
         chat_id = update.effective_chat.id
         await safe_send(context, chat_id,
-            "\U0001f916 **edgeX Agent**\n\n\U0001f447 Tap a button or type:",
+            _dashboard_text(user, user_ai),
             parse_mode="Markdown",
             reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
         return
@@ -1344,7 +1342,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_ai = ai_trader.get_user_ai_config(user_id) if user else None
             has_edgex = _has_edgex(user)
             await safe_send(context, chat_id,
-                "\U0001f916 **edgeX Agent**\n\n\U0001f447 Tap a button or type:",
+                _dashboard_text(user, user_ai),
                 parse_mode="Markdown",
                 reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
             return
