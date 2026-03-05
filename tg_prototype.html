@@ -11,14 +11,13 @@ h1 { text-align:center; padding:24px 0 4px; font-size:24px; }
 .subtitle { text-align:center; color:#888; font-size:12px; margin-bottom:16px; }
 .stats { display:flex; justify-content:center; gap:40px; margin-bottom:20px; }
 .stat { text-align:center; } .stat-num { font-size:28px; font-weight:700; color:#4a90d9; } .stat-label { font-size:11px; color:#888; }
-.legend { background:#111827; border:1px solid #333; border-radius:10px; padding:14px 18px; margin:0 auto 20px; max-width:780px; font-size:12px; line-height:1.5; display:flex; flex-wrap:wrap; gap:16px; justify-content:center; }
+.legend { background:#111827; border:1px solid #333; border-radius:10px; padding:14px 18px; margin:0 auto 20px; max-width:860px; font-size:12px; line-height:1.5; display:flex; flex-wrap:wrap; gap:16px; justify-content:center; }
 .legend-item { display:flex; align-items:center; gap:6px; }
 .legend-color { width:14px; height:14px; border-radius:3px; }
 .search-bar { display:flex; justify-content:center; margin-bottom:20px; }
 .search-bar input { padding:6px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
 .search-bar input:focus { border-color:#4a90d9; }
 
-/* Module */
 .module { margin:0 auto 40px; max-width:1600px; padding:0 16px; }
 .mod-hdr { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:10px 16px; border-radius:10px; }
 .mod-hdr.m-trade { background:linear-gradient(135deg,#132b1e,#0a1a10); border:1px solid #2d6a4f; }
@@ -27,14 +26,12 @@ h1 { text-align:center; padding:24px 0 4px; font-size:24px; }
 .mod-hdr.m-push { background:linear-gradient(135deg,#2b1313,#1a0a0a); border:1px solid #c0392b; }
 .mod-hdr .ic { font-size:24px; } .mod-hdr .inf h2 { font-size:16px; color:#fff; } .mod-hdr .inf p { font-size:11px; color:#888; margin-top:2px; }
 
-/* Flow containers */
 .flow-section { margin-bottom:12px; padding-left:8px; }
 .flow-label { font-size:11px; color:#666; font-weight:600; margin-bottom:8px; padding:3px 8px; background:#111; border-radius:4px; display:inline-block; }
 .flow-row { display:flex; align-items:flex-start; flex-wrap:wrap; gap:0; margin-bottom:6px; }
 .or-div { display:flex; align-items:center; padding:0 10px; color:#555; font-size:11px; font-style:italic; }
 
-/* Phone */
-.phone { width:240px; flex-shrink:0; background:#0e1621; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.3); border:2px solid #2a2a3e; transition:all .15s; position:relative; }
+.phone { width:260px; flex-shrink:0; background:#0e1621; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.3); border:2px solid #2a2a3e; transition:all .15s; position:relative; }
 .phone:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,.4); }
 .phone.shared { border-color:#e07c24 !important; }
 .phone .ph-hdr { background:#17212b; padding:5px 8px; display:flex; align-items:center; gap:5px; border-bottom:1px solid #222; }
@@ -55,14 +52,11 @@ h1 { text-align:center; padding:24px 0 4px; font-size:24px; }
 .lvl.l1 { background:#2d6a4f; } .lvl.l2 { background:#4a90d9; } .lvl.l3 { background:#e07c24; } .lvl.lp { background:#c0392b; }
 .phone .shared-badge { position:absolute; top:30px; right:28px; font-size:7px; padding:1px 4px; border-radius:3px; font-weight:600; color:#e07c24; background:#2b1a0a; border:1px solid #e07c24; }
 
-/* Tree connector */
-.tree-indent { padding-left:40px; border-left:2px solid #333; margin-left:14px; position:relative; }
-.tree-indent::before { display:none; }
+.tree-indent { padding-left:40px; border-left:2px solid #333; margin-left:14px; }
 .tree-item { position:relative; padding:4px 0; }
 .tree-item::before { content:''; position:absolute; left:-40px; top:16px; width:36px; height:2px; background:#333; }
 .tree-item:last-child::after { content:''; position:absolute; left:-42px; top:16px; bottom:0; width:4px; background:#0f0f1a; }
 
-/* Seq arrow */
 .seq-a { display:flex; align-items:center; padding:0 5px; flex-direction:column; }
 .seq-a .arr { color:#c0392b; font-size:18px; font-weight:bold; }
 .seq-a .albl { font-size:8px; color:#777; text-align:center; max-width:60px; }
@@ -74,7 +68,7 @@ h1 { text-align:center; padding:24px 0 4px; font-size:24px; }
 </head>
 <body>
 <h1>edgeX Agent — Navigation Blueprint v5</h1>
-<p class="subtitle">Complete click flow map — every arrow = one button click</p>
+<p class="subtitle">100% code-accurate — every text, button, callback_data matches main.py</p>
 
 <div class="stats">
 <div class="stat"><div class="stat-num">3</div><div class="stat-label">Modules</div></div>
@@ -88,10 +82,10 @@ h1 { text-align:center; padding:24px 0 4px; font-size:24px; }
 <div class="legend-item"><div class="legend-color" style="background:#4a90d9"></div>L2 Module Hub</div>
 <div class="legend-item"><div class="legend-color" style="background:#e07c24"></div>L3 Sub-screen</div>
 <div class="legend-item"><div class="legend-color" style="background:#c0392b"></div>Push (bot-initiated)</div>
-<div class="legend-item"><div class="legend-color" style="background:transparent;border:2px solid #e07c24"></div>Shared screen (multiple parents)</div>
-<div class="legend-item">├── tree = parent→child</div>
-<div class="legend-item"><span style="color:#555">or</span> = mutually exclusive states</div>
-<div class="legend-item"><span style="color:#c0392b">→</span> = edits same message</div>
+<div class="legend-item"><div class="legend-color" style="background:transparent;border:2px solid #e07c24"></div>Shared screen</div>
+<div class="legend-item">├── = parent→child</div>
+<div class="legend-item"><span style="color:#555">or</span> = mutually exclusive</div>
+<div class="legend-item"><span style="color:#c0392b">→</span> = edits same msg</div>
 </div>
 
 <div class="search-bar"><input type="text" id="search" placeholder="Search screens..."></div>
@@ -110,131 +104,301 @@ function P(id,t,b,btns,ft,lv,shared) {
 function A(label){return `<div class="seq-a"><span class="arr">→</span><span class="albl">${label||''}</span></div>`;}
 function OR(){return `<div class="or-div">or</div>`;}
 
-const EX=`<span class="d">"BTC's looking juicy, ape in?"</span>\n<span class="d">"ソラナをロング"</span>\n<span class="d">"CRCL涨的离谱"</span>`;
-const DB=(s1,s2)=>`🤖 <b>edgeX Agent</b>\n\n${s1}\n${s2}\n\n👇 Tap or talk:\n\n${EX}`;
 let html='';
 
 // ═══════════ DASHBOARD ═══════════
-html+=`<div class="module"><div class="mod-hdr m-trade"><div class="ic">🤖</div><div class="inf"><h2>Dashboard (L1)</h2><p>/start → new message. 3 buttons always. All navigation edits this message.</p></div></div>`;
+const DASH_BODY = (edgex, ai) =>
+  `🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n${edgex}\n${ai}\n\n👇 Tap a button or just talk to me:\n\n<span class="d">"BTC's looking juicy, should I ape in?"</span>\n<span class="d">"ソラナをロングしたい、少しだけ"</span>\n<span class="d">"지금 SILVER 상황 어때?"</span>\n<span class="d">"CRCL涨的离谱，怎么操作"</span>\n<span class="d">"Короткий NVDA на 100$"</span>`;
+
+html+=`<div class="module"><div class="mod-hdr m-trade"><div class="ic">🤖</div><div class="inf"><h2>Dashboard (L1)</h2><p>/start → new message. 3 buttons always. All navigation edits this message in-place.</p></div></div>`;
 html+=`<div class="flow-section"><div class="flow-label">3 Dashboard States (mutually exclusive)</div><div class="flow-row">`;
-html+=P('dash_new','Dashboard: New',DB('👤 edgeX: not connected','✨ AI: not activated'),[{t:'🔗 Connect edgeX',c:'bl f'},{t:'✨ Activate AI',c:'gn f'},{t:'📰 Event Trading',c:'bl f'}],'State 1: new user',1);
+
+html+=P('dash_new','Dashboard: New User',
+  DASH_BODY('👤 edgeX: not connected', '✨ AI: not activated'),
+  [{t:'🔗 Connect edgeX',c:'bl f'},{t:'✨ Activate AI',c:'gn f'},{t:'📰 Event Trading',c:'bl f'}],
+  'State 1: new user. callback_data: show_login / ai_activate_prompt / news_settings', 1);
+
 html+=OR();
-html+=P('dash_conn','Dashboard: Connected',DB('👤 edgeX: <code>713030</code> ✅','✨ AI: not activated'),[{t:'📈 Trade on edgeX',c:'bl f'},{t:'✨ Activate AI',c:'gn f'},{t:'📰 Event Trading',c:'bl f'}],'State 2: connected, no AI',1);
+
+html+=P('dash_conn','Dashboard: Connected',
+  DASH_BODY('👤 edgeX: <code>71303066234567</code> ✅', '✨ AI: not activated'),
+  [{t:'📈 Trade on edgeX',c:'bl f'},{t:'✨ Activate AI',c:'gn f'},{t:'📰 Event Trading',c:'bl f'}],
+  'State 2: connected, no AI. callback_data: trade_hub / ai_activate_prompt / news_settings', 1);
+
 html+=OR();
-html+=P('dash_full','Dashboard: Full',DB('👤 edgeX: <code>713030</code> ✅','✨ AI: Active ✅'),[{t:'📈 Trade on edgeX',c:'bl f'},{t:'🤖 AI Agent',c:'bl f'},{t:'📰 Event Trading',c:'bl f'}],'State 3: all active',1);
+
+html+=P('dash_full','Dashboard: Full State',
+  DASH_BODY('👤 edgeX: <code>71303066234567</code> ✅', '✨ AI: Active ✅'),
+  [{t:'📈 Trade on edgeX',c:'bl f'},{t:'🤖 AI Agent',c:'bl f'},{t:'📰 Event Trading',c:'bl f'}],
+  'State 3: all active. callback_data: trade_hub / ai_hub / news_settings', 1);
+
 html+=`</div></div></div>`;
 
+
 // ═══════════ MODULE 1: TRADE ON EDGEX ═══════════
-html+=`<div class="module"><div class="mod-hdr m-trade"><div class="ic">📈</div><div class="inf"><h2>Trade on edgeX</h2><p>Login required. Account overview, positions, orders, history, disconnect.</p></div></div>`;
+html+=`<div class="module"><div class="mod-hdr m-trade"><div class="ic">📈</div><div class="inf"><h2>Trade on edgeX</h2><p>Login required. Account overview + positions with leverage + P&L, close, orders, history, disconnect.</p></div></div>`;
 
-// State split: before/after login
-html+=`<div class="flow-section"><div class="flow-label">📈 Button: before vs after login</div><div class="flow-row">`;
-html+=P('show_login','🔗 Connect edgeX',`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,[{t:'⚡ OAuth (soon)',c:'gy f'},{t:'🔑 API Key',c:'bl f'},{t:'👤 Aaron\'s (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],'Dashboard (new) → here. Back → Dashboard.',2,true);
+// Before/after login
+html+=`<div class="flow-section"><div class="flow-label">📈 / 🔗 Button: before vs after login</div><div class="flow-row">`;
+
+html+=P('show_login','🔗 Connect edgeX',
+  `🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,
+  [{t:'⚡ One-Click OAuth (soon)',c:'gy f'},{t:'🔑 Connect with API Key',c:'bl f'},{t:'👤 Aaron\'s Account (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],
+  'Dashboard (new) → here. callback_data: login_oauth / login_api / login_demo / back_to_dashboard', 2, true);
+
 html+=OR();
-html+=P('trade_hub','📈 Trade Hub',`📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234</code>\n└ Available: <code>$890</code>\n\n<b>Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) +$12\n🔴 ETH SHORT <code>0.5</code> (3x) -$5\n\nP&L: 🟢 <code>+$7</code>`,[{t:'🔴 Close Position',c:'rd'},{t:'📋 Orders',c:'bl'},{t:'📜 History',c:'bl'},{t:'🚪 Disconnect',c:'rd'},{t:'🔙 Back',c:'bk f'}],'Dashboard (connected) → here. Merged Status+P&L.',2,true);
+
+html+=P('trade_hub','📈 Trade Hub',
+  `📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234.56</code>\n└ Available: <code>$890.12</code>\n\n<b>Open Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) | PnL: <code>+$12.30</code>\n🔴 ETH SHORT <code>0.5</code> (3x) | PnL: <code>-$5.20</code>\n\nUnrealized P&L: 🟢 <code>+$7.10</code>`,
+  [{t:'🔴 Close Position',c:'rd'},{t:'📋 Orders',c:'bl'},{t:'📜 History',c:'bl'},{t:'🚪 Disconnect',c:'rd'},{t:'🔙 Back',c:'bk f'}],
+  'Dashboard (connected) → here. callback_data: quick_close / quick_orders / quick_history / logout_confirm / back_to_dashboard', 2, true);
+
 html+=`</div>`;
-
-// Trade Hub children (tree)
-html+=`<div class="flow-label" style="margin-top:10px">Trade Hub → sub-screens (tree)</div>`;
-html+=`<div class="tree-indent">`;
-
-html+=`<div class="tree-item"><div class="flow-row">${P('quick_close','🔴 Close Position',`🔴 <b>Close Position — edgeX Agent</b>\n\n• BTC LONG | 0.01 | +$12\n• ETH SHORT | 0.5 | -$5`,[{t:'Close BTC',c:'rd f'},{t:'Close ETH',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'Trade Hub → here. Back → Trade Hub.',3)}</div></div>`;
-
-html+=`<div class="tree-item"><div class="flow-row">${P('quick_orders','📋 Open Orders',`📋 <b>Open Orders — edgeX Agent</b>\n\n• BTC BUY LIMIT 100 @ $70k\n• ETH SELL LIMIT 50 @ $4.1k`,[{t:'❌ Cancel BTC',c:'rd'},{t:'❌ Cancel ETH',c:'rd'},{t:'❌ Cancel All',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'Trade Hub → here. Back → Trade Hub.',3)}</div></div>`;
-
-html+=`<div class="tree-item"><div class="flow-row">${P('quick_history','📜 Recent Trades',`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71.2k +$2\n🔴 DOGE SELL 300 @ $0.096`,[{t:'🔙 Back',c:'bk f'}],'Trade Hub → here. Back → Trade Hub.',3,true)}</div></div>`;
-
-html+=`<div class="tree-item"><div class="flow-row">${P('logout_confirm','🚪 Disconnect',`🚪 <b>Disconnect — edgeX Agent</b>\n\nLog out your edgeX account?`,[{t:'✅ Yes, logout',c:'rd'},{t:'❌ Cancel',c:'gy'}],'Trade Hub → here. Cancel → Dashboard.',3,true)}</div></div>`;
-
-html+=`</div>`; // close tree-indent
 
 // Connect edgeX children
 html+=`<div class="flow-label" style="margin-top:10px">Connect edgeX → sub-screens</div>`;
 html+=`<div class="tree-indent">`;
-html+=`<div class="tree-item"><div class="flow-row">${P('login_oauth','⚡ OAuth (soon)',`⚡ <b>One-Click Login — edgeX Agent</b>\n\nComing Soon!\nUse Connect with API Key.`,[{t:'🔙 Back',c:'bk f'}],'Connect → here. Back → Connect.',3)}</div></div>`;
-html+=`<div class="tree-item"><div class="flow-row">${P('login_api','🔑 API Key Entry',`🔑 <b>API Key — edgeX Agent</b>\n\n1. edgex.exchange → API\n2. Copy Account ID\n3. Send it here`,[],'/start → Connect → API Key. Text input.',3)}</div></div>`;
-html+=`<div class="tree-item"><div class="flow-row">${P('login_demo','👤 Aaron\'s Account',`🔄 Connecting...\n\n✅ Connected! → Dashboard`,[],'/start → Connect → Demo. Auto-connects.',3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('login_oauth','⚡ One-Click Login',
+  `⚡ <b>One-Click Login — edgeX Agent</b>\n\nComing Soon!\nFor now, use <b>Connect with API Key</b>.`,
+  [{t:'🔙 Back',c:'bk f'}],
+  'Connect → here. callback_data: show_login (back)', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('login_api','🔑 Connect with API Key',
+  `🔑 <b>Connect with API Key — edgeX Agent</b>\n\nPlease use the /start command, then choose <b>Connect with API Key</b>.\nThe API key setup requires a conversation flow.`,
+  [{t:'🔙 Back',c:'bk f'}],
+  'Connect → here. In ConvHandler: prompts for Account ID then Private Key. callback_data: show_login (back)', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('login_demo','👤 Aaron\'s Account (temp)',
+  `🔄 Connecting to Aaron's edgeX account...\n\n✅ Connected → returns to Dashboard (full state)`,
+  [],
+  'Connect → here. Auto-connects demo account + activates AI. Returns to Dashboard.', 3)}</div></div>`;
+
+html+=`</div>`;
+
+// Trade Hub children
+html+=`<div class="flow-label" style="margin-top:10px">Trade Hub → sub-screens</div>`;
+html+=`<div class="tree-indent">`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('quick_close','🔴 Close Position',
+  `🔴 <b>Close Position — edgeX Agent</b>\n\nSelect a position to close:\n\n• BTC LONG | Size: 0.01 | PnL: +$12.30\n• ETH SHORT | Size: 0.5 | PnL: -$5.20`,
+  [{t:'Close BTC LONG',c:'rd f'},{t:'Close ETH SHORT',c:'rd f'},{t:'🔙 Back',c:'bk f'}],
+  'Trade Hub → here. Per-position: close_{contractId}. Back → trade_hub', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('quick_orders','📋 Open Orders',
+  `📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n\n  • BTC BUY LIMIT | Size: 100 | Price: $70,000\n  • ETH SELL LIMIT | Size: 50 | Price: $4,100`,
+  [{t:'❌ Cancel BTC BUY 100@70000',c:'rd f'},{t:'❌ Cancel ETH SELL 50@4100',c:'rd f'},{t:'❌ Cancel All Orders',c:'rd f'},{t:'🔙 Back',c:'bk f'}],
+  'Trade Hub → here. Per-order: cancelone_{orderId}. cancelorders_all. Back → trade_hub', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('quick_history','📜 Recent Trades',
+  `📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71,234.00 | PnL: +$2.3400 | 03/05 08:00\n🔴 DOGE SELL 300 @ $0.09600 | PnL: -$0.0300 | 03/05 07:30`,
+  [{t:'🔙 Back',c:'bk f'}],
+  'Trade Hub → here. Back → trade_hub', 3, true)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('logout_confirm','🚪 Disconnect',
+  `🚪 <b>Disconnect — edgeX Agent</b>\n\nThis will log out your edgeX account. Are you sure?`,
+  [{t:'✅ Yes, logout',c:'rd'},{t:'❌ Cancel',c:'gy'}],
+  'Trade Hub → here. logout_yes / logout_no. Cancel → Dashboard.', 3, true)}</div></div>`;
+
 html+=`</div>`;
 html+=`</div></div>`;
 
-// ═══════════ MODULE 2: AI AGENT ═══════════
-html+=`<div class="module"><div class="mod-hdr m-ai"><div class="ic">🤖</div><div class="inf"><h2>AI Agent</h2><p>Personality, provider, memory. Requires activation first.</p></div></div>`;
 
-html+=`<div class="flow-section"><div class="flow-label">🤖 Button: before vs after activation</div><div class="flow-row">`;
-html+=P('ai_activate','✨ Activate AI',`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,[{t:'💳 edgeX Balance (soon)',c:'gy f'},{t:'🔑 Own API Key',c:'bl f'},{t:'⚡ Aaron\'s API (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],'Dashboard (no AI) → here. Also: AI Hub > Provider.',2,true);
+// ═══════════ MODULE 2: AI AGENT ═══════════
+html+=`<div class="module"><div class="mod-hdr m-ai"><div class="ic">🤖</div><div class="inf"><h2>AI Agent</h2><p>Personality, AI provider, memory. Requires activation first.</p></div></div>`;
+
+html+=`<div class="flow-section"><div class="flow-label">🤖 / ✨ Button: before vs after activation</div><div class="flow-row">`;
+
+html+=P('ai_activate','✨ Activate AI',
+  `✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,
+  [{t:'💳 Use edgeX Account Balance',c:'gy f'},{t:'🔑 Use My Own API Key',c:'bl f'},{t:'⚡ Use Aaron\'s API (temp)',c:'gn f'}],
+  'Dashboard (no AI) → here. Also: AI Hub > 🔑 AI Provider → here (SHARED). callback_data: ai_edgex_credits / ai_own_key_setup / ai_use_free', 2, true);
+
 html+=OR();
-html+=P('ai_hub','🤖 AI Agent Hub',`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs`,[{t:'🎭 Personality',c:'bl'},{t:'🔑 AI Provider',c:'bl'},{t:'📝 Memory',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'Dashboard (active) → here. Shows config.',2);
+
+html+=P('ai_hub','🤖 AI Agent Hub',
+  `🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs, <code>2</code> summaries`,
+  [{t:'🎭 Personality',c:'bl'},{t:'🔑 AI Provider',c:'bl'},{t:'📝 Memory',c:'bl f'},{t:'🔙 Back',c:'bk f'}],
+  'Dashboard (active) → here. callback_data: change_persona / ai_activate_prompt / settings_memory / back_to_dashboard', 2);
+
 html+=`</div>`;
 
 // Activate AI children
 html+=`<div class="flow-label" style="margin-top:10px">Activate AI → sub-screens</div>`;
 html+=`<div class="tree-indent">`;
-html+=`<div class="tree-item"><div class="flow-row">${P('ai_credits','💳 edgeX Balance',`💳 <b>edgeX Balance — edgeX Agent</b>\n\nComing Soon.`,[{t:'🔙 Back',c:'bk f'}],'Activate → here. Back → Activate.',3)}</div></div>`;
-html+=`<div class="tree-item"><div class="flow-row">${P('ai_own_key','🔑 AI Provider',`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,[{t:'OpenAI / DeepSeek',c:'bl f'},{t:'Anthropic (Claude)',c:'bl f'},{t:'Google Gemini',c:'bl f'}],'Activate → here. Clicking provider → /setai wizard.',3)}</div></div>`;
-html+=`<div class="tree-item"><div class="flow-row">${P('ai_free','⚡ Aaron\'s API',`✅ <b>AI Activated — edgeX Agent</b>\n\nChoose personality → AI Hub`,[{t:'🔥 Degen',c:'bl'},{t:'🎯 Sensei',c:'bl'},{t:'🤖 Cold',c:'bl'},{t:'👀 Shit',c:'bl'},{t:'📚 Prof',c:'bl'},{t:'🐺 Wolf',c:'bl'},{t:'🌸 Moe',c:'bl'}],'Activate → free → persona picker → AI Hub.',3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_credits','💳 edgeX Balance',
+  `💳 <b>edgeX Balance — edgeX Agent</b>\n\nComing Soon.\nUse /setai to add your own API key.`,
+  [{t:'🔙 Back',c:'bk f'}],
+  'Activate → here. callback_data: ai_activate_prompt (back)', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_own_key_setup','🔑 AI Provider',
+  `🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,
+  [{t:'OpenAI / DeepSeek',c:'bl f'},{t:'Anthropic (Claude)',c:'bl f'},{t:'Google Gemini',c:'bl f'}],
+  'Activate → here. callback_data: setai_openai / setai_anthropic / setai_gemini → /setai redirect', 3)}</div></div>`;
+
+// setai_* redirect screen
+html+=`<div class="tree-item" style="margin-left:40px;padding-left:40px;border-left:2px solid #333;"><div class="flow-row">${P('setai_redirect','🔑 Provider → /setai redirect',
+  `🔑 <b>OpenAI / DeepSeek — edgeX Agent</b>\n\nTo set up OpenAI / DeepSeek, use the /setai command.\nIt will walk you through entering your API key.`,
+  [{t:'🔙 Back',c:'bk f'}],
+  'Provider → setai_* → here. callback_data: ai_own_key_setup (back)', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_use_free','⚡ Use Aaron\'s API',
+  `✅ <b>AI Activated — edgeX Agent</b>\n\nChoose your Agent's personality:`,
+  [{t:'🔥 Degen',c:'bl'},{t:'🎯 Sensei',c:'bl'},{t:'🤖 Cold Blood',c:'bl'},{t:'👀 Shitposter',c:'bl'},{t:'📚 Professor',c:'bl'},{t:'🐺 Wolf',c:'bl'},{t:'🌸 Moe',c:'bl f'},{t:'🔙 Back',c:'bk f'}],
+  'Activate → free → persona picker. Pick → toast → AI Hub. callback_data: persona_{name} / ai_hub', 3)}</div></div>`;
+
 html+=`</div>`;
 
 // AI Hub children
 html+=`<div class="flow-label" style="margin-top:10px">AI Agent Hub → sub-screens</div>`;
 html+=`<div class="tree-indent">`;
-html+=`<div class="tree-item"><div class="flow-row">${P('persona','🎭 Personality',`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,[{t:'🔥 Degen',c:'bl'},{t:'🎯 Sensei',c:'bl'},{t:'🤖 Cold Blood',c:'bl'},{t:'👀 Shitposter',c:'bl'},{t:'📚 Professor',c:'bl'},{t:'🐺 Wolf',c:'bl'},{t:'🌸 Moe',c:'bl'},{t:'🔙 Back',c:'bk f'}],'AI Hub → here. Pick → toast → back to AI Hub.',3,true)}</div></div>`;
 
-html+=`<div class="tree-item"><div class="flow-row">${P('ai_provider_hub','🔑 AI Provider',`→ Same as ✨ Activate AI screen`,[{t:'💳 edgeX Balance (soon)',c:'gy f'},{t:'🔑 Own API Key',c:'bl f'},{t:'⚡ Aaron\'s API (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],'AI Hub → Provider = same screen as Activate AI. SHARED.',2,true)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('persona','🎭 Personality',
+  `🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,
+  [{t:'🔥 Degen',c:'bl'},{t:'🎯 Sensei',c:'bl'},{t:'🤖 Cold Blood',c:'bl'},{t:'👀 Shitposter',c:'bl'},{t:'📚 Professor',c:'bl'},{t:'🐺 Wolf',c:'bl'},{t:'🌸 Moe',c:'bl f'},{t:'🔙 Back',c:'bk f'}],
+  'AI Hub → here. Pick → toast "✅ Personality: X" → edits to AI Hub. callback_data: persona_{name} / ai_hub', 3, true)}</div></div>`;
 
-html+=`<div class="tree-item"><div class="flow-row">${P('memory','📝 Memory',`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,[{t:'🗑 Clear Memory',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'AI Hub → here. Back → AI Hub.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_provider_from_hub','🔑 AI Provider (from Hub)',
+  `→ Same screen as ✨ Activate AI (SHARED)\n\n✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,
+  [{t:'💳 Use edgeX Account Balance',c:'gy f'},{t:'🔑 Use My Own API Key',c:'bl f'},{t:'⚡ Use Aaron\'s API (temp)',c:'gn f'}],
+  'AI Hub > 🔑 AI Provider → ai_activate_prompt → same screen as Activate AI. SHARED.', 2, true)}</div></div>`;
 
-html+=`<div class="tree-item" style="margin-left:40px;padding-left:40px;border-left:2px solid #333;"><div class="flow-row">${P('memory_clear','🗑 Clear Memory',`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll history will be deleted.`,[{t:'✅ Yes, clear',c:'rd'},{t:'❌ Keep',c:'gy'}],'Memory → here. Keep → Memory. Yes → cleared.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('settings_memory','📝 Memory',
+  `📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,
+  [{t:'🗑 Clear Memory',c:'rd f'},{t:'🔙 Back',c:'bk f'}],
+  'AI Hub → here. callback_data: memory_clear_confirm / ai_hub (back)', 3)}</div></div>`;
+
+// Memory children
+html+=`<div class="tree-item" style="margin-left:40px;padding-left:40px;border-left:2px solid #333;"><div class="flow-row">${P('memory_clear','🗑 Clear Memory',
+  `🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll conversation history and preferences will be deleted.`,
+  [{t:'✅ Yes, clear all',c:'rd'},{t:'❌ Keep',c:'gy'}],
+  'Memory → here. memory_clear_yes → "✅ Memory cleared." (Back → ai_hub). memory_clear_no → Memory screen.', 3)}</div></div>`;
 
 html+=`</div>`;
 html+=`</div></div>`;
 
-// ═══════════ MODULE 3: EVENT TRADING ═══════════
-html+=`<div class="module"><div class="mod-hdr m-event"><div class="ic">📰</div><div class="inf"><h2>Event Trading</h2><p>AI-analyzed news, one-tap trade buttons. No login required.</p></div></div>`;
 
-html+=`<div class="flow-section"><div class="flow-label">📰 Event Trading Hub (same for all users)</div><div class="flow-row">`;
-html+=P('news_hub','📰 Event Trading Hub',`📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off`,[{t:'✅ BWEnews',c:'gn',w:'t'},{t:'⏱ 5/hr',c:'gy',w:'t'},{t:'🗑',c:'gy',w:'q'},{t:'➕ Add Source',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'Dashboard → here. No login needed.',2);
+// ═══════════ MODULE 3: EVENT TRADING ═══════════
+html+=`<div class="module"><div class="mod-hdr m-event"><div class="ic">📰</div><div class="inf"><h2>Event Trading</h2><p>AI-analyzed news with one-tap trade. No login required. Same for all users.</p></div></div>`;
+
+html+=`<div class="flow-section"><div class="flow-label">📰 Event Trading Hub (news_settings)</div><div class="flow-row">`;
+
+html+=P('news_hub','📰 Event Trading Hub',
+  `📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with one-tap trade buttons.\n\n✅ <b>BWEnews</b> — 5/hr\n❌ <b>Crypto News</b> — 2/hr`,
+  [{t:'❌ BWEnews',c:'rd',w:'t'},{t:'⏱ Frequency',c:'gy',w:'t'},{t:'🗑',c:'gy',w:'q'},{t:'✅ Crypto Ne…',c:'gn',w:'t'},{t:'⏱ Frequency',c:'gy',w:'t'},{t:'🗑',c:'gy',w:'q'},{t:'➕ Add News Source',c:'bl f'},{t:'🔙 Back',c:'bk f'}],
+  'Dashboard → here. Per-source row: toggle/freq/remove. callback_data: news_toggle_{id}_{on|off} / news_freq_{id} / news_remove_{id} / news_add / back_to_dashboard', 2);
+
 html+=`</div>`;
 
 html+=`<div class="flow-label" style="margin-top:10px">Event Trading Hub → sub-screens</div>`;
 html+=`<div class="tree-indent">`;
-html+=`<div class="tree-item"><div class="flow-row">${P('news_freq','⏱ Push Frequency',`⏱ <b>Push Frequency — edgeX Agent</b>\n\nAlerts per hour?\nCurrent: <b>2/hr</b>`,[{t:'1/hr',c:'gy',w:'t'},{t:'> 2/hr',c:'bl',w:'t'},{t:'3/hr',c:'gy',w:'t'},{t:'5/hr',c:'gy',w:'t'},{t:'10/hr',c:'gy',w:'t'},{t:'🔙 Back',c:'bk f'}],'News Hub > ⏱ → here. Select → News Hub.',3)}</div></div>`;
-html+=`<div class="tree-item"><div class="flow-row">${P('news_add','➕ Add Source',`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,[{t:'💰 Bitcoin',c:'bl f'},{t:'💠 Ethereum',c:'bl f'},{t:'🌍 DeFi',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'News Hub → here. Select → News Hub.',3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('news_freq','⏱ Push Frequency',
+  `⏱ <b>Push Frequency — edgeX Agent</b>\n\nHow many alerts per hour?\nCurrent: <b>2/hr</b>`,
+  [{t:'1/hr',c:'gy',w:'t'},{t:'> 2/hr',c:'bl',w:'t'},{t:'3/hr',c:'gy',w:'t'},{t:'5/hr',c:'gy',w:'t'},{t:'10/hr',c:'gy',w:'t'},{t:'🔙 Back',c:'bk f'}],
+  'News Hub > ⏱ → here. Select → returns to News Hub. callback_data: news_setfreq_{id}_{n} / news_settings (back)', 3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('news_add','➕ Add News Source',
+  `➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,
+  [{t:'💰 Bitcoin News',c:'bl f'},{t:'💠 Ethereum News',c:'bl f'},{t:'🌍 DeFi News',c:'bl f'},{t:'🔙 Back',c:'bk f'}],
+  'News Hub → here. Select → adds + returns to News Hub. callback_data: news_addsrc_{topic} / news_settings (back)', 3)}</div></div>`;
+
 html+=`</div>`;
 html+=`</div></div>`;
+
 
 // ═══════════ PUSH LAYER ═══════════
-html+=`<div class="module"><div class="mod-hdr m-push"><div class="ic">⚡</div><div class="inf"><h2>Push Layer — Bot-Initiated Messages</h2><p>These are NEW messages (not editing the Dashboard). Arrows (→) = edits the same message in sequence.</p></div></div>`;
+html+=`<div class="module"><div class="mod-hdr m-push"><div class="ic">⚡</div><div class="inf"><h2>Push Layer — Bot-Initiated Messages</h2><p>News alerts, AI chat, trade execution. Always NEW messages (not editing Dashboard). Arrows → = edits same message in sequence.</p></div></div>`;
 
-// News push flow
-html+=`<div class="flow-section"><div class="flow-label">📰 News Alert → Translate / Trade</div><div class="flow-row">`;
-html+=P('news_alert','📰 News Alert',`<b>BWEnews: SEC approves SOL ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH`,[{t:'📈 LONG $50',c:'gn'},{t:'📈 LONG $150',c:'gn'},{t:'🇨🇳',c:'gy',w:'q'},{t:'🇯🇵',c:'gy',w:'q'},{t:'🇰🇷',c:'gy',w:'q'},{t:'🇷🇺',c:'gy',w:'q'},{t:'🔗 Source',c:'gy',w:'t'},{t:'🔕 Mute',c:'gy',w:'t'},{t:'❌ Dismiss',c:'gy',w:'t'}],'Pushed to user. LONG → Trade Plan.',`P`);
-html+=A('🇨🇳 flag');
-html+=P('news_tl','🇨🇳 Translation',`<b>BWEnews: SEC批准SOL ETF</b>\n\n🟢 SOL | 看涨 | ███ 高`,[{t:'📈 LONG $50',c:'gn'},{t:'📈 LONG $150',c:'gn'}],'New msg with same buttons.',`P`);
+// News push
+html+=`<div class="flow-section"><div class="flow-label">📰 News Alert (from bwenews_monitor.py)</div><div class="flow-row">`;
+
+html+=P('news_alert','📰 News Alert',
+  `<b>BWEnews: SEC approves Solana ETF</b>\n\n────────────────\n2026-03-05 08:00 UTC\n\n🟢 SOL | BULLISH | ███ HIGH`,
+  [{t:'📈 LONG SOL $50',c:'gn'},{t:'📈 LONG SOL $150',c:'gn'},{t:'🇨🇳 中',c:'gy',w:'q'},{t:'🇯🇵 日',c:'gy',w:'q'},{t:'🇰🇷 韩',c:'gy',w:'q'},{t:'🇷🇺 Ру',c:'gy',w:'q'},{t:'🔗 Source',c:'gy',w:'t'},{t:'🔕 Mute',c:'gy',w:'t'},{t:'❌ Dismiss',c:'gy',w:'t'}],
+  'Pushed to user. LONG → news_trade_{asset}_{side}_{lev}_{notional}. Flags → tl_{lang}. Mute → toast. Dismiss → delete msg.', 'P');
+
+html+=A('🇨🇳 tl_zh');
+
+html+=P('news_tl','🇨🇳 Translation',
+  `<b>BWEnews: SEC批准Solana ETF</b>\n\n────────────────\n2026-03-05 08:00 UTC\n\n🟢 SOL | 看涨 | ███ 高`,
+  [{t:'📈 LONG SOL $50',c:'gn'},{t:'📈 LONG SOL $150',c:'gn'},{t:'🇨🇳 中',c:'gy',w:'q'},{t:'🇯🇵 日',c:'gy',w:'q'},{t:'🇰🇷 韩',c:'gy',w:'q'},{t:'🇷🇺 Ру',c:'gy',w:'q'}],
+  'New msg. Same trade buttons + language buttons from original. Uses same reply_markup.', 'P');
+
 html+=`</div></div>`;
 
-// AI Chat → Trade flow (sequential edits)
-html+=`<div class="flow-section"><div class="flow-label">💬 AI Chat → Trade Plan → Executing → Result (edits same message)</div><div class="flow-row">`;
-html+=P('ai_chat','💬 AI Response',`✨ BTC at $71.9k. Bullish.\nLONG $50 at 3x?`,[{t:'🏠 Menu',c:'bk f'}],'User typed → AI replied (new msg).',`P`);
-html+=A('trade detected');
-html+=P('trade_plan','📋 Trade Plan',`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>`,[{t:'✅ Confirm',c:'gn'},{t:'❌ Cancel',c:'rd'}],'From AI or news. SHARED trigger.',`P`,true);
+
+// AI Chat → Trade flow
+html+=`<div class="flow-section"><div class="flow-label">💬 AI Chat → Trade Execution (edits same message in sequence)</div><div class="flow-row">`;
+
+html+=P('ai_chat','💬 AI Chat Response',
+  `✨ BTC at $71.9k, up 3.6% today. RSI 68, momentum bullish.\n\nCautious LONG, $50 at 3x leverage?`,
+  [{t:'🏠 Main Menu',c:'bk f'}],
+  'User typed → AI replied (new msg). If TRADE action → shows plan below. callback_data: back_to_dashboard', 'P');
+
+html+=A('TRADE plan');
+
+html+=P('trade_plan','📋 Trade Plan',
+  `🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH\n<span class="d">Bitcoin showing strong momentum with RSI above 65...</span>`,
+  [{t:'✅ Confirm Execute',c:'gn'},{t:'❌ Cancel',c:'rd'}],
+  'From AI chat or news LONG/SHORT. callback_data: confirm_trade / cancel_trade. SHARED trigger.', 'P', true);
+
 html+=A('✅ confirm');
-html+=P('trade_exec','🔄 Executing',`🔄 <b>Executing LONG BTC…</b>\n\nPlacing order...`,[],'Edits Plan msg. Temporary.',`P`);
+
+html+=P('trade_exec','🔄 Executing',
+  `🔄 <b>Executing LONG BTC — edgeX Agent</b>\n\nPlacing order on edgeX...`,
+  [],
+  'Edits Plan msg. Temporary (no buttons). Then edits to Result or Error.', 'P');
+
 html+=A('success');
-html+=P('trade_ok','✅ Result',`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)`,[{t:'📈 Trade',c:'bl'},{t:'📜 History',c:'bl'},{t:'🔴 Close BTC',c:'rd f'},{t:'🏠 Menu',c:'bk f'}],'Edits Executing msg.',`P`);
+
+html+=P('trade_ok','✅ Trade Result',
+  `🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n├ Value: <code>~$100</code>\n├ TP: <code>$75,000</code>\n├ SL: <code>$70,000</code>\n└ Order ID: <code>abc123</code>`,
+  [{t:'📊 BTC Position',c:'bl'},{t:'📈 Live P&L',c:'bl'},{t:'🔴 Close BTC',c:'rd'},{t:'📜 History',c:'bl'},{t:'🏠 Main Menu',c:'bk f'}],
+  'Edits Executing msg. callback_data: quick_status / quick_pnl / close_{cid} / quick_history / back_to_dashboard', 'P');
+
 html+=`</div></div>`;
 
-// Cancel / Error / Close
-html+=`<div class="flow-section"><div class="flow-label">❌ Alternate outcomes (edit the Plan or Executing msg)</div><div class="flow-row">`;
-html+=P('trade_cancel','❌ Cancelled',`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,[{t:'📈 Trade',c:'bl'},{t:'🏠 Menu',c:'bk f'}],'From ❌ Cancel on Plan. Edits Plan msg.',`P`);
-html+=`<div style="width:16px"></div>`;
-html+=P('trade_err','❌ Error',`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance ($12)`,[{t:'🔴 Close',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit',c:'bl f'},{t:'🏠 Menu',c:'bk f'}],'Edits Executing msg. Smart action buttons.',`P`);
-html+=`<div style="width:16px"></div>`;
-html+=P('close_ok','✅ Closed',`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG closed\n├ P&L: <code>+$12.30</code>\n└ Balance: <code>$1,246</code>`,[{t:'📈 Trade',c:'bl'},{t:'📜 History',c:'bl'},{t:'🏠 Menu',c:'bk f'}],'New msg after close.',`P`);
-html+=`<div style="width:16px"></div>`;
-html+=P('logout_done','🚪 Logged Out',`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out.`,[{t:'🔗 Reconnect',c:'bl f'}],'Edits disconnect confirm.',`P`);
-html+=`</div></div>`;
+// Cancel / Error / Close / Logout
+html+=`<div class="flow-section"><div class="flow-label">❌ Alternate outcomes (edit Plan or Executing msg, or new msg)</div><div class="flow-row">`;
 
+html+=P('trade_cancel','❌ Trade Cancelled',
+  `❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,
+  [{t:'📈 Trade on edgeX',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],
+  'Edits Plan msg (from ❌ Cancel). callback_data: trade_hub / back_to_dashboard', 'P');
+
+html+=`<div style="width:12px"></div>`;
+
+html+=P('trade_err','❌ Trade Blocked',
+  `❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance (available: <code>$12.34</code>)`,
+  [{t:'🔴 Close a Position',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit USDT',c:'bl f'},{t:'📊 Status',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],
+  'Edits Executing msg. Smart buttons based on error. callback_data: quick_close / quick_orders / (url) / quick_status / back_to_dashboard', 'P');
+
+html+=`<div style="width:12px"></div>`;
+
+html+=P('close_ok','✅ Position Closed',
+  `🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG position closed\n\n├ Entry: <code>$71,234</code>\n├ Size: <code>0.01</code>\n├ Realized P&L: <code>+$12.30</code>\n├ Balance: <code>$1,246.86</code> (Available: <code>$1,200.00</code>)\n└ Order ID: <code>xyz789</code>`,
+  [{t:'📊 Status',c:'bl'},{t:'📈 P&L',c:'bl'},{t:'📜 History',c:'bl'},{t:'📋 Orders',c:'bl'},{t:'🏠 Main Menu',c:'bk f'}],
+  'New msg after close_{cid} success. callback_data: quick_status / quick_pnl / quick_history / quick_orders / back_to_dashboard', 'P');
+
+html+=`<div style="width:12px"></div>`;
+
+html+=P('close_blocked','⚠️ Close Blocked',
+  `⚠️ <b>Close BTC — edgeX Agent</b>\n\nMargin insufficient — 2 open order(s) blocking:\n  • BUY LIMIT | Size: 100 | Price: $70,000\n  • SELL LIMIT | Size: 50 | Price: $75,000\n\nCancel orders to free margin, then retry.`,
+  [{t:'❌ Cancel All BTC Orders',c:'rd f'},{t:'🔄 Retry Close BTC',c:'bl f'},{t:'📋 View Orders',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],
+  'New msg when MARGIN_BLOCKED_BY_ORDERS. callback_data: cancelorders_{cid} / close_{cid} / vieworders_{cid} / back_to_dashboard', 'P');
+
+html+=`<div style="width:12px"></div>`;
+
+html+=P('logout_done','🚪 Logged Out',
+  `🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out. Use /start to reconnect.`,
+  [{t:'🔗 Reconnect',c:'bl f'}],
+  'Edits disconnect confirm. callback_data: show_login', 'P');
+
+html+=`</div></div>`;
 html+=`</div>`;
+
 
 document.getElementById("app").innerHTML = html;
 
