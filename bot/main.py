@@ -74,17 +74,17 @@ def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
 
 
 def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardMarkup:
-    """Main dashboard — always 3 buttons: Trade/AI/News."""
+    """Main dashboard — always 3 buttons."""
     rows = []
     if has_edgex:
-        rows.append([InlineKeyboardButton("\U0001f4ca Trade", callback_data="trade_hub")])
+        rows.append([InlineKeyboardButton("\U0001f4c8 Trade on edgeX", callback_data="trade_hub")])
     else:
         rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
     if has_ai:
         rows.append([InlineKeyboardButton("\U0001f916 AI Agent", callback_data="ai_hub")])
     else:
         rows.append([InlineKeyboardButton("\u2728 Activate AI", callback_data="ai_activate_prompt")])
-    rows.append([InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings")])
+    rows.append([InlineKeyboardButton("\U0001f4f0 Event Trading", callback_data="news_settings")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -1057,7 +1057,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
                 total_upnl = 0.0
                 msg = (
-                    f"\U0001f4ca **Trade \u2014 edgeX Agent**\n\n"
+                    f"\U0001f4c8 **Trade on edgeX \u2014 edgeX Agent**\n\n"
                     f"\u251c Equity: `${total_equity}`\n"
                     f"\u2514 Available: `${available}`\n"
                 )
@@ -2580,7 +2580,7 @@ def _news_main_menu(user_id: int) -> tuple:
     subs = db.get_user_subscriptions(user_id)
     freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr", 99: "unlimited"}
 
-    msg = "\U0001f4f0 **News Alerts \u2014 edgeX Agent**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
+    msg = "\U0001f4f0 **Event Trading \u2014 edgeX Agent**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
     if not subs:
         msg += "_No news sources configured yet._\n"
     for s in subs:

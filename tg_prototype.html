@@ -3,338 +3,332 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>edgeX Agent — TG Navigation Blueprint v3</title>
+<title>edgeX Agent — Navigation Blueprint v4</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#1a1a2e; color:#eee; min-height:100vh; }
 h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
-.subtitle { text-align:center; color:#888; font-size:13px; margin-bottom:16px; }
-.legend { display:flex; justify-content:center; gap:20px; margin-bottom:16px; flex-wrap:wrap; }
-.legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:#aaa; }
-.legend-dot { width:10px; height:10px; border-radius:50%; }
-.stats { display:flex; justify-content:center; gap:32px; margin-bottom:20px; }
-.stat { text-align:center; }
-.stat-num { font-size:26px; font-weight:700; color:#4a90d9; }
-.stat-label { font-size:11px; color:#888; }
-.search-bar { display:flex; justify-content:center; margin-bottom:12px; }
-.search-bar input { padding:7px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
-.search-bar input:focus { border-color:#4a90d9; }
-.level-tabs { display:flex; justify-content:center; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
-.level-tab { padding:5px 14px; border-radius:14px; border:1px solid #444; background:transparent; color:#aaa; cursor:pointer; font-size:12px; transition:all .2s; }
-.level-tab.active, .level-tab:hover { background:#4a90d9; color:#fff; border-color:#4a90d9; }
-.container { max-width:1600px; margin:0 auto; padding:0 16px 40px; }
-.layer { margin-bottom:36px; }
-.layer-title { font-size:16px; font-weight:700; margin-bottom:12px; padding:6px 14px; border-radius:6px; display:inline-block; }
-.layer-title.l1 { background:#2d6a4f; } .layer-title.l2 { background:#4a90d9; } .layer-title.l3 { background:#e07c24; } .layer-title.lP { background:#c0392b; }
-.screens { display:flex; flex-wrap:wrap; gap:16px; }
-.phone { width:290px; flex-shrink:0; background:#0e1621; border-radius:14px; overflow:hidden; box-shadow:0 3px 15px rgba(0,0,0,.5); border:2px solid #333; transition:transform .15s; position:relative; }
-.phone:hover { transform:translateY(-3px); box-shadow:0 6px 24px rgba(0,0,0,.6); }
-.phone-header { background:#17212b; padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #222; }
-.phone-header .avatar { width:28px; height:28px; border-radius:50%; background:#4a90d9; display:flex; align-items:center; justify-content:center; font-size:14px; }
-.phone-header .name { font-weight:600; font-size:13px; }
-.phone-body { padding:8px 10px; min-height:120px; }
-.msg-bubble { background:#182533; border-radius:0 10px 10px 10px; padding:8px 10px; margin-bottom:6px; font-size:12px; line-height:1.45; white-space:pre-wrap; word-break:break-word; }
-.msg-bubble b { color:#fff; } .msg-bubble code { background:#0d1117; padding:1px 3px; border-radius:2px; font-size:11px; color:#7ee787; }
-.msg-bubble .dim { color:#888; font-style:italic; font-size:11px; }
-.btn-grid { display:flex; flex-wrap:wrap; gap:3px; margin-top:5px; }
-.tg-btn { flex:1 1 45%; min-width:0; padding:6px 3px; border-radius:6px; text-align:center; font-size:11px; cursor:default; border:none; font-weight:500; }
+.subtitle { text-align:center; color:#888; font-size:13px; margin-bottom:20px; }
+
+/* Module sections */
+.module { margin:0 auto 48px; max-width:1400px; padding:0 20px; position:relative; }
+.module-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; padding:12px 20px; border-radius:10px; }
+.module-header.trade { background:linear-gradient(135deg, #1a4a3a, #0e2a1f); border:1px solid #2d6a4f; }
+.module-header.ai { background:linear-gradient(135deg, #1a2a4a, #0e1a2f); border:1px solid #4a90d9; }
+.module-header.event { background:linear-gradient(135deg, #3a2a1a, #2f1a0e); border:1px solid #e07c24; }
+.module-header.push { background:linear-gradient(135deg, #3a1a1a, #2f0e0e); border:1px solid #c0392b; }
+.module-header .icon { font-size:28px; }
+.module-header .info h2 { font-size:18px; color:#fff; }
+.module-header .info p { font-size:12px; color:#999; margin-top:2px; }
+
+/* Flow rows */
+.flow-row { display:flex; align-items:flex-start; gap:0; margin-bottom:24px; position:relative; }
+.flow-level { display:flex; flex-direction:column; align-items:center; min-width:60px; padding-top:10px; }
+.flow-level .tag { writing-mode:vertical-rl; text-orientation:mixed; font-size:10px; font-weight:700; padding:6px 4px; border-radius:4px; color:#fff; letter-spacing:1px; }
+.flow-level .tag.l1 { background:#2d6a4f; } .flow-level .tag.l2 { background:#4a90d9; } .flow-level .tag.l3 { background:#e07c24; } .flow-level .tag.push { background:#c0392b; }
+
+.flow-screens { display:flex; flex-wrap:wrap; gap:14px; flex:1; position:relative; }
+
+/* Phones */
+.phone { width:260px; flex-shrink:0; background:#0e1621; border-radius:12px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,.4); border:2px solid #333; transition:transform .15s; position:relative; }
+.phone:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.5); }
+.phone-header { background:#17212b; padding:6px 10px; display:flex; align-items:center; gap:6px; border-bottom:1px solid #222; }
+.phone-header .avatar { width:24px; height:24px; border-radius:50%; background:#4a90d9; display:flex; align-items:center; justify-content:center; font-size:12px; }
+.phone-header .name { font-weight:600; font-size:12px; }
+.phone-body { padding:6px 8px; min-height:80px; }
+.msg-bubble { background:#182533; border-radius:0 8px 8px 8px; padding:6px 8px; margin-bottom:4px; font-size:11px; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
+.msg-bubble b { color:#fff; } .msg-bubble code { background:#0d1117; padding:1px 3px; border-radius:2px; font-size:10px; color:#7ee787; }
+.msg-bubble .dim { color:#888; font-style:italic; font-size:10px; }
+.btn-grid { display:flex; flex-wrap:wrap; gap:2px; margin-top:4px; }
+.tg-btn { flex:1 1 45%; min-width:0; padding:5px 2px; border-radius:5px; text-align:center; font-size:10px; cursor:default; border:none; font-weight:500; }
 .tg-btn.full { flex:1 1 100%; } .tg-btn.third { flex:1 1 30%; } .tg-btn.quarter { flex:1 1 22%; }
 .tg-btn.blue { background:#2f6ea5; color:#fff; } .tg-btn.green { background:#2d6a4f; color:#fff; } .tg-btn.red { background:#8b2c2c; color:#fff; }
 .tg-btn.gray { background:#2a3441; color:#aaa; } .tg-btn.back { background:#1e2a36; color:#6ba3d6; border:1px solid #2f4f6f; }
-.phone-footer { padding:5px 8px 7px; font-size:9px; color:#556; border-top:1px solid #1a2433; line-height:1.4; }
-.badge { position:absolute; top:48px; right:8px; font-size:9px; padding:2px 6px; border-radius:6px; font-weight:600; z-index:2; }
-.badge.l1 { background:#2d6a4f; } .badge.l2 { background:#4a90d9; } .badge.l3 { background:#e07c24; } .badge.lP { background:#c0392b; }
-.screen-id { position:absolute; top:48px; left:8px; font-size:8px; color:#444; font-family:monospace; }
-.nav-arrow { display:inline-block; font-size:9px; padding:1px 5px; border-radius:3px; margin:1px 0; }
-.nav-arrow.edit { background:#2f6ea5; color:#fff; } .nav-arrow.send { background:#2d6a4f; color:#fff; }
-.phone.highlight { border-color:#4a90d9 !important; box-shadow:0 0 15px rgba(74,144,217,.4) !important; }
-.phone.dimmed { opacity:.25; }
-@media(max-width:700px) { .phone { width:100%; } }
+.phone-footer { padding:4px 6px; font-size:8px; color:#556; border-top:1px solid #1a2433; line-height:1.3; }
+.phone .screen-title { position:absolute; top:36px; left:6px; font-size:8px; color:#555; font-family:monospace; }
+
+/* Connection arrows */
+.arrow-connector { display:flex; align-items:center; padding:0 4px; min-width:30px; }
+.arrow-connector svg { overflow:visible; }
+.flow-arrow { display:inline-flex; align-items:center; color:#4a90d9; font-size:18px; padding:0 2px; }
+.flow-group-label { font-size:10px; color:#666; padding:4px 0; text-align:center; }
+
+/* Vertical connector lines between flow rows */
+.vline { width:2px; height:24px; background:#333; margin:0 auto; }
+
+.phone.highlight { border-color:#4a90d9 !important; box-shadow:0 0 12px rgba(74,144,217,.4) !important; }
+.phone.dimmed { opacity:.2; }
+@media(max-width:700px) { .phone { width:100%; } .flow-row { flex-direction:column; } .flow-level { flex-direction:row; min-width:auto; padding:0 0 8px; } .flow-level .tag { writing-mode:horizontal-tb; } }
+
+.search-bar { display:flex; justify-content:center; margin-bottom:20px; }
+.search-bar input { padding:7px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
+.search-bar input:focus { border-color:#4a90d9; }
+
 .rule-box { background:#111827; border:1px solid #333; border-radius:10px; padding:16px 20px; margin:0 auto 24px; max-width:900px; font-size:13px; line-height:1.6; }
 .rule-box h3 { color:#4a90d9; margin-bottom:8px; }
 .rule-box li { color:#ccc; margin-bottom:4px; }
-.flow-box { background:#0d1117; border:1px solid #2f6ea5; border-radius:10px; padding:16px 20px; margin:0 auto 24px; max-width:900px; font-size:13px; line-height:1.8; font-family:monospace; }
-.flow-box h3 { color:#e07c24; margin-bottom:8px; font-family:-apple-system,sans-serif; }
-.flow-box .arrow { color:#4a90d9; } .flow-box .action { color:#7ee787; } .flow-box .screen { color:#fff; font-weight:bold; }
+.rule-box b { color:#fff; }
+
+.stats { display:flex; justify-content:center; gap:40px; margin-bottom:24px; }
+.stat { text-align:center; }
+.stat-num { font-size:28px; font-weight:700; color:#4a90d9; }
+.stat-label { font-size:11px; color:#888; }
 </style>
 </head>
 <body>
-<h1>edgeX Agent — Navigation Blueprint v3</h1>
-<p class="subtitle">3 modules: Trade / AI Agent / News. Always 3 buttons on L1.</p>
+<h1>edgeX Agent — Navigation Blueprint v4</h1>
+<p class="subtitle">3 modules: Trade on edgeX / AI Agent / Event Trading — grouped by function with connection flow</p>
+
+<div class="stats">
+<div class="stat"><div class="stat-num">3</div><div class="stat-label">Modules</div></div>
+<div class="stat"><div class="stat-num">28</div><div class="stat-label">Screens</div></div>
+<div class="stat"><div class="stat-num">3</div><div class="stat-label">Max Depth</div></div>
+</div>
 
 <div class="rule-box">
-<h3>Architecture: 3 Modules</h3>
+<h3>Navigation Rules</h3>
 <ul>
-<li><b>L1 Dashboard</b> — always 3 buttons. Top = Trade (or Connect edgeX). Middle = AI Agent (or Activate AI). Bottom = News.</li>
-<li><b>L2 Hubs</b> — Trade hub (account + positions + sub-actions), AI Agent hub (personality + provider + memory), News (sources + frequency).</li>
-<li><b>L3 Sub-screens</b> — Close Position, Orders, History, News Freq, Add Source, Memory, Clear Memory. Back → parent L2.</li>
-<li><b>Push Layer</b> — News alerts, AI chat, trade plan/result. New messages, edit-in-place for confirm→result.</li>
+<li><b>L1 Dashboard</b> — /start sends new message. Always 3 buttons. All navigation edits this message in-place.</li>
+<li><b>L2 Hubs</b> — Each module's main screen. Back → Dashboard.</li>
+<li><b>L3 Sub-screens</b> — Deeper actions within a module. Back → parent L2 Hub.</li>
+<li><b>Push Layer</b> — Bot-initiated messages (news alerts, AI chat, trade results). Separate from dashboard. Confirm→Execute→Result edits the same push message.</li>
+<li><b>Arrows →</b> show navigation direction. All within a module. No cross-module jumps except back to Dashboard.</li>
 </ul>
 </div>
 
-<div class="flow-box">
-<h3>L1 → L2 → L3 Navigation</h3>
-<span class="screen">Dashboard</span> (3 buttons)<br>
-&nbsp;&nbsp;<span class="arrow">├──</span> <span class="action">📊 Trade</span> → <span class="screen">Trade Hub</span> (equity + positions + P&L)<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">├──</span> 🔴 Close Position → L3<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">├──</span> 📋 Orders → L3<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">├──</span> 📜 History → L3<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">└──</span> 🚪 Disconnect → L3<br>
-&nbsp;&nbsp;<span class="arrow">├──</span> <span class="action">🤖 AI Agent</span> → <span class="screen">AI Hub</span> (personality + provider + memory stats)<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">├──</span> 🎭 Personality → L3 (pick → toast → AI Hub)<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">├──</span> 🔑 AI Provider → L3<br>
-&nbsp;&nbsp;<span class="arrow">│</span>&nbsp;&nbsp;&nbsp;<span class="arrow">└──</span> 📝 Memory → L3 → Clear Memory L3<br>
-&nbsp;&nbsp;<span class="arrow">└──</span> <span class="action">📰 News</span> → <span class="screen">News Hub</span> (sources + toggle + frequency)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├──</span> ⏱ Frequency → L3<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└──</span> ➕ Add Source → L3
-</div>
-
-<div class="stats">
-<div class="stat"><div class="stat-num" id="total-screens">0</div><div class="stat-label">Screens</div></div>
-<div class="stat"><div class="stat-num" id="total-navs">0</div><div class="stat-label">Buttons</div></div>
-<div class="stat"><div class="stat-num" id="total-levels">4</div><div class="stat-label">Categories</div></div>
-</div>
-
-<div class="legend">
-<div class="legend-item"><div class="legend-dot" style="background:#2d6a4f"></div> L1 Dashboard</div>
-<div class="legend-item"><div class="legend-dot" style="background:#4a90d9"></div> L2 Hubs (edit)</div>
-<div class="legend-item"><div class="legend-dot" style="background:#e07c24"></div> L3 Sub-screens (edit)</div>
-<div class="legend-item"><div class="legend-dot" style="background:#c0392b"></div> Push Layer (new msgs)</div>
-</div>
-
 <div class="search-bar"><input type="text" id="search" placeholder="Search screens..."></div>
-<div class="level-tabs" id="level-tabs">
-<button class="level-tab active" data-level="all">All</button>
-<button class="level-tab" data-level="1">L1 Dashboard</button>
-<button class="level-tab" data-level="2">L2 Hubs</button>
-<button class="level-tab" data-level="3">L3 Sub-screens</button>
-<button class="level-tab" data-level="P">Push Layer</button>
-</div>
 
-<div class="container" id="app"></div>
+<div id="app"></div>
 
 <script>
-const EXAMPLES = `👇 Tap a button or just talk to me:\n\n<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"지금 SILVER 상황 어때?"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>\n<span class="dim">"Короткий NVDA на 100$"</span>`;
+const EX = `<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"지금 SILVER 상황 어때?"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>\n<span class="dim">"Короткий NVDA на 100$"</span>`;
+const DASH_BODY = (s1,s2)=>`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n${s1}\n${s2}\n\n👇 Tap a button or just talk to me:\n\n${EX}`;
 
-const S = [
-// ════════════════════════════════════════
-// L1: DASHBOARD — 3 states, always 3 buttons
-// ════════════════════════════════════════
-{id:"dash_new", lv:"1", t:"State 1: New User",
- b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: not connected\n✨ AI: not activated\n\n${EXAMPLES}`,
- btns:[{t:"🔗 Connect edgeX",c:"show_login",s:"blue full"},{t:"✨ Activate AI",c:"ai_activate_prompt",s:"green full"},{t:"📰 News",c:"news_settings",s:"blue full"}],
- nav:"New user. 3 buttons always visible. News works without login."},
-
-{id:"dash_no_ai", lv:"1", t:"State 2: Connected, No AI",
- b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: <code>71303066234567</code> ✅\n✨ AI: not activated\n\n${EXAMPLES}`,
- btns:[{t:"📊 Trade",c:"trade_hub",s:"blue full"},{t:"✨ Activate AI",c:"ai_activate_prompt",s:"green full"},{t:"📰 News",c:"news_settings",s:"blue full"}],
- nav:"Connected. Trade replaces Connect. Activate AI still shown."},
-
-{id:"dash_full", lv:"1", t:"State 3: Full (Connected + AI)",
- b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: <code>71303066234567</code> ✅\n✨ AI: Active ✅\n\n${EXAMPLES}`,
- btns:[{t:"📊 Trade",c:"trade_hub",s:"blue full"},{t:"🤖 AI Agent",c:"ai_hub",s:"blue full"},{t:"📰 News",c:"news_settings",s:"blue full"}],
- nav:"Full state. Trade / AI Agent / News."},
-
-// ════════════════════════════════════════
-// L2: HUBS (edit dashboard msg)
-// ════════════════════════════════════════
-{id:"trade_hub", lv:"2", t:"📊 Trade Hub",
- b:`📊 <b>Trade — edgeX Agent</b>\n\n├ Equity: <code>$1,234.56</code>\n└ Available: <code>$890.12</code>\n\n<b>Open Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) | PnL: <code>+$12.30</code>\n🔴 ETH SHORT <code>0.5</code> (3x) | PnL: <code>-$5.20</code>\n\nUnrealized P&L: 🟢 <code>+$7.10</code>`,
- btns:[{t:"🔴 Close Position",c:"quick_close",s:"red"},{t:"📋 Orders",c:"quick_orders",s:"blue"},
-       {t:"📜 History",c:"quick_history",s:"blue"},{t:"🚪 Disconnect",c:"logout_confirm",s:"red"},
-       {t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
- nav:"Dashboard > Trade. Shows equity + positions + P&L (merged). Sub-actions below."},
-
-{id:"ai_hub", lv:"2", t:"🤖 AI Agent Hub",
- b:`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs, <code>2</code> summaries`,
- btns:[{t:"🎭 Personality",c:"change_persona",s:"blue"},{t:"🔑 AI Provider",c:"ai_activate_prompt",s:"blue"},
-       {t:"📝 Memory",c:"settings_memory",s:"blue full"},
-       {t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
- nav:"Dashboard > AI Agent. Config hub for AI settings."},
-
-{id:"news_hub", lv:"2", t:"📰 News Hub",
- b:`📰 <b>News Alerts — edgeX Agent</b>\n\nAI-analyzed news with one-tap trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off\n❌ DeFi News — off`,
- btns:[{t:"✅ BWEnews",c:"news_toggle_bwe",s:"green",w:"third"},{t:"⏱ 5/hr",c:"news_freq",s:"gray",w:"third"},{t:"🗑",c:"news_remove_bwe",s:"gray",w:"quarter"},
-       {t:"➕ Add Source",c:"news_add",s:"blue full"},{t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
- nav:"Dashboard > News. Works without login. Toggle/Freq inline."},
-
-{id:"show_login", lv:"2", t:"🔗 Connect edgeX",
- b:`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,
- btns:[{t:"⚡ One-Click OAuth (soon)",c:"login_oauth",s:"gray full"},{t:"🔑 API Key",c:"login_api",s:"blue full"},{t:"👤 Aaron's Account (temp)",c:"login_demo",s:"green full"},{t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
- nav:"Dashboard > Connect. OAuth coming soon. Aaron's Account is temporary."},
-
-{id:"ai_activate", lv:"2", t:"✨ Activate AI",
- b:`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,
- btns:[{t:"💳 edgeX Balance (soon)",c:"ai_edgex_credits",s:"gray full"},{t:"🔑 Own API Key",c:"ai_own_key_setup",s:"blue full"},{t:"⚡ Aaron's API (temp)",c:"ai_use_free",s:"green full"},{t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
- nav:"Dashboard > Activate AI. After activation, button becomes AI Agent."},
-
-// ════════════════════════════════════════
-// L3: SUB-SCREENS (edit, max depth)
-// ════════════════════════════════════════
-{id:"quick_close", lv:"3", t:"🔴 Close Position",
- b:`🔴 <b>Close Position — edgeX Agent</b>\n\nSelect a position to close:\n\n• BTC LONG | Size: 0.01 | PnL: +$12.30\n• ETH SHORT | Size: 0.5 | PnL: -$5.20`,
- btns:[{t:"Close BTC LONG",c:"close_123",s:"red full"},{t:"Close ETH SHORT",c:"close_456",s:"red full"},{t:"🔙 Back",c:"trade_hub",s:"back full"}],
- nav:"Trade > Close. Back → Trade Hub."},
-
-{id:"quick_orders", lv:"3", t:"📋 Open Orders",
- b:`📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n\n• BTC BUY LIMIT | Size: 100 | Price: $70,000\n• ETH SELL LIMIT | Size: 50 | Price: $4,100`,
- btns:[{t:"❌ Cancel BTC",c:"cancelone_001",s:"red"},{t:"❌ Cancel ETH",c:"cancelone_002",s:"red"},{t:"❌ Cancel All",c:"cancelorders_all",s:"red full"},{t:"🔙 Back",c:"trade_hub",s:"back full"}],
- nav:"Trade > Orders. Back → Trade Hub."},
-
-{id:"quick_history", lv:"3", t:"📜 Recent Trades",
- b:`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71,234 | PnL: +$2.34 | 03/04 14:30\n🔴 DOGE SELL 300 @ $0.096 | PnL: -$0.03 | 03/03 09:15`,
- btns:[{t:"🔙 Back",c:"trade_hub",s:"back full"}],
- nav:"Trade > History. Back → Trade Hub."},
-
-{id:"logout_confirm", lv:"3", t:"🚪 Disconnect",
- b:`🚪 <b>Disconnect — edgeX Agent</b>\n\nThis will log out your edgeX account. Are you sure?`,
- btns:[{t:"✅ Yes, logout",c:"logout_yes",s:"red"},{t:"❌ Cancel",c:"logout_no",s:"gray"}],
- nav:"Trade > Disconnect. Cancel → Dashboard. Yes → logged out."},
-
-{id:"change_persona", lv:"3", t:"🎭 Personality",
- b:`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,
- btns:[{t:"🔥 Degen",c:"persona_degen",s:"blue"},{t:"🎯 Sensei",c:"persona_sensei",s:"blue"},{t:"🤖 Cold Blood",c:"persona_coldblood",s:"blue"},{t:"👀 Shitposter",c:"persona_shitposter",s:"blue"},
-       {t:"📚 Professor",c:"persona_professor",s:"blue"},{t:"🐺 Wolf",c:"persona_wolf",s:"blue"},{t:"🌸 Moe",c:"persona_moe",s:"blue"},{t:"🔙 Back",c:"ai_hub",s:"back full"}],
- nav:"AI Agent > Personality. Pick → toast → returns to AI Hub."},
-
-{id:"ai_provider", lv:"3", t:"🔑 AI Provider",
- b:`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,
- btns:[{t:"OpenAI / DeepSeek",c:"setai_openai",s:"blue full"},{t:"Anthropic (Claude)",c:"setai_anthropic",s:"blue full"},{t:"Google Gemini",c:"setai_gemini",s:"blue full"},{t:"🔙 Back",c:"ai_hub",s:"back full"}],
- nav:"AI Agent > AI Provider. Starts /setai wizard."},
-
-{id:"settings_memory", lv:"3", t:"📝 Memory",
- b:`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,
- btns:[{t:"🗑 Clear Memory",c:"memory_clear_confirm",s:"red full"},{t:"🔙 Back",c:"ai_hub",s:"back full"}],
- nav:"AI Agent > Memory. Back → AI Hub."},
-
-{id:"memory_clear", lv:"3", t:"🗑 Clear Memory",
- b:`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll conversation history and preferences will be deleted.`,
- btns:[{t:"✅ Yes, clear all",c:"memory_clear_yes",s:"red"},{t:"❌ Keep",c:"memory_clear_no",s:"gray"}],
- nav:"Memory > Clear. Keep → Memory. Yes → clears + shows Memory."},
-
-{id:"news_freq", lv:"3", t:"⏱ Push Frequency",
- b:`⏱ <b>Push Frequency — edgeX Agent</b>\n\nHow many alerts per hour?\nCurrent: <b>2/hr</b>`,
- btns:[{t:"1/hr",c:"news_setfreq_1",s:"gray",w:"third"},{t:"> 2/hr",c:"news_setfreq_2",s:"blue",w:"third"},{t:"3/hr",c:"news_setfreq_3",s:"gray",w:"third"},
-       {t:"5/hr",c:"news_setfreq_5",s:"gray",w:"third"},{t:"10/hr",c:"news_setfreq_10",s:"gray",w:"third"},{t:"🔙 Back",c:"news_settings",s:"back full"}],
- nav:"News > Frequency. Select → returns to News."},
-
-{id:"news_add", lv:"3", t:"➕ Add News Source",
- b:`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,
- btns:[{t:"💰 Bitcoin News",c:"news_addsrc_btc",s:"blue full"},{t:"💠 Ethereum News",c:"news_addsrc_eth",s:"blue full"},{t:"🌍 DeFi News",c:"news_addsrc_defi",s:"blue full"},{t:"🔙 Back",c:"news_settings",s:"back full"}],
- nav:"News > Add Source. Select → returns to News."},
-
-{id:"login_api", lv:"3", t:"🔑 API Key Entry",
- b:`🔑 <b>API Key — edgeX Agent</b>\n\n1. Go to edgex.exchange → API\n2. Copy Account ID\n3. Send it to me:`,
- btns:[],
- nav:"Connect > API Key. User types account ID → stark key."},
-
-// ════════════════════════════════════════
-// PUSH LAYER: Bot-initiated (new msgs)
-// ════════════════════════════════════════
-{id:"news_alert", lv:"P", t:"📰 News Alert",
- b:`<b>BWEnews: SEC approves Solana ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH\n\n────────────────\n2026-03-05 08:00 UTC`,
- btns:[{t:"📈 LONG SOL $50",c:"news_trade",s:"green"},{t:"📈 LONG SOL $150",c:"news_trade",s:"green"},
-       {t:"🇨🇳",c:"tl_zh",s:"gray",w:"quarter"},{t:"🇯🇵",c:"tl_ja",s:"gray",w:"quarter"},{t:"🇰🇷",c:"tl_ko",s:"gray",w:"quarter"},{t:"🇷🇺",c:"tl_ru",s:"gray",w:"quarter"},
-       {t:"🔗 Source",c:"_url",s:"gray",w:"third"},{t:"🔕 Mute",c:"news_mute",s:"gray",w:"third"},{t:"❌ Dismiss",c:"news_dismiss",s:"gray",w:"third"}],
- nav:"Pushed to user. Trade → Plan. Flags → Translation. Mute → toast. Dismiss → delete."},
-
-{id:"news_translated", lv:"P", t:"🇨🇳 Translated",
- b:`<b>BWEnews: SEC批准贝莱德和富达的现货Solana ETF申请</b>\n\n🟢 SOL | 看涨 | ███ 高\n\n────────────────\n2026-03-05 08:00 UTC`,
- btns:[{t:"📈 LONG SOL $50",c:"news_trade",s:"green"},{t:"📈 LONG SOL $150",c:"news_trade",s:"green"},
-       {t:"🇨🇳",c:"tl_zh",s:"gray",w:"quarter"},{t:"🇯🇵",c:"tl_ja",s:"gray",w:"quarter"},{t:"🇰🇷",c:"tl_ko",s:"gray",w:"quarter"},{t:"🇷🇺",c:"tl_ru",s:"gray",w:"quarter"},
-       {t:"🔗 Source",c:"_url",s:"gray",w:"third"},{t:"🔕 Mute",c:"news_mute",s:"gray",w:"third"},{t:"❌ Dismiss",c:"news_dismiss",s:"gray",w:"third"}],
- nav:"New msg. Same buttons — user can trade from translation."},
-
-{id:"ai_chat", lv:"P", t:"💬 AI Chat Reply",
- b:`✨ BTC at $71.9k, up 3.6% with $1.5B volume. RSI 68, bullish but nearing overbought.\n\nCautious LONG, maybe $50 at 3x. Want me to set it up?`,
- btns:[{t:"🏠 Main Menu",c:"back_to_dashboard",s:"back full"}],
- nav:"User typed question → AI replied. Main Menu → dashboard."},
-
-{id:"trade_plan", lv:"P", t:"📋 Trade Plan",
- b:`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH\n<span class="dim">BTC showing strong momentum...</span>`,
- btns:[{t:"✅ Confirm Execute",c:"confirm_trade",s:"green"},{t:"❌ Cancel",c:"cancel_trade",s:"red"}],
- nav:"Confirm → edits to Executing → Result. Cancel → edits to Cancelled."},
-
-{id:"trade_executing", lv:"P", t:"🔄 Executing...",
- b:`🔄 <b>Executing LONG BTC — edgeX Agent</b>\n\nPlacing order on edgeX...`,
- btns:[],
- nav:"Edits Plan msg. Temporary. Edits again to Result."},
-
-{id:"trade_success", lv:"P", t:"✅ Trade Result",
- b:`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n├ Value: <code>~$100</code>\n└ Order ID: <code>abc123</code>`,
- btns:[{t:"📊 Trade",c:"trade_hub",s:"blue"},{t:"📜 History",c:"quick_history",s:"blue"},
-       {t:"🔴 Close BTC",c:"close_123",s:"red full"},
-       {t:"🏠 Main Menu",c:"back_to_dashboard",s:"back full"}],
- nav:"Edits Executing msg. Quick actions for next step."},
-
-{id:"trade_cancelled", lv:"P", t:"❌ Cancelled",
- b:`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,
- btns:[{t:"📊 Trade",c:"trade_hub",s:"blue"},{t:"🏠 Main Menu",c:"back_to_dashboard",s:"back full"}],
- nav:"Edits Plan msg. Not a dead end."},
-
-{id:"close_result", lv:"P", t:"✅ Position Closed",
- b:`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG position closed\n\n├ Entry: <code>$71,234</code>\n├ Size: <code>0.01</code>\n├ Realized P&L: <code>+$12.30</code>\n├ Balance: <code>$1,246.86</code>\n└ Order ID: <code>xyz789</code>`,
- btns:[{t:"📊 Trade",c:"trade_hub",s:"blue"},{t:"📜 History",c:"quick_history",s:"blue"},
-       {t:"🏠 Main Menu",c:"back_to_dashboard",s:"back full"}],
- nav:"New msg after close. Quick actions."},
-
-{id:"trade_error", lv:"P", t:"❌ Trade Error",
- b:`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance (available: $12.34)`,
- btns:[{t:"🔴 Close a Position",c:"quick_close",s:"red"},{t:"📋 Cancel Orders",c:"quick_orders",s:"red"},
-       {t:"💰 Deposit USDT",c:"_url",s:"blue full"},
-       {t:"📊 Trade",c:"trade_hub",s:"blue"},{t:"🏠 Main Menu",c:"back_to_dashboard",s:"back full"}],
- nav:"Edits Executing msg. Smart buttons based on error."},
-
-{id:"logout_done", lv:"P", t:"🚪 Logged Out",
- b:`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out. Use /start to reconnect.`,
- btns:[{t:"🔗 Reconnect",c:"show_login",s:"blue full"}],
- nav:"Edits disconnect confirm msg."},
+const MODULES = [
+// ════════════════════════════════════════════════
+// MODULE 0: DASHBOARD (L1)
+// ════════════════════════════════════════════════
+{
+  name:"Dashboard", icon:"🤖", color:"trade", desc:"L1 root — /start. Always 3 buttons.",
+  rows:[
+    { level:"L1", screens:[
+      {id:"dash_new", t:"New User",
+       b:DASH_BODY("👤 edgeX: not connected","✨ AI: not activated"),
+       btns:[{t:"🔗 Connect edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],
+       nav:"3 buttons always. News works without login."},
+      {id:"dash_mid", t:"Connected, No AI",
+       b:DASH_BODY("👤 edgeX: <code>71303066234567</code> ✅","✨ AI: not activated"),
+       btns:[{t:"📈 Trade on edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],
+       nav:"Trade replaces Connect after login."},
+      {id:"dash_full", t:"Full State",
+       b:DASH_BODY("👤 edgeX: <code>71303066234567</code> ✅","✨ AI: Active ✅"),
+       btns:[{t:"📈 Trade on edgeX",s:"blue full"},{t:"🤖 AI Agent",s:"blue full"},{t:"📰 Event Trading",s:"blue full"}],
+       nav:"All 3 modules active."},
+    ]}
+  ]
+},
+// ════════════════════════════════════════════════
+// MODULE 1: TRADE ON EDGEX
+// ════════════════════════════════════════════════
+{
+  name:"📈 Trade on edgeX", icon:"📈", color:"trade", desc:"Account overview, positions, orders, history. Login required.",
+  rows:[
+    { level:"L2", label:"Hub", screens:[
+      {id:"trade_hub", t:"📈 Trade Hub",
+       b:`📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234.56</code>\n└ Available: <code>$890.12</code>\n\n<b>Open Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) | PnL: <code>+$12.30</code>\n🔴 ETH SHORT <code>0.5</code> (3x) | PnL: <code>-$5.20</code>\n\nUnrealized P&L: 🟢 <code>+$7.10</code>`,
+       btns:[{t:"🔴 Close Position",s:"red"},{t:"📋 Orders",s:"blue"},{t:"📜 History",s:"blue"},{t:"🚪 Disconnect",s:"red"},{t:"🔙 Back",s:"back full"}],
+       nav:"Dashboard → here. Merged Status+P&L with leverage."},
+      {id:"show_login", t:"🔗 Connect edgeX",
+       b:`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,
+       btns:[{t:"⚡ One-Click OAuth (soon)",s:"gray full"},{t:"🔑 API Key",s:"blue full"},{t:"👤 Aaron's Account (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],
+       nav:"Dashboard (new user) → here."},
+    ]},
+    { level:"L3", label:"Sub-screens", screens:[
+      {id:"quick_close", t:"🔴 Close Position",
+       b:`🔴 <b>Close Position — edgeX Agent</b>\n\nSelect a position to close:\n\n• BTC LONG | Size: 0.01 | PnL: +$12.30\n• ETH SHORT | Size: 0.5 | PnL: -$5.20`,
+       btns:[{t:"Close BTC LONG",s:"red full"},{t:"Close ETH SHORT",s:"red full"},{t:"🔙 Back",s:"back full"}],
+       nav:"Trade Hub → here. Back → Trade Hub."},
+      {id:"quick_orders", t:"📋 Open Orders",
+       b:`📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n\n• BTC BUY LIMIT | Size: 100 | $70,000\n• ETH SELL LIMIT | Size: 50 | $4,100`,
+       btns:[{t:"❌ Cancel BTC",s:"red"},{t:"❌ Cancel ETH",s:"red"},{t:"❌ Cancel All",s:"red full"},{t:"🔙 Back",s:"back full"}],
+       nav:"Trade Hub → here. Back → Trade Hub."},
+      {id:"quick_history", t:"📜 Recent Trades",
+       b:`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71,234 | +$2.34\n🔴 DOGE SELL 300 @ $0.096 | -$0.03`,
+       btns:[{t:"🔙 Back",s:"back full"}],
+       nav:"Trade Hub → here. Back → Trade Hub."},
+      {id:"logout_confirm", t:"🚪 Disconnect",
+       b:`🚪 <b>Disconnect — edgeX Agent</b>\n\nThis will log out your edgeX account. Are you sure?`,
+       btns:[{t:"✅ Yes, logout",s:"red"},{t:"❌ Cancel",s:"gray"}],
+       nav:"Trade Hub → here. Cancel → Dashboard."},
+      {id:"login_api", t:"🔑 API Key Entry",
+       b:`🔑 <b>API Key — edgeX Agent</b>\n\n1. Go to edgex.exchange → API\n2. Copy Account ID\n3. Send it to me:`,
+       btns:[],
+       nav:"Connect → here. User types credentials."},
+    ]},
+  ]
+},
+// ════════════════════════════════════════════════
+// MODULE 2: AI AGENT
+// ════════════════════════════════════════════════
+{
+  name:"🤖 AI Agent", icon:"🤖", color:"ai", desc:"Personality, AI provider, memory. Requires activation.",
+  rows:[
+    { level:"L2", label:"Hub", screens:[
+      {id:"ai_hub", t:"🤖 AI Agent Hub",
+       b:`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs, <code>2</code> summaries`,
+       btns:[{t:"🎭 Personality",s:"blue"},{t:"🔑 AI Provider",s:"blue"},{t:"📝 Memory",s:"blue full"},{t:"🔙 Back",s:"back full"}],
+       nav:"Dashboard → here. Shows current AI config."},
+      {id:"ai_activate", t:"✨ Activate AI",
+       b:`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,
+       btns:[{t:"💳 edgeX Balance (soon)",s:"gray full"},{t:"🔑 Own API Key",s:"blue full"},{t:"⚡ Aaron's API (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],
+       nav:"Dashboard (no AI) → here. After activation → AI Hub."},
+    ]},
+    { level:"L3", label:"Sub-screens", screens:[
+      {id:"change_persona", t:"🎭 Personality",
+       b:`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,
+       btns:[{t:"🔥 Degen",s:"blue"},{t:"🎯 Sensei",s:"blue"},{t:"🤖 Cold Blood",s:"blue"},{t:"👀 Shitposter",s:"blue"},{t:"📚 Professor",s:"blue"},{t:"🐺 Wolf",s:"blue"},{t:"🌸 Moe",s:"blue"},{t:"🔙 Back",s:"back full"}],
+       nav:"AI Hub → here. Pick → toast → AI Hub."},
+      {id:"ai_provider", t:"🔑 AI Provider",
+       b:`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,
+       btns:[{t:"OpenAI / DeepSeek",s:"blue full"},{t:"Anthropic (Claude)",s:"blue full"},{t:"Google Gemini",s:"blue full"},{t:"🔙 Back",s:"back full"}],
+       nav:"AI Hub → here. Starts /setai wizard."},
+      {id:"settings_memory", t:"📝 Memory",
+       b:`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,
+       btns:[{t:"🗑 Clear Memory",s:"red full"},{t:"🔙 Back",s:"back full"}],
+       nav:"AI Hub → here. Back → AI Hub."},
+      {id:"memory_clear", t:"🗑 Clear Memory",
+       b:`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll conversation history will be deleted.`,
+       btns:[{t:"✅ Yes, clear",s:"red"},{t:"❌ Keep",s:"gray"}],
+       nav:"Memory → here. Keep → Memory. Yes → cleared."},
+    ]},
+  ]
+},
+// ════════════════════════════════════════════════
+// MODULE 3: EVENT TRADING
+// ════════════════════════════════════════════════
+{
+  name:"📰 Event Trading", icon:"📰", color:"event", desc:"AI-analyzed news, one-tap trade. No login required.",
+  rows:[
+    { level:"L2", label:"Hub", screens:[
+      {id:"news_hub", t:"📰 Event Trading Hub",
+       b:`📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with one-tap trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off\n❌ DeFi News — off`,
+       btns:[{t:"✅ BWEnews",s:"green",w:"third"},{t:"⏱ 5/hr",s:"gray",w:"third"},{t:"🗑",s:"gray",w:"quarter"},{t:"➕ Add Source",s:"blue full"},{t:"🔙 Back",s:"back full"}],
+       nav:"Dashboard → here. Works without login."},
+    ]},
+    { level:"L3", label:"Sub-screens", screens:[
+      {id:"news_freq", t:"⏱ Push Frequency",
+       b:`⏱ <b>Push Frequency — edgeX Agent</b>\n\nHow many alerts per hour?\nCurrent: <b>2/hr</b>`,
+       btns:[{t:"1/hr",s:"gray",w:"third"},{t:"> 2/hr",s:"blue",w:"third"},{t:"3/hr",s:"gray",w:"third"},{t:"5/hr",s:"gray",w:"third"},{t:"10/hr",s:"gray",w:"third"},{t:"🔙 Back",s:"back full"}],
+       nav:"News Hub → here. Select → News Hub."},
+      {id:"news_add", t:"➕ Add Source",
+       b:`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,
+       btns:[{t:"💰 Bitcoin",s:"blue full"},{t:"💠 Ethereum",s:"blue full"},{t:"🌍 DeFi",s:"blue full"},{t:"🔙 Back",s:"back full"}],
+       nav:"News Hub → here. Select → News Hub."},
+    ]},
+  ]
+},
+// ════════════════════════════════════════════════
+// MODULE 4: PUSH LAYER
+// ════════════════════════════════════════════════
+{
+  name:"⚡ Push Layer", icon:"⚡", color:"push", desc:"Bot-initiated: news alerts, AI chat, trade plans/results. Always new messages.",
+  rows:[
+    { level:"Push", label:"News Push Flow", screens:[
+      {id:"news_alert", t:"📰 News Alert",
+       b:`<b>BWEnews: SEC approves Solana ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH\n\n────────────────\n2026-03-05 08:00 UTC`,
+       btns:[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"},{t:"🔗 Source",s:"gray",w:"third"},{t:"🔕 Mute",s:"gray",w:"third"},{t:"❌ Dismiss",s:"gray",w:"third"}],
+       nav:"Pushed to user. Trade→Plan. Flags→Translation. Mute→toast. Dismiss→delete."},
+      {id:"news_tl", t:"🇨🇳 Translated",
+       b:`<b>BWEnews: SEC批准Solana ETF申请</b>\n\n🟢 SOL | 看涨 | ███ 高\n\n────────────────\n2026-03-05 08:00 UTC`,
+       btns:[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"}],
+       nav:"New msg. Same trade buttons."},
+    ]},
+    { level:"Push", label:"AI Chat + Trade Flow", screens:[
+      {id:"ai_chat", t:"💬 AI Chat",
+       b:`✨ BTC at $71.9k, up 3.6%. RSI 68, bullish.\n\nCautious LONG, $50 at 3x?`,
+       btns:[{t:"🏠 Main Menu",s:"back full"}],
+       nav:"User typed → AI replied."},
+      {id:"trade_plan", t:"📋 Trade Plan",
+       b:`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH`,
+       btns:[{t:"✅ Confirm",s:"green"},{t:"❌ Cancel",s:"red"}],
+       nav:"From AI chat or News trade button."},
+      {id:"trade_exec", t:"🔄 Executing",
+       b:`🔄 <b>Executing LONG BTC — edgeX Agent</b>\n\nPlacing order on edgeX...`,
+       btns:[],
+       nav:"Edits Plan msg. Temporary."},
+      {id:"trade_ok", t:"✅ Result",
+       b:`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n└ Order ID: <code>abc123</code>`,
+       btns:[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🔴 Close BTC",s:"red full"},{t:"🏠 Menu",s:"back full"}],
+       nav:"Edits Executing msg."},
+      {id:"trade_cancel", t:"❌ Cancelled",
+       b:`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,
+       btns:[{t:"📈 Trade",s:"blue"},{t:"🏠 Menu",s:"back full"}],
+       nav:"Edits Plan msg."},
+    ]},
+    { level:"Push", label:"Close + Error", screens:[
+      {id:"close_ok", t:"✅ Closed",
+       b:`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG closed\n├ P&L: <code>+$12.30</code>\n└ Balance: <code>$1,246.86</code>`,
+       btns:[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🏠 Menu",s:"back full"}],
+       nav:"New msg after close."},
+      {id:"trade_err", t:"❌ Error",
+       b:`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance ($12.34)`,
+       btns:[{t:"🔴 Close Position",s:"red"},{t:"📋 Cancel Orders",s:"red"},{t:"💰 Deposit",s:"blue full"},{t:"🏠 Menu",s:"back full"}],
+       nav:"Edits Executing msg. Smart buttons."},
+      {id:"logout_done", t:"🚪 Logged Out",
+       b:`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out. /start to reconnect.`,
+       btns:[{t:"🔗 Reconnect",s:"blue full"}],
+       nav:"Edits disconnect confirm."},
+    ]},
+  ]
+},
 ];
 
-const LV_COLORS = {"1":"#2d6a4f","2":"#4a90d9","3":"#e07c24","P":"#c0392b"};
-const LV_NAMES = {"1":"L1: Dashboard","2":"L2: Hubs (edit)","3":"L3: Sub-screens (edit)","P":"Push Layer (new msg)"};
-
 function renderPhone(s) {
-  let btnsHtml = "";
-  if (s.btns.length) {
-    btnsHtml = '<div class="btn-grid">';
+  let h = "";
+  if (s.btns && s.btns.length) {
+    h = '<div class="btn-grid">';
     for (const b of s.btns) {
-      let cls = `tg-btn ${b.s||"blue"}`;
-      if (b.w === "third") cls += " third";
-      else if (b.w === "quarter") cls += " quarter";
-      btnsHtml += `<button class="${cls}" title="${b.c}">${b.t}</button>`;
+      let c = `tg-btn ${b.s||"blue"}`;
+      if (b.w==="third") c+=" third"; else if (b.w==="quarter") c+=" quarter";
+      h += `<button class="${c}">${b.t}</button>`;
     }
-    btnsHtml += "</div>";
+    h += "</div>";
   }
-  const isEdit = s.lv !== "P" || ["trade_executing","trade_success","trade_cancelled","trade_error","logout_done"].includes(s.id);
-  const method = isEdit ? '<span class="nav-arrow edit">edit</span>' : '<span class="nav-arrow send">new msg</span>';
-  return `
-<div class="phone" data-id="${s.id}" data-level="${s.lv}" data-search="${(s.t+" "+s.id+" "+s.nav).toLowerCase()}">
-  <span class="badge l${s.lv}">${LV_NAMES[s.lv]}</span>
-  <span class="screen-id">#${s.id}</span>
-  <div class="phone-header"><div class="avatar">🤖</div><div><div class="name">edgeX Agent</div></div></div>
-  <div class="phone-body"><div class="msg-bubble">${s.b}</div>${btnsHtml}</div>
-  <div class="phone-footer">${method} ${s.nav||""}</div>
-</div>`;
+  return `<div class="phone" data-search="${(s.t+" "+s.id+" "+(s.nav||"")).toLowerCase()}">
+  <span class="screen-title">#${s.id}</span>
+  <div class="phone-header"><div class="avatar">🤖</div><div class="name">edgeX Agent</div></div>
+  <div class="phone-body"><div class="msg-bubble">${s.b}</div>${h}</div>
+  <div class="phone-footer">${s.nav||""}</div></div>`;
 }
 
-function render() {
-  const groups = {};
-  const order = ["1","2","3","P"];
-  for (const s of S) { if (!groups[s.lv]) groups[s.lv]=[]; groups[s.lv].push(s); }
-  let html = "";
-  for (const lv of order) {
-    if (!groups[lv]) continue;
-    html += `<div class="layer" data-layer="${lv}">
-      <span class="layer-title l${lv}">${LV_NAMES[lv]} (${groups[lv].length})</span>
-      <div class="screens">${groups[lv].map(renderPhone).join("")}</div></div>`;
-  }
-  document.getElementById("app").innerHTML = html;
-  document.getElementById("total-screens").textContent = S.length;
-  let n=0; for(const s of S) n+=s.btns.length;
-  document.getElementById("total-navs").textContent = n;
+function renderArrow() {
+  return `<div class="arrow-connector"><span class="flow-arrow">→</span></div>`;
 }
-render();
+
+function renderModule(m) {
+  let html = `<div class="module"><div class="module-header ${m.color}"><div class="icon">${m.icon}</div><div class="info"><h2>${m.name}</h2><p>${m.desc}</p></div></div>`;
+  for (let ri = 0; ri < m.rows.length; ri++) {
+    const row = m.rows[ri];
+    const tagClass = row.level === "Push" ? "push" : row.level.toLowerCase();
+    html += `<div class="flow-row">`;
+    html += `<div class="flow-level"><div class="tag ${tagClass}">${row.level}</div>`;
+    if (row.label) html += `<div class="flow-group-label">${row.label}</div>`;
+    html += `</div>`;
+    html += `<div class="flow-screens">`;
+    row.screens.forEach((s, i) => {
+      if (i > 0) html += renderArrow();
+      html += renderPhone(s);
+    });
+    html += `</div></div>`;
+    if (ri < m.rows.length - 1) {
+      html += `<div style="display:flex;align-items:center;gap:0;margin-left:25px;"><div class="vline"></div><span style="font-size:16px;color:#4a90d9;margin-left:-5px;">↓</span></div>`;
+    }
+  }
+  html += `</div>`;
+  return html;
+}
+
+document.getElementById("app").innerHTML = MODULES.map(renderModule).join("");
 
 document.getElementById("search").addEventListener("input", e => {
   const q = e.target.value.toLowerCase();
@@ -342,14 +336,6 @@ document.getElementById("search").addEventListener("input", e => {
     if(!q){p.classList.remove("dimmed","highlight");return;}
     if(p.dataset.search.includes(q)){p.classList.add("highlight");p.classList.remove("dimmed");}
     else{p.classList.add("dimmed");p.classList.remove("highlight");}
-  });
-});
-document.querySelectorAll(".level-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".level-tab").forEach(t=>t.classList.remove("active"));
-    tab.classList.add("active");
-    const lv = tab.dataset.level;
-    document.querySelectorAll(".layer").forEach(l => { l.style.display = (lv==="all"||l.dataset.layer===lv)?"":"none"; });
   });
 });
 </script>
