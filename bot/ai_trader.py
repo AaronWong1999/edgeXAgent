@@ -17,6 +17,7 @@ import subprocess
 import httpx
 from config import CONTRACTS, MAX_POSITION_USD, MAX_LEVERAGE, EDGEX_CLI_PATH
 import db
+import edgex_client
 import memory as mem
 
 logger = logging.getLogger(__name__)
@@ -224,11 +225,14 @@ Symbol format: BTC, btc, BTCUSD, or contract ID 10000001 all work.
 - ETH: min 0.05 (~$100)
 - SOL: min 1 (~$130)
 - DOGE: min 300 (~$50)
+- XRP: min 80 (~$120)
 - PEPE: min 1000000
 - XAUT (Gold): min 0.003 (~$10)
 - SILVER: min 3 (~$100)
 - TSLA/AAPL/NVDA: min 0.1 (~$20-40)
 - CRCL: min 3
+- LINK: min 5
+- ADA: min 100
 - For any other asset: use `edgex order max-size <symbol>` to check
 - If user doesn't specify a size, pick a reasonable default based on the minimum and $50-100 position value
 - If user's size is below minimum, auto-adjust to minimum and tell them

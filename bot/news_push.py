@@ -295,19 +295,20 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
     if url:
         msg += f"\n[Read full article]({url})\n"
 
-    # Trade action buttons
+    # Trade action buttons with specific dollar amounts
     buttons = []
     if action in ("LONG", "SHORT"):
         side = "BUY" if action == "LONG" else "SELL"
-        # Multiple size options
+        small_usd = 50
+        large_usd = 150
         buttons.append([
             InlineKeyboardButton(
-                f"{action_emoji} {action} {asset} (small)",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_small",
+                f"{action_emoji} {action} {asset} ${small_usd}",
+                callback_data=f"news_trade_{asset}_{side}_{leverage}_{small_usd}",
             ),
             InlineKeyboardButton(
-                f"{action_emoji} {action} {asset} (medium)",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_medium",
+                f"{action_emoji} {action} {asset} ${large_usd}",
+                callback_data=f"news_trade_{asset}_{side}_{leverage}_{large_usd}",
             ),
         ])
     buttons.append([

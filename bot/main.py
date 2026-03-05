@@ -1425,13 +1425,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data.startswith("news_trade_"):
-            # Format: news_trade_{asset}_{side}_{leverage}_{size}
+            # Format: news_trade_{asset}_{side}_{leverage}_{notional}
             parts = query.data.split("_")
             if len(parts) >= 6:
                 asset = parts[2]
                 side = parts[3]  # BUY or SELL
                 leverage = parts[4]
-                size_label = parts[5]  # small or medium
+                notional_str = parts[5]  # dollar amount or legacy "small"/"medium"
 
                 user = db.get_user(user_id)
                 if not user or not _has_edgex(user):
@@ -1443,42 +1443,40 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     await query.edit_message_text("\u274c Activate AI first. Use /setai")
                     return
 
-                # Determine size based on balance
                 try:
-                    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-                    client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
-                    summary = await edgex_client.get_account_summary(client)
-                    avail = float(summary.get("assets", {}).get("availableBalance", "0"))
-                    size_pct = 0.03 if size_label == "small" else 0.08  # 3% or 8%
-                    notional = avail * size_pct
-                    # Compose a natural prompt for the AI to process
+                    # Handle legacy "small"/"medium" labels from old alerts
+                    if notional_str == "small":
+                        notional = 50.0
+                    elif notional_str == "medium":
+                        notional = 150.0
+                    else:
+                        notional = float(notional_str)
                     action_word = "long" if side == "BUY" else "short"
-                    prompt = f"{action_word} {asset} with ${notional:.0f} at {leverage}x leverage"
-                    # Send this as if user typed it — reuse the AI flow
-                    await query.edit_message_text(f"\U0001f504 Executing: {action_word.upper()} {asset} (~${notional:.0f}, {leverage}x)...")
-                    # Create a fake text message context
-                    await handle_message.__wrapped__(update, context) if hasattr(handle_message, '__wrapped__') else None
-                    # Actually, just process it through the AI trader directly
-                    result = await ai_trader.process_message(
-                        user_id=user_id,
-                        message=prompt,
-                        user_ai_config=user_ai,
-                        account_id=user["account_id"],
-                        stark_key=user["stark_private_key"],
+                    prompt = f"{action_word} {asset} with ${notional:.0f} at {leverage}x leverage, execute immediately"
+
+                    await query.edit_message_text(f"\U0001f504 Generating trade plan: {action_word.upper()} {asset} (~${notional:.0f}, {leverage}x)...")
+
+                    plan = await ai_trader.generate_trade_plan(
+                        prompt, market_prices=None, tg_user_id=user_id
                     )
-                    if result.get("type") == "TRADE":
-                        plan = result.get("plan", {})
+
+                    if plan.get("action") == "TRADE":
+                        error = ai_trader.validate_plan(plan)
+                        if error:
+                            await safe_send(context, chat_id, f"\u26a0\ufe0f {error}", reply_markup=_quick_actions_keyboard())
+                            return
                         pending_plans[user_id] = plan
-                        confirm_text = result.get("confirmation", "")
                         keyboard = InlineKeyboardMarkup([
                             [
-                                InlineKeyboardButton("\u2705 Confirm", callback_data="confirm_trade"),
+                                InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
                                 InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade"),
                             ]
                         ])
-                        await context.bot.send_message(chat_id=chat_id, text=confirm_text, parse_mode="Markdown", reply_markup=keyboard)
+                        await safe_send(context, chat_id, ai_trader.format_trade_plan(plan), parse_mode="Markdown", reply_markup=keyboard)
                     else:
-                        reply = result.get("reply", "Could not process trade.")
+                        reply = plan.get("reply", "Could not generate trade plan. Try asking directly.")
+                        if reply.lstrip().startswith("{") and '"action"' in reply:
+                            reply = ai_trader._strip_json_wrapper(reply)
                         await safe_send(context, chat_id, reply, parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
                 except Exception as e:
                     logger.error(f"News trade error: {e}", exc_info=True)
