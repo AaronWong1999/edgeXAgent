@@ -121,21 +121,32 @@ User types message → <span class="screen">💬 AI Reply</span> (new msg)<br>
 <script>
 const S = [
 // ════════════════════════════════════════
-// L1: DASHBOARD
+// L1: DASHBOARD — 3 states
 // ════════════════════════════════════════
-{id:"dashboard", lv:"1", t:"/start — Dashboard (Connected)",
- b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: <code>7130...3066</code> ✅\n✨ AI: active ✅\n\n👇 Tap a button or type:\n\n<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>`,
+{id:"dashboard_new", lv:"1", t:"State 1: Not Connected, No AI",
+ b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: not connected\n✨ AI: not activated\n\n👇 Tap a button or just talk to me:\n\n<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"지금 SILVER 상황 어때?"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>\n<span class="dim">"Короткий NVDA на 100$"</span>`,
+ btns:[{t:"🔗 Connect edgeX",c:"show_login",s:"blue full"},{t:"✨ Activate AI",c:"ai_activate_prompt",s:"green full"},{t:"📰 News",c:"news_settings",s:"blue full"}],
+ nav:"New user. News available without login. Examples always shown."},
+
+{id:"dashboard_no_ai", lv:"1", t:"State 2: Connected, No AI",
+ b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: <code>71303066234567</code> ✅\n✨ AI: not activated\n\n👇 Tap a button or just talk to me:\n\n<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"지금 SILVER 상황 어때?"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>\n<span class="dim">"Короткий NVDA на 100$"</span>`,
  btns:[
   {t:"📊 Status",c:"quick_status",s:"blue"},{t:"📈 P&L",c:"quick_pnl",s:"blue"},
-  {t:"🔴 Close Position",c:"quick_close",s:"blue"},{t:"📋 Orders",c:"quick_orders",s:"blue"},
-  {t:"📜 History",c:"quick_history",s:"blue"},{t:"📰 News",c:"news_settings",s:"blue"},
-  {t:"⚙️ Settings",c:"settings_menu",s:"blue full"}],
- nav:"Root. /start → new msg. All buttons edit this message in-place."},
+  {t:"💰 Position",c:"quick_close",s:"blue"},{t:"📋 Orders",c:"quick_orders",s:"blue"},
+  {t:"📜 History",c:"quick_history",s:"blue"},{t:"⚙️ Settings",c:"settings_menu",s:"blue"},
+  {t:"✨ Activate AI",c:"ai_activate_prompt",s:"green full"},
+  {t:"📰 News",c:"news_settings",s:"blue full"}],
+ nav:"Connected but no AI. Trade buttons appear. Activate AI still shown."},
 
-{id:"dashboard_new", lv:"1", t:"/start — New User",
- b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: not connected\n✨ AI: not activated`,
- btns:[{t:"🔗 Connect edgeX",c:"show_login",s:"blue full"},{t:"✨ Activate AI",c:"ai_activate_prompt",s:"green full"}],
- nav:"New user. Connect/Activate are one-time setup."},
+{id:"dashboard", lv:"1", t:"State 3: Connected + AI Active",
+ b:`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n👤 edgeX: <code>71303066234567</code> ✅\n✨ AI: Active ✅\n\n👇 Tap a button or just talk to me:\n\n<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"지금 SILVER 상황 어때?"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>\n<span class="dim">"Короткий NVDA на 100$"</span>`,
+ btns:[
+  {t:"📊 Status",c:"quick_status",s:"blue"},{t:"📈 P&L",c:"quick_pnl",s:"blue"},
+  {t:"💰 Position",c:"quick_close",s:"blue"},{t:"📋 Orders",c:"quick_orders",s:"blue"},
+  {t:"📜 History",c:"quick_history",s:"blue"},{t:"⚙️ Settings",c:"settings_menu",s:"blue"},
+  {t:"🔑 AI Provider",c:"ai_activate_prompt",s:"blue full"},
+  {t:"📰 News",c:"news_settings",s:"blue full"}],
+ nav:"Full state. All trade buttons + AI Provider (replace Activate AI) + News."},
 
 // ════════════════════════════════════════
 // L2: FEATURE SCREENS (edit dashboard msg)
@@ -150,10 +161,10 @@ const S = [
  btns:[{t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
  nav:"Dashboard > P&L. Back → Dashboard."},
 
-{id:"quick_close", lv:"2", t:"🔴 Close Position",
- b:`🔴 <b>Close Position — edgeX Agent</b>\n\nSelect a position to close:\n\n• BTC LONG | Size: 0.01 | PnL: +$12.30\n• ETH SHORT | Size: 0.5 | PnL: -$5.20`,
+{id:"quick_close", lv:"2", t:"💰 Position",
+ b:`💰 <b>Position — edgeX Agent</b>\n\nSelect a position to close:\n\n• BTC LONG | Size: 0.01 | PnL: +$12.30\n• ETH SHORT | Size: 0.5 | PnL: -$5.20`,
  btns:[{t:"Close BTC LONG",c:"close_123",s:"red full"},{t:"Close ETH SHORT",c:"close_456",s:"red full"},{t:"🔙 Back",c:"back_to_dashboard",s:"back full"}],
- nav:"Dashboard > Close. Selecting → push layer (close result as new msg)."},
+ nav:"Dashboard > Position. Selecting → push layer (close result)."},
 
 {id:"quick_orders", lv:"2", t:"📋 Open Orders",
  b:`📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n\n• BTC BUY LIMIT | Size: 100 | Price: $70,000\n• ETH SELL LIMIT | Size: 50 | Price: $4,100`,
@@ -298,11 +309,12 @@ const S = [
  nav:"Edits the Disconnect confirm msg in-place."},
 
 {id:"login_success", lv:"P", t:"✅ Connected",
- b:`✅ <b>edgeX Connected!</b>\n\n👤 Account: <code>7130...3066</code>\n✨ AI: active ✅\n\nJust talk to me, or tap a button:`,
+ b:`✅ <b>edgeX Connected!</b>\n\n👤 Account: <code>71303066234567</code>\n✨ AI: Active ✅\n\nTap a button or just talk to me:`,
  btns:[{t:"📊 Status",c:"quick_status",s:"blue"},{t:"📈 P&L",c:"quick_pnl",s:"blue"},
-       {t:"🔴 Close",c:"quick_close",s:"blue"},{t:"📋 Orders",c:"quick_orders",s:"blue"},
-       {t:"📜 History",c:"quick_history",s:"blue"},{t:"📰 News",c:"news_settings",s:"blue"},
-       {t:"⚙️ Settings",c:"settings_menu",s:"blue full"}],
+       {t:"💰 Position",c:"quick_close",s:"blue"},{t:"📋 Orders",c:"quick_orders",s:"blue"},
+       {t:"📜 History",c:"quick_history",s:"blue"},{t:"⚙️ Settings",c:"settings_menu",s:"blue"},
+       {t:"🔑 AI Provider",c:"ai_activate_prompt",s:"blue full"},
+       {t:"📰 News",c:"news_settings",s:"blue full"}],
  nav:"New msg after login. Becomes the new dashboard root."},
 ];
 

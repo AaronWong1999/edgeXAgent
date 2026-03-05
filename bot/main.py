@@ -74,28 +74,28 @@ def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
 
 
 def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardMarkup:
-    """Main dashboard — hub for all actions."""
+    """Main dashboard — 3 states: unconnected, connected+noAI, connected+AI."""
     rows = []
-    if has_edgex:
+    if not has_edgex:
+        rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
+    else:
         rows.append([
             InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
             InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
         ])
         rows.append([
-            InlineKeyboardButton("\U0001f534 Close Position", callback_data="quick_close"),
+            InlineKeyboardButton("\U0001f4b0 Position", callback_data="quick_close"),
             InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
         ])
         rows.append([
             InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
-            InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings"),
-        ])
-        rows.append([
             InlineKeyboardButton("\u2699\ufe0f Settings", callback_data="settings_menu"),
         ])
-    else:
-        rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
     if not has_ai:
         rows.append([InlineKeyboardButton("\u2728 Activate AI", callback_data="ai_activate_prompt")])
+    else:
+        rows.append([InlineKeyboardButton("\U0001f511 AI Provider", callback_data="ai_activate_prompt")])
+    rows.append([InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -104,14 +104,14 @@ def _dashboard_text(user, user_ai) -> str:
     has_edgex = _has_edgex(user)
     if has_edgex:
         acct = user["account_id"]
-        edgex_line = f"\U0001f464 edgeX: `{acct[:4]}...{acct[-4:]}` \u2705"
+        edgex_line = f"\U0001f464 edgeX: `{acct}` \u2705"
     else:
         edgex_line = "\U0001f464 edgeX: not connected"
-    ai_line = "\u2728 AI: active \u2705" if user_ai else "\u2728 AI: not activated"
+    ai_line = "\u2728 AI: Active \u2705" if user_ai else "\u2728 AI: not activated"
     return (
         f"\U0001f916 *edgeX Agent \u2014 Your Own AI Trading Agent*\n\n"
         f"{edgex_line}\n{ai_line}\n\n"
-        f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
+        f"\U0001f447 Tap a button or just talk to me:\n\n"
         f"_\"BTC's looking juicy, should I ape in?\"_\n"
         f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
         f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
@@ -1206,11 +1206,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 positions = summary.get("positions", [])
                 open_positions = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
                 if not open_positions:
-                    await safe_edit(query, "\U0001f534 **Close Position \u2014 edgeX Agent**\n\nNo open positions to close.",
+                    await safe_edit(query, "\U0001f4b0 **Position \u2014 edgeX Agent**\n\nNo open positions.",
                         parse_mode="Markdown", reply_markup=_back_button())
                     return
                 buttons = []
-                msg = "\U0001f534 **Close Position \u2014 edgeX Agent**\n\nSelect a position to close:\n"
+                msg = "\U0001f4b0 **Position \u2014 edgeX Agent**\n\nSelect a position to close:\n"
                 for p in open_positions:
                     cid = p.get("contractId", "")
                     symbol = edgex_client.resolve_symbol(cid)
