@@ -506,8 +506,15 @@ async def call_gemini_api(api_key: str, model: str, messages: list) -> dict:
             return _parse_content(content)
 
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 401:
-            return {"action": "NEED_API_KEY", "reply": "Gemini API key invalid. Use /setai to reconfigure."}
+        if e.response.status_code in (400, 401, 403):
+            body_text = ""
+            try:
+                body_text = e.response.text[:200]
+            except Exception:
+                pass
+            if "API_KEY_INVALID" in body_text or "API key" in body_text or e.response.status_code in (401, 403):
+                return {"action": "NEED_API_KEY", "reply": "Gemini API key invalid. Use /setai to reconfigure."}
+            return {"action": "NEED_API_KEY", "reply": f"Gemini error ({e.response.status_code}): {body_text[:100]}"}
         if e.response.status_code == 429:
             return {"action": "CHAT", "reply": "Gemini rate limited — too many requests. Wait a moment and try again, or use /setai to switch provider."}
         logger.error(f"Gemini API HTTP {e.response.status_code}")

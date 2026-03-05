@@ -714,9 +714,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_send(context, chat_id, f"\u274c Error processing your message: {str(e)[:200]}")
 
 
-WAITING_AI_KEY = 10
-WAITING_AI_BASE_URL = 11
-WAITING_AI_MODEL = 12
+WAITING_AI_CONFIG = 10
 
 
 def _setai_provider_keyboard():
@@ -725,6 +723,7 @@ def _setai_provider_keyboard():
         [InlineKeyboardButton("OpenAI-compatible", callback_data="setai_openai")],
         [InlineKeyboardButton("Anthropic (Claude)", callback_data="setai_anthropic")],
         [InlineKeyboardButton("Google Gemini", callback_data="setai_gemini")],
+        [InlineKeyboardButton("\U0001f519 Back", callback_data="ai_activate_prompt")],
     ])
 
 
@@ -749,106 +748,65 @@ async def cmd_setai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
         reply_markup=_ai_activate_keyboard(),
     )
-    return WAITING_AI_KEY
+    return WAITING_AI_CONFIG
 
 
 async def handle_setai_provider(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle provider selection buttons in /setai flow."""
+    """Handle provider format selection. Shows instructions for single-step config input."""
     query = update.callback_query
     try:
         await query.answer()
     except Exception:
         pass
 
-    provider_map = {
-        "setai_openai": {
-            "name": "OpenAI-compatible",
-            "instructions": (
-                "\U0001f511 *OpenAI-compatible API* (Step 1/3)\n\n"
-                "Works with: OpenAI, DeepSeek, Groq, NVIDIA, etc.\n\n"
-                "Send me your *API Key*:\n\n"
-                "Examples:\n"
-                "\u2022 OpenAI: `sk-proj-xxxxxxxx`\n"
-                "\u2022 DeepSeek: `sk-xxxxxxxxxxxxxxxx`\n"
-                "\u2022 Groq: `gsk_xxxxxxxx`\n\n"
-                "Send /cancel to abort."
-            ),
-            "base_url": "https://api.openai.com",
-            "model": "gpt-4o",
-            "step2_msg": (
-                "\u2705 Key received! (Step 2/3)\n\n"
-                "Choose your provider, or type a custom URL:"
-            ),
-            "step2_buttons": InlineKeyboardMarkup([
-                [InlineKeyboardButton("OpenAI", callback_data="url_https://api.openai.com")],
-                [InlineKeyboardButton("DeepSeek", callback_data="url_https://api.deepseek.com")],
-                [InlineKeyboardButton("Groq", callback_data="url_https://api.groq.com/openai")],
-                [InlineKeyboardButton("NVIDIA", callback_data="url_https://integrate.api.nvidia.com/v1")],
-            ]),
-            "step3_msg": (
-                "\u2705 URL set! (Step 3/3)\n\n"
-                "Type your model name (e.g. `gpt-4o`, `deepseek-chat`).\n"
-                "Or pick one below:"
-            ),
-            "needs_base_url": True,
-        },
-        "setai_anthropic": {
-            "name": "Anthropic (Claude)",
-            "instructions": (
-                "\U0001f511 *Anthropic API* (Step 1/2)\n\n"
-                "\U0001f517 Get your key at: console.anthropic.com\n\n"
-                "Send me your *API Key*:\n\n"
-                "\u2139\ufe0f Format: `sk-ant-api03-xxxxxxxx`\n\n"
-                "Send /cancel to abort."
-            ),
-            "base_url": "https://api.anthropic.com",
-            "model": "claude-sonnet-4-5-20250929",
-            "step3_msg": (
-                "\u2705 Key received! (Step 2/2)\n\n"
-                "Type your model name (e.g. `claude-sonnet-4-5-20250929`).\n"
-                "Or pick one below:"
-            ),
-            "step3_buttons": InlineKeyboardMarkup([
-                [InlineKeyboardButton("Claude Sonnet 4.5 (default)", callback_data="model_claude-sonnet-4-5-20250929")],
-                [InlineKeyboardButton("Claude Haiku 3.5", callback_data="model_claude-3-5-haiku-20241022")],
-            ]),
-            "needs_base_url": False,
-        },
-        "setai_gemini": {
-            "name": "Google Gemini",
-            "instructions": (
-                "\U0001f511 *Google Gemini API* (Step 1/2)\n\n"
-                "Get your key at: aistudio.google.com/apikey\n\n"
-                "Send me your *API Key*:\n\n"
-                "Example: `AIzaSy-xxxxxxxx`\n\n"
-                "Send /cancel to abort."
-            ),
-            "base_url": "https://generativelanguage.googleapis.com",
-            "model": "gemini-2.0-flash",
-            "step3_msg": (
-                "\u2705 Key received! (Step 2/2)\n\n"
-                "Type your model name (e.g. `gemini-2.0-flash`).\n"
-                "Or pick one below:"
-            ),
-            "step3_buttons": InlineKeyboardMarkup([
-                [InlineKeyboardButton("Gemini 2.0 Flash (default)", callback_data="model_gemini-2.0-flash")],
-                [InlineKeyboardButton("Gemini 2.5 Pro", callback_data="model_gemini-2.5-pro")],
-            ]),
-            "needs_base_url": False,
-        },
+    provider_prompts = {
+        "setai_openai": (
+            "\U0001f511 *OpenAI-compatible \u2014 AI Agent*\n\n"
+            "Works with: OpenAI, DeepSeek, Groq, NVIDIA, etc.\n\n"
+            "Send me *3 lines*:\n"
+            "`api_key=your-key`\n"
+            "`base_url=https://api.openai.com`\n"
+            "`model=gpt-4o`\n\n"
+            "\U0001f4cb Examples:\n"
+            "\u2022 DeepSeek: `base_url=https://api.deepseek.com` + `model=deepseek-chat`\n"
+            "\u2022 Groq: `base_url=https://api.groq.com/openai` + `model=llama-3.3-70b-versatile`\n\n"
+            "\U0001f6a8 Key will be auto-deleted from chat.\n"
+            "Send /cancel to abort."
+        ),
+        "setai_anthropic": (
+            "\U0001f511 *Anthropic \u2014 AI Agent*\n\n"
+            "\U0001f517 Get key at: console.anthropic.com\n\n"
+            "Send me *3 lines*:\n"
+            "`api_key=sk-ant-api03-xxxxx`\n"
+            "`base_url=https://api.anthropic.com`\n"
+            "`model=claude-sonnet-4-5-20250929`\n\n"
+            "\U0001f6a8 Key will be auto-deleted from chat.\n"
+            "Send /cancel to abort."
+        ),
+        "setai_gemini": (
+            "\U0001f511 *Google Gemini \u2014 AI Agent*\n\n"
+            "\U0001f517 Get key at: aistudio.google.com/apikey\n\n"
+            "Send me *3 lines*:\n"
+            "`api_key=AIzaSy-xxxxx`\n"
+            "`base_url=https://generativelanguage.googleapis.com`\n"
+            "`model=gemini-2.0-flash`\n\n"
+            "\U0001f6a8 Key will be auto-deleted from chat.\n"
+            "Send /cancel to abort."
+        ),
     }
 
-    info = provider_map.get(query.data)
-    if not info:
+    prompt = provider_prompts.get(query.data)
+    if not prompt:
         return ConversationHandler.END
 
-    context.user_data["setai_provider"] = info
-    await query.edit_message_text(info["instructions"], parse_mode="Markdown")
-    return WAITING_AI_KEY
+    format_name = {"setai_openai": "openai", "setai_anthropic": "anthropic", "setai_gemini": "gemini"}
+    context.user_data["setai_format"] = format_name.get(query.data, "openai")
+    await query.edit_message_text(prompt, parse_mode="Markdown")
+    return WAITING_AI_CONFIG
 
 
-async def receive_ai_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Step 1: Receive API key."""
+async def receive_ai_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive api_key + base_url + model in one message, test, activate."""
     chat_id = update.effective_chat.id
     try:
         text = update.message.text.strip()
@@ -857,184 +815,42 @@ async def receive_ai_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-        if len(text) < 10:
+        # Parse key=value lines
+        api_key = ""
+        base_url = ""
+        model = ""
+        for line in text.splitlines():
+            line = line.strip()
+            if line.lower().startswith("api_key="):
+                api_key = line.split("=", 1)[1].strip()
+            elif line.lower().startswith("base_url="):
+                base_url = line.split("=", 1)[1].strip()
+            elif line.lower().startswith("model="):
+                model = line.split("=", 1)[1].strip()
+
+        # Validation
+        errors = []
+        if not api_key or len(api_key) < 10:
+            errors.append("\u2022 `api_key` missing or too short (need 10+ chars)")
+        if not base_url or not base_url.startswith("http"):
+            errors.append("\u2022 `base_url` missing or invalid (must start with http)")
+        if not model:
+            errors.append("\u2022 `model` missing")
+
+        if errors:
             await safe_send(context, chat_id,
-                "\u274c *API Key too short*\n\n"
-                "API keys are usually 30+ characters.\n"
-                "\u2705 Example: `sk-xxxxxxxxxxxxxxxxxxxxxxxx...`\n\n"
-                "Please send a valid API key:",
+                "\u274c *Invalid input \u2014 AI Agent*\n\n"
+                + "\n".join(errors) + "\n\n"
+                "Please send *3 lines*:\n"
+                "`api_key=your-key`\n"
+                "`base_url=https://...`\n"
+                "`model=model-name`\n\n"
+                "Send /cancel to abort.",
                 parse_mode="Markdown")
-            return WAITING_AI_KEY
+            return WAITING_AI_CONFIG
 
-        provider_info = context.user_data.get("setai_provider", {})
-        context.user_data["setai_api_key"] = text
-
-        if provider_info.get("needs_base_url"):
-            await safe_send(context, chat_id,
-                provider_info.get("step2_msg", "Choose provider URL:"),
-                parse_mode="Markdown",
-                reply_markup=provider_info.get("step2_buttons"))
-            return WAITING_AI_BASE_URL
-        else:
-            context.user_data["setai_base_url"] = provider_info.get("base_url", "")
-            await safe_send(context, chat_id,
-                provider_info.get("step3_msg", "Choose model:"),
-                parse_mode="Markdown",
-                reply_markup=provider_info.get("step3_buttons"))
-            return WAITING_AI_MODEL
-
-    except Exception as e:
-        logger.error(f"receive_ai_key error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}\n\nTry again or /cancel.")
-        return WAITING_AI_KEY
-
-
-async def handle_url_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle base URL button click in step 2."""
-    query = update.callback_query
-    try:
-        await query.answer()
-    except Exception:
-        pass
-    url = query.data.replace("url_", "")
-    context.user_data["setai_base_url"] = url
-    provider_info = context.user_data.get("setai_provider", {})
-    # Build model buttons based on selected URL
-    model_buttons = _model_buttons_for_url(url)
-    await query.edit_message_text(
-        provider_info.get("step3_msg", "Choose model:"),
-        parse_mode="Markdown",
-        reply_markup=model_buttons,
-    )
-    return WAITING_AI_MODEL
-
-
-def _model_buttons_for_url(url: str):
-    """Return model selection buttons based on the base URL."""
-    if "deepseek" in url:
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton("deepseek-chat (default)", callback_data="model_deepseek-chat")],
-            [InlineKeyboardButton("deepseek-reasoner", callback_data="model_deepseek-reasoner")],
-        ])
-    elif "openai" in url:
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton("gpt-4o (default)", callback_data="model_gpt-4o")],
-            [InlineKeyboardButton("gpt-4o-mini", callback_data="model_gpt-4o-mini")],
-            [InlineKeyboardButton("o3-mini", callback_data="model_o3-mini")],
-        ])
-    elif "groq" in url:
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton("llama-3.3-70b (default)", callback_data="model_llama-3.3-70b-versatile")],
-            [InlineKeyboardButton("mixtral-8x7b", callback_data="model_mixtral-8x7b-32768")],
-        ])
-    elif "nvidia" in url:
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton("qwen3.5-397b (default)", callback_data="model_qwen/qwen3.5-397b-a17b")],
-        ])
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Use provider default", callback_data="model_default")],
-    ])
-
-
-async def handle_model_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle model button click in step 3."""
-    query = update.callback_query
-    try:
-        await query.answer()
-    except Exception:
-        pass
-    model = query.data.replace("model_", "")
-    provider_info = context.user_data.get("setai_provider", {})
-    if model == "default":
-        model = provider_info.get("model", "deepseek-chat")
-
-    api_key = context.user_data.get("setai_api_key", "")
-    base_url = context.user_data.get("setai_base_url", "")
-    chat_id = query.message.chat_id
-    user_id = update.effective_user.id
-
-    await query.edit_message_text("\U0001f504 Testing your API key...")
-
-    test_ok = await ai_trader.test_ai_connection(api_key, base_url, model)
-    if not test_ok:
-        await safe_send(context, chat_id,
-            f"\u274c *API Test Failed \u2014 AI Agent*\n\n"
-            f"\u251c Provider: `{base_url}`\n"
-            f"\u2514 Model: `{model}`\n\n"
-            "Common causes:\n"
-            "\u2022 Invalid or expired API key\n"
-            "\u2022 Model name doesn't match provider\n"
-            "\u2022 Insufficient API credits\n\n"
-            "Try again with /setai.",
-            parse_mode="Markdown")
-        return ConversationHandler.END
-
-    ai_trader.save_user_ai_config(user_id, api_key, base_url, model)
-    existing = db.get_user(user_id)
-    if not existing:
-        db.save_user(user_id, "", "")
-
-    await safe_send(context, chat_id,
-        f"\u2705 *AI Agent Activated!*\n\n"
-        f"\u251c Provider: `{base_url}`\n"
-        f"\u2514 Model: `{model}`",
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("\U0001f3ad Choose Personality", callback_data="change_persona")],
-            [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-        ]))
-    return ConversationHandler.END
-
-
-async def receive_ai_base_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Step 2: Receive Base URL (text input fallback)."""
-    chat_id = update.effective_chat.id
-    try:
-        text = update.message.text.strip()
-        provider_info = context.user_data.get("setai_provider", {})
-
-        if text.lower() == "default":
-            text = provider_info.get("base_url", "https://api.deepseek.com")
-
-        if not text.startswith("http"):
-            await safe_send(context, chat_id,
-                "\u274c *Invalid URL*\n\n"
-                "URL must start with `http://` or `https://`.\n"
-                "\u2705 Correct: `https://api.deepseek.com`\n"
-                "\u274c Wrong: `api.deepseek.com`\n\n"
-                "Try again:",
-                parse_mode="Markdown")
-            return WAITING_AI_BASE_URL
-
-        context.user_data["setai_base_url"] = text
-        model_buttons = _model_buttons_for_url(text)
-        await safe_send(context, chat_id,
-            provider_info.get("step3_msg", "Choose model:"),
-            parse_mode="Markdown",
-            reply_markup=model_buttons)
-        return WAITING_AI_MODEL
-
-    except Exception as e:
-        logger.error(f"receive_ai_base_url error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}\n\nTry again or /cancel.")
-        return WAITING_AI_BASE_URL
-
-
-async def receive_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Step 3: Receive Model name, then test and activate."""
-    chat_id = update.effective_chat.id
-    try:
-        text = update.message.text.strip()
-        provider_info = context.user_data.get("setai_provider", {})
-
-        if text.lower() == "default":
-            text = provider_info.get("model", "deepseek-chat")
-
-        api_key = context.user_data.get("setai_api_key", "")
-        base_url = context.user_data.get("setai_base_url", "")
-        model = text
-
-        await safe_send(context, chat_id, "\U0001f504 Testing your API key...")
+        # Test connection
+        await safe_send(context, chat_id, "\U0001f504 Testing API connection...")
 
         test_result = await ai_trader.call_ai_api(api_key, base_url, model, [
             {"role": "system", "content": "You are a test bot."},
@@ -1046,18 +862,24 @@ async def receive_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"\u274c *API Test Failed \u2014 AI Agent*\n\n"
                 f"\u251c Provider: `{base_url}`\n"
                 f"\u251c Model: `{model}`\n"
-                f"\u2514 Error: `{test_result.get('reply', 'Unknown error')}`\n\n"
-                "Check your key/URL/model and try /setai again.",
+                f"\u2514 Error: `{test_result.get('reply', 'Unknown error')[:100]}`\n\n"
+                "Common causes:\n"
+                "\u2022 Invalid or expired API key\n"
+                "\u2022 Wrong base\\_url for your key\n"
+                "\u2022 Model name doesn't exist\n"
+                "\u2022 Insufficient API credits\n\n"
+                "Fix and resend, or /cancel.",
                 parse_mode="Markdown")
-            context.user_data.pop("setai_api_key", None)
-            context.user_data.pop("setai_base_url", None)
-            context.user_data.pop("setai_provider", None)
-            return ConversationHandler.END
+            return WAITING_AI_CONFIG
 
-        ai_trader.save_user_ai_config(update.effective_user.id, api_key, base_url, model)
-        context.user_data.pop("setai_api_key", None)
-        context.user_data.pop("setai_base_url", None)
-        context.user_data.pop("setai_provider", None)
+        # Success — save and activate
+        user_id = update.effective_user.id
+        ai_trader.save_user_ai_config(user_id, api_key, base_url, model)
+        existing = db.get_user(user_id)
+        if not existing:
+            db.save_user(user_id, "", "")
+
+        context.user_data.pop("setai_format", None)
 
         await safe_send(context, chat_id,
             f"\u2705 *AI Agent Activated!*\n\n"
@@ -1071,9 +893,9 @@ async def receive_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
     except Exception as e:
-        logger.error(f"receive_ai_model error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}\n\nTry /setai again.")
-        return ConversationHandler.END
+        logger.error(f"receive_ai_config error: {e}", exc_info=True)
+        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}\n\nTry again or /cancel.")
+        return WAITING_AI_CONFIG
 
 
 async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2150,15 +1972,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         # ── setai_* from ai_own_key_setup (outside ConversationHandler) ──
         if query.data.startswith("setai_"):
-            provider_names = {"setai_openai": "OpenAI-compatible", "setai_anthropic": "Anthropic (Claude)", "setai_gemini": "Google Gemini"}
-            name = provider_names.get(query.data, "your provider")
             await safe_edit(query,
-                f"\U0001f511 *{name} \u2014 AI Agent*\n\n"
-                f"To set up {name}, use the /setai command.\n"
-                f"It will walk you through entering your API key.",
+                "\U0001f511 *AI Provider \u2014 AI Agent*\n\n"
+                "Use /setai to configure your AI provider.\n"
+                "It will walk you through entering your key, URL, and model.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f519 Back", callback_data="ai_own_key_setup")]
+                    [InlineKeyboardButton("\U0001f519 Back", callback_data="ai_hub")],
                 ]))
             return
 
@@ -3447,18 +3267,10 @@ def main():
     ai_setup_handler = ConversationHandler(
         entry_points=[CommandHandler("setai", cmd_setai)],
         states={
-            WAITING_AI_KEY: [
+            WAITING_AI_CONFIG: [
                 CallbackQueryHandler(handle_setai_provider, pattern="^setai_"),
                 CallbackQueryHandler(handle_trade_callback),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_ai_key),
-            ],
-            WAITING_AI_BASE_URL: [
-                CallbackQueryHandler(handle_url_button, pattern="^url_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_ai_base_url),
-            ],
-            WAITING_AI_MODEL: [
-                CallbackQueryHandler(handle_model_button, pattern="^model_"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_ai_model),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_ai_config),
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel_setup)],
