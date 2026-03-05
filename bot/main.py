@@ -73,6 +73,16 @@ PERSONA_GREETINGS = {
 }
 
 
+def _side_label(side: str) -> str:
+    """Convert BUY/SELL to LONG/SHORT for display."""
+    s = side.upper()
+    if s == "BUY":
+        return "LONG"
+    if s == "SELL":
+        return "SHORT"
+    return side
+
+
 def _back_button(label: str = "\U0001f519 Back", cb: str = "back_to_dashboard") -> InlineKeyboardMarkup:
     """Single Back button — standard for all sub-screens."""
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data=cb)]])
@@ -1471,7 +1481,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 buttons = []
                 for o in orders:
                     sym = o.get("symbol", edgex_client.resolve_symbol(o.get("contractId", "")))
-                    o_side = o.get("side", "?")
+                    o_side = _side_label(o.get("side", "?"))
                     o_price = o.get("price", "?")
                     o_size = o.get("size", "?")
                     o_type = o.get("type", "LIMIT")
@@ -2367,7 +2377,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 order_count = len(orders)
                 order_lines = []
                 for o in orders[:5]:
-                    o_side = o.get("side", "?")
+                    o_side = _side_label(o.get("side", "?"))
                     o_price = o.get("price", "?")
                     o_size = o.get("size", "?")
                     o_type = o.get("type", "LIMIT")
@@ -2480,7 +2490,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             lines = [f"\U0001f4cb *Open Orders for {symbol}* ({len(orders)}):\n"]
             buttons = []
             for o in orders:
-                o_side = o.get("side", "?")
+                o_side = _side_label(o.get("side", "?"))
                 o_price = o.get("price", "?")
                 o_size = o.get("size", "?")
                 o_type = o.get("type", "LIMIT")
@@ -2517,7 +2527,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     orders = await edgex_client.get_open_orders(client)
                     for o in (orders or []):
                         if o.get("id", o.get("orderId", "")) == order_id:
-                            o_side = o.get("side", "?")
+                            o_side = _side_label(o.get("side", "?"))
                             o_price = o.get("price", "?")
                             o_size = o.get("size", "?")
                             o_type = o.get("type", "LIMIT")
@@ -2549,7 +2559,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         detail = f"\n\n{len(orders)} order(s):\n"
                         for o in orders[:5]:
                             sym = edgex_client.resolve_symbol(o.get("contractId", ""))
-                            o_side = o.get("side", "?")
+                            o_side = _side_label(o.get("side", "?"))
                             o_price = o.get("price", "?")
                             o_size = o.get("size", "?")
                             detail += f"\u2022 {sym} {o_side} {o_size} @ ${o_price}\n"
@@ -2718,7 +2728,7 @@ async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons = []
         for o in orders:
             symbol = o.get("symbol", edgex_client.resolve_symbol(o.get("contractId", "")))
-            o_side = o.get("side", "?")
+            o_side = _side_label(o.get("side", "?"))
             o_price = o.get("price", "?")
             o_size = o.get("size", "?")
             o_type = o.get("type", "LIMIT")
