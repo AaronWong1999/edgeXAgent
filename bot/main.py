@@ -2379,10 +2379,36 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data.startswith("close_confirm_"):
             target = query.data.replace("close_confirm_", "")
             await query.answer()
+            user = db.get_user(user_id)
             if target == "all":
+                # Fetch positions for detail
+                detail = ""
+                if user:
+                    try:
+                        client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                        summary = await edgex_client.get_account_summary(client)
+                        positions = summary.get("positions", [])
+                        open_pos = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
+                        if open_pos:
+                            detail = f"\n\n{len(open_pos)} position(s):\n"
+                            for p in open_pos:
+                                sym = edgex_client.resolve_symbol(p.get("contractId", ""))
+                                try:
+                                    sd = "LONG" if float(p.get("size", "0")) > 0 else "SHORT"
+                                except (ValueError, TypeError):
+                                    sd = "?"
+                                pv = p.get("positionValue", "0")
+                                try:
+                                    pv_str = f"${float(pv):.2f}"
+                                except (ValueError, TypeError):
+                                    pv_str = f"${pv}"
+                                detail += f"\u2022 {sym} {sd} {pv_str}\n"
+                    except Exception:
+                        pass
                 await safe_send(context, chat_id,
-                    "\U0001f534 *Market Close All \u2014 Trade on edgeX*\n\n"
-                    "\u26a0\ufe0f This will market-close ALL open positions. Are you sure?",
+                    f"\U0001f534 *Market Close All \u2014 Trade on edgeX*\n\n"
+                    f"\u26a0\ufe0f This will market-close ALL open positions.{detail}\n"
+                    f"Are you sure?",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
                         [InlineKeyboardButton("\u2705 Yes, close all", callback_data="close_all_yes")],
@@ -2390,9 +2416,39 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     ]))
             else:
                 symbol = edgex_client.resolve_symbol(target)
+                # Fetch position details
+                detail = ""
+                sd = ""
+                if user:
+                    try:
+                        client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                        summary = await edgex_client.get_account_summary(client)
+                        for p in summary.get("positions", []):
+                            if isinstance(p, dict) and p.get("contractId") == target:
+                                try:
+                                    sd = "LONG" if float(p.get("size", "0")) > 0 else "SHORT"
+                                except (ValueError, TypeError):
+                                    sd = "?"
+                                pv = p.get("positionValue", "0")
+                                try:
+                                    pv_str = f"${float(pv):.2f}"
+                                except (ValueError, TypeError):
+                                    pv_str = f"${pv}"
+                                upnl = p.get("unrealizedPnl", "0")
+                                try:
+                                    upnl_f = float(upnl)
+                                    upnl_str = f"+${upnl_f:.2f}" if upnl_f >= 0 else f"-${abs(upnl_f):.2f}"
+                                except (ValueError, TypeError):
+                                    upnl_str = f"${upnl}"
+                                entry = p.get("entryPrice", "0")
+                                detail = f"\n\n\u251c {sd} | Value: `{pv_str}` | Entry: `${entry}`\n\u2514 PnL: `{upnl_str}`"
+                                break
+                    except Exception:
+                        pass
                 await safe_send(context, chat_id,
-                    f"\U0001f534 *Market Close {symbol} \u2014 Trade on edgeX*\n\n"
-                    f"\u26a0\ufe0f This will market-close your {symbol} position. Are you sure?",
+                    f"\U0001f534 *Market Close {symbol}{' ' + sd if sd else ''} \u2014 Trade on edgeX*\n\n"
+                    f"\u26a0\ufe0f This will market-close your {symbol} position.{detail}\n\n"
+                    f"Are you sure?",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
                         [InlineKeyboardButton(f"\u2705 Yes, close {symbol}", callback_data=f"close_{target}")],
@@ -2424,14 +2480,18 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 for p in open_pos:
                     cid = p.get("contractId", "")
                     sym = edgex_client.resolve_symbol(cid)
+                    try:
+                        sd = "LONG" if float(p.get("size", "0")) > 0 else "SHORT"
+                    except (ValueError, TypeError):
+                        sd = "?"
                     r = await edgex_client.close_position(client, cid, p)
-                    results.append((sym, r))
+                    results.append((sym, sd, r))
                 msg = "\U0001f534 *Close All \u2014 Trade on edgeX*\n\n"
-                for sym, r in results:
+                for sym, sd, r in results:
                     if r.get("code") == "SUCCESS":
-                        msg += f"\u2705 {sym} closed\n"
+                        msg += f"\u2705 {sym} {sd} closed\n"
                     else:
-                        msg += f"\u274c {sym}: {r.get('error', r.get('msg', 'failed'))[:60]}\n"
+                        msg += f"\u274c {sym} {sd}: {r.get('error', r.get('msg', 'failed'))[:60]}\n"
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_main_menu_kb)
             except Exception as e:
                 await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_main_menu_kb)
@@ -2637,8 +2697,27 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data.startswith("cancelone_confirm_"):
             order_id = query.data.replace("cancelone_confirm_", "")
             await query.answer()
+            # Fetch order details
+            detail = ""
+            user = db.get_user(user_id)
+            if user:
+                try:
+                    client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                    orders = await edgex_client.get_open_orders(client)
+                    for o in (orders or []):
+                        if o.get("id", o.get("orderId", "")) == order_id:
+                            o_side = o.get("side", "?")
+                            o_price = o.get("price", "?")
+                            o_size = o.get("size", "?")
+                            o_type = o.get("type", "LIMIT")
+                            sym = edgex_client.resolve_symbol(o.get("contractId", ""))
+                            detail = f"\n\n\u251c {sym} {o_side} {o_type}\n\u251c Size: `{o_size}` | Price: `${o_price}`\n\u2514 Order ID: `{order_id[:16]}...`"
+                            break
+                except Exception:
+                    pass
             await safe_send(context, chat_id,
-                f"\u274c *Cancel Order \u2014 Trade on edgeX*\n\nCancel this order?",
+                f"\u274c *Cancel Order \u2014 Trade on edgeX*\n\n"
+                f"\u26a0\ufe0f Cancel this order?{detail}",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("\u2705 Yes, cancel", callback_data=f"cancelone_{order_id}")],
@@ -2648,8 +2727,28 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data == "cancelorders_confirm_all":
             await query.answer()
+            # Fetch order count
+            detail = ""
+            user = db.get_user(user_id)
+            if user:
+                try:
+                    client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                    orders = await edgex_client.get_open_orders(client)
+                    if orders:
+                        detail = f"\n\n{len(orders)} order(s):\n"
+                        for o in orders[:5]:
+                            sym = edgex_client.resolve_symbol(o.get("contractId", ""))
+                            o_side = o.get("side", "?")
+                            o_price = o.get("price", "?")
+                            o_size = o.get("size", "?")
+                            detail += f"\u2022 {sym} {o_side} {o_size} @ ${o_price}\n"
+                        if len(orders) > 5:
+                            detail += f"... and {len(orders) - 5} more\n"
+                except Exception:
+                    pass
             await safe_send(context, chat_id,
-                "\u274c *Cancel All Orders \u2014 Trade on edgeX*\n\n\u26a0\ufe0f Cancel ALL open orders?",
+                f"\u274c *Cancel All Orders \u2014 Trade on edgeX*\n\n"
+                f"\u26a0\ufe0f Cancel ALL open orders?{detail}",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("\u2705 Yes, cancel all", callback_data="cancelorders_all")],
