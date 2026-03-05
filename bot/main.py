@@ -25,7 +25,6 @@ import edgex_client
 import ai_trader
 import memory as mem
 import news_push
-import bwenews_monitor
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1467,54 +1466,81 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 await query.edit_message_text("\u2714\ufe0f Dismissed")
             return
 
-        # ── Inline translation ──
+        # ── Inline translation — full news card ──
         if query.data.startswith("tl_"):
             lang_code = query.data[3:]
             LANG_NAMES = {
-                "zh": "\U0001f1e8\U0001f1f3 \u4e2d\u6587", "ja": "\U0001f1ef\U0001f1f5 \u65e5\u672c\u8a9e",
-                "ko": "\U0001f1f0\U0001f1f7 \ud55c\uad6d\uc5b4", "ru": "\U0001f1f7\U0001f1fa \u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+                "zh": "Chinese", "ja": "Japanese", "ko": "Korean", "ru": "Russian",
             }
-            lang_label = LANG_NAMES.get(lang_code, lang_code)
-            # Extract headline from the message (first line, strip bold markers)
+            SENTIMENT_TL = {
+                "zh": {"BULLISH": "\u770b\u6da8", "BEARISH": "\u770b\u8dcc", "HIGH": "\u9ad8", "MEDIUM": "\u4e2d", "LOW": "\u4f4e"},
+                "ja": {"BULLISH": "\u5f37\u6c17", "BEARISH": "\u5f31\u6c17", "HIGH": "\u9ad8", "MEDIUM": "\u4e2d", "LOW": "\u4f4e"},
+                "ko": {"BULLISH": "\uac15\uc138", "BEARISH": "\uc57d\uc138", "HIGH": "\ub192\uc74c", "MEDIUM": "\uc911\uac04", "LOW": "\ub0ae\uc74c"},
+                "ru": {"BULLISH": "\u0411\u044b\u0447\u0438\u0439", "BEARISH": "\u041c\u0435\u0434\u0432\u0435\u0436\u0438\u0439", "HIGH": "\u0412\u044b\u0441.", "MEDIUM": "\u0421\u0440\u0435\u0434.", "LOW": "\u041d\u0438\u0437."},
+            }
+            target_lang = LANG_NAMES.get(lang_code, lang_code)
             msg_text = query.message.text or ""
-            first_line = msg_text.split("\n")[0].strip()
-            # Remove source prefix like "BWEnews: " or "CryptoNews: "
+            lines = msg_text.split("\n")
+            # Parse original card: line 0 = "Source: headline", find timestamp, find sentiment
+            first_line = lines[0].strip()
+            source_prefix = "BWEnews"
+            headline = first_line
             if ": " in first_line:
-                headline = first_line.split(": ", 1)[1]
-            else:
-                headline = first_line
+                source_prefix, headline = first_line.split(": ", 1)
+            # Find timestamp line and sentiment line
+            ts_line = ""
+            sentiment_line = ""
+            for line in lines:
+                line = line.strip()
+                if line and line[0].isdigit() and "UTC" in line:
+                    ts_line = line
+                if line and ("\U0001f7e2" in line or "\U0001f534" in line):
+                    sentiment_line = line
             if not headline or len(headline) < 5:
                 await safe_send(context, chat_id, "\u274c No headline to translate.")
                 return
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
-                import asyncio as _aio
                 factory_key = os.environ.get("FACTORY_API_KEY", "")
-                proc = await _aio.create_subprocess_exec(
+                proc = await asyncio.create_subprocess_exec(
                     "/home/ubuntu/.local/bin/droid", "exec",
                     "-m", "claude-sonnet-4-5-20250929",
-                    f"Translate the following news headline to {lang_code}. Return ONLY the translation, nothing else:\n\n{headline}",
-                    stdout=_aio.subprocess.PIPE, stderr=_aio.subprocess.PIPE,
+                    f"Translate the following news headline to {target_lang}. Return ONLY the translation, nothing else:\n\n{headline}",
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                     env={"PATH": "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin",
                          "HOME": "/home/ubuntu", "FACTORY_API_KEY": factory_key},
                 )
-                stdout, _ = await _aio.wait_for(proc.communicate(), timeout=20)
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
                 translation = stdout.decode().strip().lstrip('\x00\x01\x02\x03\x04\x05\x06\x07\x08')
-                # Droid exec with json format wraps in {"result": "..."}
                 try:
                     import json as _json
                     wrapper = _json.loads(translation)
                     translation = wrapper.get("result", translation)
                 except (ValueError, TypeError):
                     pass
-                translation = translation.strip().strip('"').strip("'")
-                if translation:
-                    await safe_send(context, chat_id, f"{lang_label}\n\n*{translation}*",
-                        parse_mode="Markdown")
-                else:
+                translation = str(translation).strip().strip('"').strip("'")
+                if not translation:
                     await safe_send(context, chat_id, "\u274c Translation failed.")
+                    return
+                # Build translated news card
+                card = f"*{source_prefix}: {translation}*"
+                if ts_line:
+                    card += f"\n\n{'─' * 16}\n{ts_line}"
+                if sentiment_line:
+                    # Translate sentiment labels
+                    tl_map = SENTIMENT_TL.get(lang_code, {})
+                    tl_sent = sentiment_line
+                    for en, loc in tl_map.items():
+                        tl_sent = tl_sent.replace(en, loc)
+                    card += f"\n\n{tl_sent}"
+                # Same buttons as original
+                await safe_send(context, chat_id, card, parse_mode="Markdown",
+                    reply_markup=query.message.reply_markup)
+            except asyncio.TimeoutError:
+                logger.warning("Translation timed out")
+                await safe_send(context, chat_id, "\u274c Translation timed out. Try again.")
             except Exception as e:
-                logger.warning(f"Translation error: {e}")
+                logger.warning(f"Translation error: {type(e).__name__}: {e}")
                 await safe_send(context, chat_id, "\u274c Translation service unavailable.")
             return
 
@@ -2658,9 +2684,8 @@ async def post_init(application: Application):
                 BotCommand("logout", "Disconnect account"),
                 BotCommand("help", "All commands"),
             ])
-            # Start news push loops
+            # Start news push loop (polls all MCP sources including BWEnews)
             news_push.start_news_loop(application.bot)
-            await bwenews_monitor.start_monitor(application.bot)
             await application.bot.set_my_description(
                 "Your personal AI trading agent on edgeX.\n\n"
                 "Tell it your market view in any language — it analyzes, plans, and executes.\n\n"

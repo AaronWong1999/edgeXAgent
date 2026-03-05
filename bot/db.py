@@ -151,13 +151,12 @@ def init_db():
         VALUES ('free_crypto_news', 'Crypto News (Free)', 'https://modelcontextprotocol.name/mcp/free-crypto-news',
                 'get_latest_news', 'crypto', 0, 600, ?)
     """, (time.time(),))
-    # BWEnews as primary default source
+    # BWEnews as primary default source (via local MCP server)
     c.execute("""
         INSERT OR IGNORE INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, poll_interval_sec, created_at)
-        VALUES ('bwenews', 'BWEnews', '', '', 'crypto', 1, 0, ?)
+        VALUES ('bwenews', 'BWEnews', 'http://127.0.0.1:8788/mcp', 'get_bwenews', 'crypto', 1, 30, ?)
     """, (time.time(),))
-    # Migrate: make bwenews default, demote old free_crypto_news
-    c.execute("UPDATE news_sources SET is_default = 1 WHERE id = 'bwenews'")
+    c.execute("UPDATE news_sources SET is_default = 1, mcp_url = 'http://127.0.0.1:8788/mcp', mcp_tool = 'get_bwenews', poll_interval_sec = 30 WHERE id = 'bwenews'")
     c.execute("UPDATE news_sources SET is_default = 0 WHERE id = 'free_crypto_news'")
     conn.commit()
     conn.close()

@@ -41,7 +41,11 @@ def set_bot(bot):
 
 
 def _can_push_to_user(user_id: int, source_id: str) -> bool:
-    """Check if user hasn't exceeded their per-source max_per_hour."""
+    """Check if user hasn't exceeded their per-source max_per_hour.
+    BWEnews has no rate limit — trusted source.
+    """
+    if source_id == "bwenews":
+        return True
     max_per_hour = db.get_user_news_frequency(user_id, source_id)
     if max_per_hour <= 0:
         return False
@@ -291,12 +295,12 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
                 callback_data=f"news_trade_{asset}_{side}_{leverage}_150"),
         ])
 
-    # Translation buttons — one row: 中 日 韩 俄
+    # Translation buttons — one row, flags only
     buttons.append([
-        InlineKeyboardButton("\U0001f1e8\U0001f1f3 \u4e2d", callback_data="tl_zh"),
-        InlineKeyboardButton("\U0001f1ef\U0001f1f5 \u65e5", callback_data="tl_ja"),
-        InlineKeyboardButton("\U0001f1f0\U0001f1f7 \u97e9", callback_data="tl_ko"),
-        InlineKeyboardButton("\U0001f1f7\U0001f1fa \u0420\u0443", callback_data="tl_ru"),
+        InlineKeyboardButton("\U0001f1e8\U0001f1f3", callback_data="tl_zh"),
+        InlineKeyboardButton("\U0001f1ef\U0001f1f5", callback_data="tl_ja"),
+        InlineKeyboardButton("\U0001f1f0\U0001f1f7", callback_data="tl_ko"),
+        InlineKeyboardButton("\U0001f1f7\U0001f1fa", callback_data="tl_ru"),
     ])
 
     bottom = []

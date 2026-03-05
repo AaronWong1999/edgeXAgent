@@ -1,0 +1,15 @@
+[Unit]
+Description=BWEnews MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/edgex-agent-bot
+EnvironmentFile=/home/ubuntu/edgex-agent-bot/.env
+ExecStart=/home/ubuntu/edgex-agent-bot/venv/bin/python3 bwenews_mcp.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
