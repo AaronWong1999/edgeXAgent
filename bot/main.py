@@ -1356,19 +1356,19 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data.startswith("news_toggle_"):
-            parts = query.data.split("_")
-            source_id = parts[2]
-            enable = parts[3] == "on"
+            # Format: news_toggle_{source_id}_{on|off} — last segment is on/off
+            remainder = query.data[len("news_toggle_"):]
+            last_underscore = remainder.rfind("_")
+            source_id = remainder[:last_underscore]
+            enable = remainder[last_underscore + 1:] == "on"
             db.set_user_subscription(user_id, source_id, enable)
-            # Return to news main menu
             msg, keyboard = _news_main_menu(user_id)
-            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_freq_"):
             source_id = query.data[len("news_freq_"):]
             current = db.get_user_news_frequency(user_id, source_id)
-            # Show frequency options
             options = [1, 2, 3, 5, 10]
             buttons = []
             row = []
@@ -1381,26 +1381,24 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if row:
                 buttons.append(row)
             buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")])
-            await query.edit_message_text(
-                f"\u23f1 **Push Frequency**\n\nHow many news alerts per hour?\nCurrent: **{current}/hr**",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(buttons),
-            )
+            await safe_send(context, chat_id,
+                f"\u23f1 *Push Frequency*\n\nHow many alerts per hour?\nCurrent: *{current}/hr*",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
         if query.data.startswith("news_setfreq_"):
-            # news_setfreq_{source_id}_{max_per_hour}
-            parts = query.data.split("_")
-            source_id = parts[2]
-            max_per_hour = int(parts[3])
+            # Format: news_setfreq_{source_id}_{max_per_hour} — last segment is the number
+            remainder = query.data[len("news_setfreq_"):]
+            last_underscore = remainder.rfind("_")
+            source_id = remainder[:last_underscore]
+            max_per_hour = int(remainder[last_underscore + 1:])
             db.set_user_news_frequency(user_id, source_id, max_per_hour)
             msg, keyboard = _news_main_menu(user_id)
-            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_remove_"):
             source_id = query.data[len("news_remove_"):]
-            # Don't allow removing the default source, just unsubscribe
             sources = db.get_news_sources(enabled_only=False)
             src = next((s for s in sources if s["id"] == source_id), None)
             if src and src.get("is_default"):
@@ -1408,29 +1406,23 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             else:
                 db.remove_news_source(source_id)
             msg, keyboard = _news_main_menu(user_id)
-            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data == "news_add":
-            # Show available MCP tools to add
             buttons = [
                 [InlineKeyboardButton("\U0001f4b0 Bitcoin News", callback_data="news_addsrc_btc")],
                 [InlineKeyboardButton("\U0001f4a0 Ethereum News", callback_data="news_addsrc_eth")],
                 [InlineKeyboardButton("\U0001f30d DeFi News", callback_data="news_addsrc_defi")],
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
             ]
-            await query.edit_message_text(
-                "\u2795 **Add News Source**\n\n"
-                "Choose a topic to subscribe to.\n"
-                "Each source pushes relevant news analyzed by AI.",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(buttons),
-            )
+            await safe_send(context, chat_id,
+                "\u2795 *Add News Source*\n\nChoose a topic:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
         if query.data.startswith("news_addsrc_"):
             topic = query.data[len("news_addsrc_"):]
-            # Map topics to MCP tools
             topic_map = {
                 "btc": ("bitcoin_news", "Bitcoin News", "get_bitcoin_news"),
                 "eth": ("ethereum_news", "Ethereum News", "get_ethereum_news"),
@@ -1446,7 +1438,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 if added:
                     db.set_user_subscription(user_id, sid, True)
             msg, keyboard = _news_main_menu(user_id)
-            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_mute_"):
