@@ -144,12 +144,6 @@ html+=`<div class="tree-item"><div class="flow-row">${P('quick_history','📜 Hi
 // Logout modal
 html+=`<div class="tree-item"><div class="flow-row">${P('logout','🚪 Disconnect',`🚪 <b>Disconnect — Trade on edgeX</b>\n\nThis will log out your edgeX account. Are you sure?`,[{t:'✅ Yes, logout',c:'rd'},{t:'❌ Cancel',c:'gy'}],'NEW message (modal). Yes/No → edits modal.',3,'M')}${A('✅ or ❌')}${P('logout_result','Result',`🚪 <b>Disconnect — Trade on edgeX</b>\n\n✅ Successfully logged out.\n\n<span class="d">or: ❌ Logout cancelled. Your account is still connected.</span>`,[{t:'🏠 Main Menu',c:'bk f'}],'Edits modal. Main Menu → back_to_dashboard.',3)}</div></div>`;
 
-html+=`<div class="flow-label" style="margin-top:10px">💬 AI Chat / 📰 Event → Trade Plan → Execute (bot-triggered)</div><div class="tree-indent">`;
-html+=`<div class="tree-item"><div class="flow-row">${P('ai_chat','💬 AI Response',`✨ BTC at $71.9k. Bullish.\nLONG $50 at 3x?`,[{t:'🏠 Main Menu',c:'bk f'}],'User typed → AI replied (new msg).','P')}${A('TRADE')}${P('trade_plan','📋 Trade Plan',`⬆️ <b>Trade Plan — Trade on edgeX</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH\n<span class="d">Bitcoin showing strong momentum...</span>`,[{t:'✅ Confirm Execute',c:'gn'},{t:'❌ Cancel',c:'rd'}],'confirm_trade / cancel_trade. Triggered by AI chat or news LONG button.','P','S')}${A('✅')}${P('trade_exec','🔄 Executing',`🔄 <b>Executing LONG BTC — Trade on edgeX</b>\n\nPlacing order on edgeX...`,[],'Edits Plan msg.','P')}${A('result')}${P('trade_ok','✅ Trade Result',`⬆️ <b>LONG BTC — Trade on edgeX</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n├ Value: <code>~$100</code>\n├ TP: <code>$75,000</code>\n├ SL: <code>$70,000</code>\n└ Order ID: <code>abc123</code>`,[{t:'📊 BTC Position',c:'bl'},{t:'📤 Share PnL',c:'bl'},{t:'🔴 Close BTC',c:'rd'},{t:'📜 History',c:'bl'},{t:'🏠 Main Menu',c:'bk f'}],'Edits Executing msg.','P')}</div></div>`;
-html+=`<div class="tree-item">${NOTE('<b>Alternate outcomes:</b>')}</div>`;
-html+=`<div class="tree-item"><div class="flow-row">${P('trade_cancel','❌ Cancelled',`❌ <b>Trade Cancelled — Trade on edgeX</b>\n\nNo order was placed.`,[{t:'📈 Trade on edgeX',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'Edits Plan msg when user clicks ❌ Cancel.','P')}${OR()}${P('trade_err','❌ Blocked',`❌ <b>Trade Blocked — Trade on edgeX</b>\n\nInsufficient balance (available: <code>$12.34</code>)`,[{t:'🔴 Close a Position',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit USDT',c:'bl f'},{t:'📊 Status',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'Edits Executing msg when API returns error.','P')}</div></div>`;
-html+=`</div>`;
-
 html+=`</div></div></div>`;
 
 // ═══ MODULE 2: AI AGENT ═══
@@ -179,7 +173,20 @@ html+=`<div class="tree-item">${NOTE('<b>Persona greetings:</b> Degen="LFG! Apin
 html+=`<div class="tree-item"><div class="flow-row">${P('mem','📝 Memory',`📝 <b>Memory — AI Agent</b>\n\n├ Messages: <code>26</code>\n└ Summaries: <code>2</code>`,[{t:'🗑 Clear Memory',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'memory_clear_confirm (modal) / ai_hub',3)}${AN('modal')}${P('mem_modal','🗑 Clear Confirm',`🗑 <b>Clear Memory — AI Agent</b>\n\nAll conversation history and preferences will be deleted.\nThis cannot be undone.`,[{t:'✅ Yes, clear all',c:'rd'},{t:'❌ Keep',c:'gy'}],'NEW message (modal).',3,'M')}</div></div>`;
 html+=`<div class="tree-item">${NOTE('<b>Clear Memory results (edits modal):</b>')}</div>`;
 html+=`<div class="tree-item"><div class="flow-row">${P('mem_yes','✅ Cleared',`🗑 <b>Clear Memory — AI Agent</b>\n\n✅ Memory cleared.\n\n├ Deleted: <code>26</code> messages\n└ Deleted: <code>2</code> summaries\n\nYour Agent starts fresh. Chat to build new memory.`,[{t:'🏠 Main Menu',c:'bk f'}],'Edits modal.',3)}${OR()}${P('mem_no','❌ Kept',`🗑 <b>Clear Memory — AI Agent</b>\n\n❌ Cancelled. Your memory is safe.\n\nAll conversations and preferences kept intact.`,[{t:'🏠 Main Menu',c:'bk f'}],'Edits modal.',3)}</div></div>`;
-html+=`</div></div></div>`;
+html+=`</div>`;
+html+=`<div class="flow-section"><div class="flow-label" style="margin-top:10px">💬 AI Chat → Trade Execution (user chats → AI suggests trade → execute)</div><div class="flow-row">`;
+html+=P('ai_chat','💬 AI Response',`✨ BTC at $71.9k. Bullish.\nLONG $50 at 3x?`,[{t:'🏠 Main Menu',c:'bk f'}],'User typed message → AI replied (new msg). If AI detects trade intent:','P');
+html+=A('TRADE');
+html+=P('trade_plan','📋 Trade Plan',`⬆️ <b>Trade Plan — Trade on edgeX</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH\n<span class="d">Bitcoin showing strong momentum...</span>`,[{t:'✅ Confirm Execute',c:'gn'},{t:'❌ Cancel',c:'rd'}],'SHARED: same screen from AI chat + Event news. confirm_trade / cancel_trade.',3,'S');
+html+=A('✅ Confirm');
+html+=P('trade_exec','🔄 Executing',`🔄 <b>Executing LONG BTC — Trade on edgeX</b>\n\nPlacing order on edgeX...`,[],'Edits Trade Plan msg.',3);
+html+=A('result');
+html+=P('trade_ok','✅ Trade Result',`⬆️ <b>LONG BTC — Trade on edgeX</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n├ Value: <code>~$100</code>\n├ TP: <code>$75,000</code>\n├ SL: <code>$70,000</code>\n└ Order ID: <code>abc123</code>`,[{t:'📊 BTC Position',c:'bl'},{t:'📤 Share PnL',c:'bl'},{t:'🔴 Close BTC',c:'rd'},{t:'📜 History',c:'bl'},{t:'🏠 Main Menu',c:'bk f'}],'Edits Executing msg. Buttons → Trade Hub screens.',3);
+html+=`</div>`;
+html+=`<div class="flow-label" style="margin-top:4px">↳ Alternate outcomes (edits Trade Plan / Executing msg)</div><div class="tree-indent">`;
+html+=`<div class="tree-item"><div class="flow-row">${P('trade_cancel','❌ Cancelled',`❌ <b>Trade Cancelled — Trade on edgeX</b>\n\nNo order was placed.`,[{t:'📈 Trade on edgeX',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'User clicked ❌ Cancel on Trade Plan.',3)}${OR()}${P('trade_err','❌ Blocked',`❌ <b>Trade Blocked — Trade on edgeX</b>\n\nInsufficient balance (available: <code>$12.34</code>)`,[{t:'🔴 Close a Position',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit USDT',c:'bl f'},{t:'📊 Status',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'API returned error. Smart recovery buttons.',3)}</div></div>`;
+html+=`</div></div>`;
+html+=`</div></div>`;
 
 // ═══ MODULE 3: EVENT TRADING ═══
 html+=`<div class="module"><div class="mod-hdr m-event"><div class="ic">📰</div><div class="inf"><h2>Event Trading</h2><p>Titles: "Screen — Event Trading". No login required.</p></div></div>`;
@@ -193,6 +200,9 @@ html+=`<div class="flow-section"><div class="flow-label" style="margin-top:10px"
 html+=P('news_alert','📰 News Alert',`<b>BWEnews: SEC approves Solana ETF</b>\n\n────────────────\n2026-03-05 08:00 UTC\n\n⬆️ SOL | BULLISH | ███ HIGH`,[{t:'📈 LONG SOL $50',c:'gn'},{t:'📈 LONG SOL $150',c:'gn'},{t:'🇨🇳 中',c:'gy',w:'q'},{t:'🇯🇵 日',c:'gy',w:'q'},{t:'🇰🇷 韩',c:'gy',w:'q'},{t:'🇷🇺 Ру',c:'gy',w:'q'},{t:'🔗 Source',c:'gy',w:'t'},{t:'🔕 Mute',c:'gy',w:'t'},{t:'❌ Dismiss',c:'gy',w:'t'}],'LONG→news_trade_. Flags→tl_. Mute→toast. Dismiss→delete.','P');
 html+=A('🇨🇳');
 html+=P('news_tl','🇨🇳 Translation',`<b>BWEnews: SEC批准Solana ETF</b>\n\n⬆️ SOL | 看涨 | ███ 高`,[{t:'📈 LONG SOL $50',c:'gn'},{t:'📈 LONG SOL $150',c:'gn'}],'New msg. Same trade buttons.','P');
+html+=`</div>`;
+html+=`<div class="flow-label" style="margin-top:4px">↳ 📈 LONG button → Trade execution (reuses SHARED Trade Plan)</div><div class="tree-indent">`;
+html+=`<div class="tree-item">${NOTE('User clicks 📈 LONG SOL $50 → 📋 <b>Trade Plan</b> (SHARED) → 🔄 Executing → ✅ Result / ❌ Cancel / ❌ Blocked.<br>Same screens as AI Chat flow. See AI Agent module for full detail.')}</div>`;
 html+=`</div></div>`;
 html+=`</div></div>`;
 
