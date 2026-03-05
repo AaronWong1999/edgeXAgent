@@ -9,28 +9,42 @@
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#1a1a2e; color:#eee; min-height:100vh; }
 h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
 .subtitle { text-align:center; color:#888; font-size:13px; margin-bottom:20px; }
+.stats { display:flex; justify-content:center; gap:40px; margin-bottom:24px; }
+.stat { text-align:center; }
+.stat-num { font-size:28px; font-weight:700; color:#4a90d9; }
+.stat-label { font-size:11px; color:#888; }
+.rule-box { background:#111827; border:1px solid #333; border-radius:10px; padding:16px 20px; margin:0 auto 24px; max-width:900px; font-size:13px; line-height:1.6; }
+.rule-box h3 { color:#4a90d9; margin-bottom:8px; } .rule-box li { color:#ccc; margin-bottom:4px; } .rule-box b { color:#fff; }
+.search-bar { display:flex; justify-content:center; margin-bottom:20px; }
+.search-bar input { padding:7px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
+.search-bar input:focus { border-color:#4a90d9; }
 
-/* Module sections */
-.module { margin:0 auto 48px; max-width:1400px; padding:0 20px; position:relative; }
+.module { margin:0 auto 48px; max-width:1500px; padding:0 20px; }
 .module-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; padding:12px 20px; border-radius:10px; }
-.module-header.trade { background:linear-gradient(135deg, #1a4a3a, #0e2a1f); border:1px solid #2d6a4f; }
-.module-header.ai { background:linear-gradient(135deg, #1a2a4a, #0e1a2f); border:1px solid #4a90d9; }
-.module-header.event { background:linear-gradient(135deg, #3a2a1a, #2f1a0e); border:1px solid #e07c24; }
-.module-header.push { background:linear-gradient(135deg, #3a1a1a, #2f0e0e); border:1px solid #c0392b; }
+.module-header.trade { background:linear-gradient(135deg,#1a4a3a,#0e2a1f); border:1px solid #2d6a4f; }
+.module-header.ai { background:linear-gradient(135deg,#1a2a4a,#0e1a2f); border:1px solid #4a90d9; }
+.module-header.event { background:linear-gradient(135deg,#3a2a1a,#2f1a0e); border:1px solid #e07c24; }
+.module-header.push { background:linear-gradient(135deg,#3a1a1a,#2f0e0e); border:1px solid #c0392b; }
 .module-header .icon { font-size:28px; }
-.module-header .info h2 { font-size:18px; color:#fff; }
-.module-header .info p { font-size:12px; color:#999; margin-top:2px; }
+.module-header .info h2 { font-size:18px; color:#fff; } .module-header .info p { font-size:12px; color:#999; margin-top:2px; }
 
-/* Flow rows */
-.flow-row { display:flex; align-items:flex-start; gap:0; margin-bottom:24px; position:relative; }
-.flow-level { display:flex; flex-direction:column; align-items:center; min-width:60px; padding-top:10px; }
-.flow-level .tag { writing-mode:vertical-rl; text-orientation:mixed; font-size:10px; font-weight:700; padding:6px 4px; border-radius:4px; color:#fff; letter-spacing:1px; }
-.flow-level .tag.l1 { background:#2d6a4f; } .flow-level .tag.l2 { background:#4a90d9; } .flow-level .tag.l3 { background:#e07c24; } .flow-level .tag.push { background:#c0392b; }
+/* Tree layout */
+.tree { position:relative; padding-left:30px; }
+.tree-node { position:relative; margin-bottom:16px; }
+.tree-node::before { content:''; position:absolute; left:-20px; top:20px; width:16px; height:2px; background:#444; }
+.tree-node:last-child::after { content:''; position:absolute; left:-24px; top:20px; bottom:0; width:4px; background:#1a1a2e; }
+.tree-branch { position:relative; padding-left:30px; margin-left:0; border-left:2px solid #444; }
+.tree-branch::before { display:none; }
+.tree-root { position:relative; }
+.tree-root > .tree-branch { margin-top:8px; }
 
-.flow-screens { display:flex; flex-wrap:wrap; gap:14px; flex:1; position:relative; }
+/* States row (no tree lines) */
+.states-row { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:8px; }
+.state-label { font-size:10px; color:#666; padding:2px 8px; background:#1a2433; border-radius:4px; margin-bottom:4px; display:inline-block; }
+.or-divider { display:flex; align-items:center; padding:0 6px; color:#555; font-size:11px; font-style:italic; }
 
-/* Phones */
-.phone { width:260px; flex-shrink:0; background:#0e1621; border-radius:12px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,.4); border:2px solid #333; transition:transform .15s; position:relative; }
+/* Phone cards */
+.phone { width:260px; flex-shrink:0; background:#0e1621; border-radius:12px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,.4); border:2px solid #333; transition:transform .15s; position:relative; display:inline-block; vertical-align:top; }
 .phone:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.5); }
 .phone-header { background:#17212b; padding:6px 10px; display:flex; align-items:center; gap:6px; border-bottom:1px solid #222; }
 .phone-header .avatar { width:24px; height:24px; border-radius:50%; background:#4a90d9; display:flex; align-items:center; justify-content:center; font-size:12px; }
@@ -45,39 +59,23 @@ h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
 .tg-btn.blue { background:#2f6ea5; color:#fff; } .tg-btn.green { background:#2d6a4f; color:#fff; } .tg-btn.red { background:#8b2c2c; color:#fff; }
 .tg-btn.gray { background:#2a3441; color:#aaa; } .tg-btn.back { background:#1e2a36; color:#6ba3d6; border:1px solid #2f4f6f; }
 .phone-footer { padding:4px 6px; font-size:8px; color:#556; border-top:1px solid #1a2433; line-height:1.3; }
-.phone .screen-title { position:absolute; top:36px; left:6px; font-size:8px; color:#555; font-family:monospace; }
+.phone .sid { position:absolute; top:36px; left:6px; font-size:7px; color:#444; font-family:monospace; }
+.phone .lvl-badge { position:absolute; top:36px; right:6px; font-size:8px; padding:1px 5px; border-radius:4px; font-weight:600; }
+.lvl-badge.l1 { background:#2d6a4f; color:#fff; } .lvl-badge.l2 { background:#4a90d9; color:#fff; } .lvl-badge.l3 { background:#e07c24; color:#fff; } .lvl-badge.push { background:#c0392b; color:#fff; }
 
-/* Connection arrows */
-.arrow-connector { display:flex; align-items:center; padding:0 4px; min-width:30px; }
-.arrow-connector svg { overflow:visible; }
-.flow-arrow { display:inline-flex; align-items:center; color:#4a90d9; font-size:18px; padding:0 2px; }
-.flow-group-label { font-size:10px; color:#666; padding:4px 0; text-align:center; }
-
-/* Vertical connector lines between flow rows */
-.vline { width:2px; height:24px; background:#333; margin:0 auto; }
+/* Seq flow for push layer */
+.seq-flow { display:flex; align-items:flex-start; gap:0; flex-wrap:wrap; margin-bottom:16px; }
+.seq-arrow { display:flex; align-items:center; padding:10px 4px 0; color:#c0392b; font-size:20px; font-weight:bold; }
+.seq-label { font-size:9px; color:#888; text-align:center; margin-top:4px; display:block; }
 
 .phone.highlight { border-color:#4a90d9 !important; box-shadow:0 0 12px rgba(74,144,217,.4) !important; }
 .phone.dimmed { opacity:.2; }
-@media(max-width:700px) { .phone { width:100%; } .flow-row { flex-direction:column; } .flow-level { flex-direction:row; min-width:auto; padding:0 0 8px; } .flow-level .tag { writing-mode:horizontal-tb; } }
-
-.search-bar { display:flex; justify-content:center; margin-bottom:20px; }
-.search-bar input { padding:7px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
-.search-bar input:focus { border-color:#4a90d9; }
-
-.rule-box { background:#111827; border:1px solid #333; border-radius:10px; padding:16px 20px; margin:0 auto 24px; max-width:900px; font-size:13px; line-height:1.6; }
-.rule-box h3 { color:#4a90d9; margin-bottom:8px; }
-.rule-box li { color:#ccc; margin-bottom:4px; }
-.rule-box b { color:#fff; }
-
-.stats { display:flex; justify-content:center; gap:40px; margin-bottom:24px; }
-.stat { text-align:center; }
-.stat-num { font-size:28px; font-weight:700; color:#4a90d9; }
-.stat-label { font-size:11px; color:#888; }
+@media(max-width:700px) { .phone { width:100%; } }
 </style>
 </head>
 <body>
 <h1>edgeX Agent — Navigation Blueprint v4</h1>
-<p class="subtitle">3 modules: Trade on edgeX / AI Agent / Event Trading — grouped by function with connection flow</p>
+<p class="subtitle">3 modules: 📈 Trade on edgeX / 🤖 AI Agent / 📰 Event Trading</p>
 
 <div class="stats">
 <div class="stat"><div class="stat-num">3</div><div class="stat-label">Modules</div></div>
@@ -86,13 +84,12 @@ h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
 </div>
 
 <div class="rule-box">
-<h3>Navigation Rules</h3>
+<h3>How to read this map</h3>
 <ul>
-<li><b>L1 Dashboard</b> — /start sends new message. Always 3 buttons. All navigation edits this message in-place.</li>
-<li><b>L2 Hubs</b> — Each module's main screen. Back → Dashboard.</li>
-<li><b>L3 Sub-screens</b> — Deeper actions within a module. Back → parent L2 Hub.</li>
-<li><b>Push Layer</b> — Bot-initiated messages (news alerts, AI chat, trade results). Separate from dashboard. Confirm→Execute→Result edits the same push message.</li>
-<li><b>Arrows →</b> show navigation direction. All within a module. No cross-module jumps except back to Dashboard.</li>
+<li><b>Tree lines (├──)</b> = "click this button to go there" — real parent→child navigation</li>
+<li><b>"or"</b> between screens = same position, different state (e.g. connected vs not)</li>
+<li><b>Sequential arrows (→)</b> in Push Layer = message edits in sequence (Plan → Executing → Result)</li>
+<li>Every screen has 🔙 Back to its parent. Every L2 hub Back → Dashboard. Every L3 Back → its L2 hub.</li>
 </ul>
 </div>
 
@@ -101,234 +98,112 @@ h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
 <div id="app"></div>
 
 <script>
-const EX = `<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"지금 SILVER 상황 어때?"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>\n<span class="dim">"Короткий NVDA на 100$"</span>`;
-const DASH_BODY = (s1,s2)=>`🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n${s1}\n${s2}\n\n👇 Tap a button or just talk to me:\n\n${EX}`;
-
-const MODULES = [
-// ════════════════════════════════════════════════
-// MODULE 0: DASHBOARD (L1)
-// ════════════════════════════════════════════════
-{
-  name:"Dashboard", icon:"🤖", color:"trade", desc:"L1 root — /start. Always 3 buttons.",
-  rows:[
-    { level:"L1", screens:[
-      {id:"dash_new", t:"New User",
-       b:DASH_BODY("👤 edgeX: not connected","✨ AI: not activated"),
-       btns:[{t:"🔗 Connect edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],
-       nav:"3 buttons always. News works without login."},
-      {id:"dash_mid", t:"Connected, No AI",
-       b:DASH_BODY("👤 edgeX: <code>71303066234567</code> ✅","✨ AI: not activated"),
-       btns:[{t:"📈 Trade on edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],
-       nav:"Trade replaces Connect after login."},
-      {id:"dash_full", t:"Full State",
-       b:DASH_BODY("👤 edgeX: <code>71303066234567</code> ✅","✨ AI: Active ✅"),
-       btns:[{t:"📈 Trade on edgeX",s:"blue full"},{t:"🤖 AI Agent",s:"blue full"},{t:"📰 Event Trading",s:"blue full"}],
-       nav:"All 3 modules active."},
-    ]}
-  ]
-},
-// ════════════════════════════════════════════════
-// MODULE 1: TRADE ON EDGEX
-// ════════════════════════════════════════════════
-{
-  name:"📈 Trade on edgeX", icon:"📈", color:"trade", desc:"Account overview, positions, orders, history. Login required.",
-  rows:[
-    { level:"L2", label:"Hub", screens:[
-      {id:"trade_hub", t:"📈 Trade Hub",
-       b:`📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234.56</code>\n└ Available: <code>$890.12</code>\n\n<b>Open Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) | PnL: <code>+$12.30</code>\n🔴 ETH SHORT <code>0.5</code> (3x) | PnL: <code>-$5.20</code>\n\nUnrealized P&L: 🟢 <code>+$7.10</code>`,
-       btns:[{t:"🔴 Close Position",s:"red"},{t:"📋 Orders",s:"blue"},{t:"📜 History",s:"blue"},{t:"🚪 Disconnect",s:"red"},{t:"🔙 Back",s:"back full"}],
-       nav:"Dashboard → here. Merged Status+P&L with leverage."},
-      {id:"show_login", t:"🔗 Connect edgeX",
-       b:`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,
-       btns:[{t:"⚡ One-Click OAuth (soon)",s:"gray full"},{t:"🔑 API Key",s:"blue full"},{t:"👤 Aaron's Account (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],
-       nav:"Dashboard (new user) → here."},
-    ]},
-    { level:"L3", label:"Sub-screens", screens:[
-      {id:"quick_close", t:"🔴 Close Position",
-       b:`🔴 <b>Close Position — edgeX Agent</b>\n\nSelect a position to close:\n\n• BTC LONG | Size: 0.01 | PnL: +$12.30\n• ETH SHORT | Size: 0.5 | PnL: -$5.20`,
-       btns:[{t:"Close BTC LONG",s:"red full"},{t:"Close ETH SHORT",s:"red full"},{t:"🔙 Back",s:"back full"}],
-       nav:"Trade Hub → here. Back → Trade Hub."},
-      {id:"quick_orders", t:"📋 Open Orders",
-       b:`📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n\n• BTC BUY LIMIT | Size: 100 | $70,000\n• ETH SELL LIMIT | Size: 50 | $4,100`,
-       btns:[{t:"❌ Cancel BTC",s:"red"},{t:"❌ Cancel ETH",s:"red"},{t:"❌ Cancel All",s:"red full"},{t:"🔙 Back",s:"back full"}],
-       nav:"Trade Hub → here. Back → Trade Hub."},
-      {id:"quick_history", t:"📜 Recent Trades",
-       b:`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71,234 | +$2.34\n🔴 DOGE SELL 300 @ $0.096 | -$0.03`,
-       btns:[{t:"🔙 Back",s:"back full"}],
-       nav:"Trade Hub → here. Back → Trade Hub."},
-      {id:"logout_confirm", t:"🚪 Disconnect",
-       b:`🚪 <b>Disconnect — edgeX Agent</b>\n\nThis will log out your edgeX account. Are you sure?`,
-       btns:[{t:"✅ Yes, logout",s:"red"},{t:"❌ Cancel",s:"gray"}],
-       nav:"Trade Hub → here. Cancel → Dashboard."},
-      {id:"login_api", t:"🔑 API Key Entry",
-       b:`🔑 <b>API Key — edgeX Agent</b>\n\n1. Go to edgex.exchange → API\n2. Copy Account ID\n3. Send it to me:`,
-       btns:[],
-       nav:"Connect → here. User types credentials."},
-    ]},
-  ]
-},
-// ════════════════════════════════════════════════
-// MODULE 2: AI AGENT
-// ════════════════════════════════════════════════
-{
-  name:"🤖 AI Agent", icon:"🤖", color:"ai", desc:"Personality, AI provider, memory. Requires activation.",
-  rows:[
-    { level:"L2", label:"Hub", screens:[
-      {id:"ai_hub", t:"🤖 AI Agent Hub",
-       b:`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs, <code>2</code> summaries`,
-       btns:[{t:"🎭 Personality",s:"blue"},{t:"🔑 AI Provider",s:"blue"},{t:"📝 Memory",s:"blue full"},{t:"🔙 Back",s:"back full"}],
-       nav:"Dashboard → here. Shows current AI config."},
-      {id:"ai_activate", t:"✨ Activate AI",
-       b:`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,
-       btns:[{t:"💳 edgeX Balance (soon)",s:"gray full"},{t:"🔑 Own API Key",s:"blue full"},{t:"⚡ Aaron's API (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],
-       nav:"Dashboard (no AI) → here. After activation → AI Hub."},
-    ]},
-    { level:"L3", label:"Sub-screens", screens:[
-      {id:"change_persona", t:"🎭 Personality",
-       b:`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,
-       btns:[{t:"🔥 Degen",s:"blue"},{t:"🎯 Sensei",s:"blue"},{t:"🤖 Cold Blood",s:"blue"},{t:"👀 Shitposter",s:"blue"},{t:"📚 Professor",s:"blue"},{t:"🐺 Wolf",s:"blue"},{t:"🌸 Moe",s:"blue"},{t:"🔙 Back",s:"back full"}],
-       nav:"AI Hub → here. Pick → toast → AI Hub."},
-      {id:"ai_provider", t:"🔑 AI Provider",
-       b:`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,
-       btns:[{t:"OpenAI / DeepSeek",s:"blue full"},{t:"Anthropic (Claude)",s:"blue full"},{t:"Google Gemini",s:"blue full"},{t:"🔙 Back",s:"back full"}],
-       nav:"AI Hub → here. Starts /setai wizard."},
-      {id:"settings_memory", t:"📝 Memory",
-       b:`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,
-       btns:[{t:"🗑 Clear Memory",s:"red full"},{t:"🔙 Back",s:"back full"}],
-       nav:"AI Hub → here. Back → AI Hub."},
-      {id:"memory_clear", t:"🗑 Clear Memory",
-       b:`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll conversation history will be deleted.`,
-       btns:[{t:"✅ Yes, clear",s:"red"},{t:"❌ Keep",s:"gray"}],
-       nav:"Memory → here. Keep → Memory. Yes → cleared."},
-    ]},
-  ]
-},
-// ════════════════════════════════════════════════
-// MODULE 3: EVENT TRADING
-// ════════════════════════════════════════════════
-{
-  name:"📰 Event Trading", icon:"📰", color:"event", desc:"AI-analyzed news, one-tap trade. No login required.",
-  rows:[
-    { level:"L2", label:"Hub", screens:[
-      {id:"news_hub", t:"📰 Event Trading Hub",
-       b:`📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with one-tap trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off\n❌ DeFi News — off`,
-       btns:[{t:"✅ BWEnews",s:"green",w:"third"},{t:"⏱ 5/hr",s:"gray",w:"third"},{t:"🗑",s:"gray",w:"quarter"},{t:"➕ Add Source",s:"blue full"},{t:"🔙 Back",s:"back full"}],
-       nav:"Dashboard → here. Works without login."},
-    ]},
-    { level:"L3", label:"Sub-screens", screens:[
-      {id:"news_freq", t:"⏱ Push Frequency",
-       b:`⏱ <b>Push Frequency — edgeX Agent</b>\n\nHow many alerts per hour?\nCurrent: <b>2/hr</b>`,
-       btns:[{t:"1/hr",s:"gray",w:"third"},{t:"> 2/hr",s:"blue",w:"third"},{t:"3/hr",s:"gray",w:"third"},{t:"5/hr",s:"gray",w:"third"},{t:"10/hr",s:"gray",w:"third"},{t:"🔙 Back",s:"back full"}],
-       nav:"News Hub → here. Select → News Hub."},
-      {id:"news_add", t:"➕ Add Source",
-       b:`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,
-       btns:[{t:"💰 Bitcoin",s:"blue full"},{t:"💠 Ethereum",s:"blue full"},{t:"🌍 DeFi",s:"blue full"},{t:"🔙 Back",s:"back full"}],
-       nav:"News Hub → here. Select → News Hub."},
-    ]},
-  ]
-},
-// ════════════════════════════════════════════════
-// MODULE 4: PUSH LAYER
-// ════════════════════════════════════════════════
-{
-  name:"⚡ Push Layer", icon:"⚡", color:"push", desc:"Bot-initiated: news alerts, AI chat, trade plans/results. Always new messages.",
-  rows:[
-    { level:"Push", label:"News Push Flow", screens:[
-      {id:"news_alert", t:"📰 News Alert",
-       b:`<b>BWEnews: SEC approves Solana ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH\n\n────────────────\n2026-03-05 08:00 UTC`,
-       btns:[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"},{t:"🔗 Source",s:"gray",w:"third"},{t:"🔕 Mute",s:"gray",w:"third"},{t:"❌ Dismiss",s:"gray",w:"third"}],
-       nav:"Pushed to user. Trade→Plan. Flags→Translation. Mute→toast. Dismiss→delete."},
-      {id:"news_tl", t:"🇨🇳 Translated",
-       b:`<b>BWEnews: SEC批准Solana ETF申请</b>\n\n🟢 SOL | 看涨 | ███ 高\n\n────────────────\n2026-03-05 08:00 UTC`,
-       btns:[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"}],
-       nav:"New msg. Same trade buttons."},
-    ]},
-    { level:"Push", label:"AI Chat + Trade Flow", screens:[
-      {id:"ai_chat", t:"💬 AI Chat",
-       b:`✨ BTC at $71.9k, up 3.6%. RSI 68, bullish.\n\nCautious LONG, $50 at 3x?`,
-       btns:[{t:"🏠 Main Menu",s:"back full"}],
-       nav:"User typed → AI replied."},
-      {id:"trade_plan", t:"📋 Trade Plan",
-       b:`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH`,
-       btns:[{t:"✅ Confirm",s:"green"},{t:"❌ Cancel",s:"red"}],
-       nav:"From AI chat or News trade button."},
-      {id:"trade_exec", t:"🔄 Executing",
-       b:`🔄 <b>Executing LONG BTC — edgeX Agent</b>\n\nPlacing order on edgeX...`,
-       btns:[],
-       nav:"Edits Plan msg. Temporary."},
-      {id:"trade_ok", t:"✅ Result",
-       b:`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n└ Order ID: <code>abc123</code>`,
-       btns:[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🔴 Close BTC",s:"red full"},{t:"🏠 Menu",s:"back full"}],
-       nav:"Edits Executing msg."},
-      {id:"trade_cancel", t:"❌ Cancelled",
-       b:`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,
-       btns:[{t:"📈 Trade",s:"blue"},{t:"🏠 Menu",s:"back full"}],
-       nav:"Edits Plan msg."},
-    ]},
-    { level:"Push", label:"Close + Error", screens:[
-      {id:"close_ok", t:"✅ Closed",
-       b:`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG closed\n├ P&L: <code>+$12.30</code>\n└ Balance: <code>$1,246.86</code>`,
-       btns:[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🏠 Menu",s:"back full"}],
-       nav:"New msg after close."},
-      {id:"trade_err", t:"❌ Error",
-       b:`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance ($12.34)`,
-       btns:[{t:"🔴 Close Position",s:"red"},{t:"📋 Cancel Orders",s:"red"},{t:"💰 Deposit",s:"blue full"},{t:"🏠 Menu",s:"back full"}],
-       nav:"Edits Executing msg. Smart buttons."},
-      {id:"logout_done", t:"🚪 Logged Out",
-       b:`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out. /start to reconnect.`,
-       btns:[{t:"🔗 Reconnect",s:"blue full"}],
-       nav:"Edits disconnect confirm."},
-    ]},
-  ]
-},
-];
-
-function renderPhone(s) {
+function P(id,t,b,btns,nav,lv) {
   let h = "";
-  if (s.btns && s.btns.length) {
+  if (btns && btns.length) {
     h = '<div class="btn-grid">';
-    for (const b of s.btns) {
-      let c = `tg-btn ${b.s||"blue"}`;
-      if (b.w==="third") c+=" third"; else if (b.w==="quarter") c+=" quarter";
-      h += `<button class="${c}">${b.t}</button>`;
-    }
+    for (const x of btns) { let c=`tg-btn ${x.s||"blue"}`; if(x.w==="third")c+=" third"; if(x.w==="quarter")c+=" quarter"; h+=`<button class="${c}">${x.t}</button>`; }
     h += "</div>";
   }
-  return `<div class="phone" data-search="${(s.t+" "+s.id+" "+(s.nav||"")).toLowerCase()}">
-  <span class="screen-title">#${s.id}</span>
-  <div class="phone-header"><div class="avatar">🤖</div><div class="name">edgeX Agent</div></div>
-  <div class="phone-body"><div class="msg-bubble">${s.b}</div>${h}</div>
-  <div class="phone-footer">${s.nav||""}</div></div>`;
+  const lvCls = lv==="P"?"push":"l"+lv;
+  const lvTxt = lv==="P"?"Push":"L"+lv;
+  return `<div class="phone" data-search="${(t+" "+id+" "+(nav||"")).toLowerCase()}"><span class="sid">#${id}</span><span class="lvl-badge ${lvCls}">${lvTxt}</span><div class="phone-header"><div class="avatar">🤖</div><div class="name">edgeX Agent</div></div><div class="phone-body"><div class="msg-bubble">${b}</div>${h}</div><div class="phone-footer">${nav||""}</div></div>`;
 }
 
-function renderArrow() {
-  return `<div class="arrow-connector"><span class="flow-arrow">→</span></div>`;
-}
+const EX = `<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>`;
+const DB = (s1,s2) => `🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n${s1}\n${s2}\n\n👇 Tap a button or just talk to me:\n\n${EX}`;
 
-function renderModule(m) {
-  let html = `<div class="module"><div class="module-header ${m.color}"><div class="icon">${m.icon}</div><div class="info"><h2>${m.name}</h2><p>${m.desc}</p></div></div>`;
-  for (let ri = 0; ri < m.rows.length; ri++) {
-    const row = m.rows[ri];
-    const tagClass = row.level === "Push" ? "push" : row.level.toLowerCase();
-    html += `<div class="flow-row">`;
-    html += `<div class="flow-level"><div class="tag ${tagClass}">${row.level}</div>`;
-    if (row.label) html += `<div class="flow-group-label">${row.label}</div>`;
-    html += `</div>`;
-    html += `<div class="flow-screens">`;
-    row.screens.forEach((s, i) => {
-      if (i > 0) html += renderArrow();
-      html += renderPhone(s);
-    });
-    html += `</div></div>`;
-    if (ri < m.rows.length - 1) {
-      html += `<div style="display:flex;align-items:center;gap:0;margin-left:25px;"><div class="vline"></div><span style="font-size:16px;color:#4a90d9;margin-left:-5px;">↓</span></div>`;
-    }
-  }
-  html += `</div>`;
-  return html;
-}
+let html = "";
 
-document.getElementById("app").innerHTML = MODULES.map(renderModule).join("");
+// ═══ DASHBOARD ═══
+html += `<div class="module"><div class="module-header trade"><div class="icon">🤖</div><div class="info"><h2>Dashboard</h2><p>L1 root — /start creates new message. Always 3 buttons. Buttons edit this message.</p></div></div>`;
+html += `<div class="states-row">`;
+html += `<div><div class="state-label">State 1: New user</div>${P("dash_new","New User",DB("👤 edgeX: not connected","✨ AI: not activated"),[{t:"🔗 Connect edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],"",1)}</div>`;
+html += `<div class="or-divider">or</div>`;
+html += `<div><div class="state-label">State 2: Connected, no AI</div>${P("dash_mid","Connected",DB("👤 edgeX: <code>71303066</code> ✅","✨ AI: not activated"),[{t:"📈 Trade on edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],"",1)}</div>`;
+html += `<div class="or-divider">or</div>`;
+html += `<div><div class="state-label">State 3: Full</div>${P("dash_full","Full State",DB("👤 edgeX: <code>71303066</code> ✅","✨ AI: Active ✅"),[{t:"📈 Trade on edgeX",s:"blue full"},{t:"🤖 AI Agent",s:"blue full"},{t:"📰 Event Trading",s:"blue full"}],"",1)}</div>`;
+html += `</div></div>`;
+
+// ═══ MODULE 1: TRADE ON EDGEX ═══
+html += `<div class="module"><div class="module-header trade"><div class="icon">📈</div><div class="info"><h2>Trade on edgeX</h2><p>Account overview, positions with leverage + P&L, close, orders, history. Login required.</p></div></div>`;
+html += `<div class="tree-root">`;
+// L2 Hub
+html += `<div class="states-row" style="margin-bottom:12px">`;
+html += `<div><div class="state-label">Before login</div>${P("show_login","🔗 Connect edgeX",`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,[{t:"⚡ One-Click OAuth (soon)",s:"gray full"},{t:"🔑 API Key",s:"blue full"},{t:"👤 Aaron's Account (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],"Dashboard > Connect",2)}</div>`;
+html += `<div class="or-divider">or (after login)</div>`;
+html += `<div>${P("trade_hub","📈 Trade Hub",`📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234.56</code>\n└ Available: <code>$890.12</code>\n\n<b>Open Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) | PnL: <code>+$12.30</code>\n🔴 ETH SHORT <code>0.5</code> (3x) | PnL: <code>-$5.20</code>\n\nUnrealized P&L: 🟢 <code>+$7.10</code>`,[{t:"🔴 Close Position",s:"red"},{t:"📋 Orders",s:"blue"},{t:"📜 History",s:"blue"},{t:"🚪 Disconnect",s:"red"},{t:"🔙 Back",s:"back full"}],"Dashboard > Trade. Merged Status+P&L.",2)}</div>`;
+html += `</div>`;
+// L3 children of Trade Hub
+html += `<div class="tree-branch">`;
+html += `<div class="tree-node">${P("quick_close","🔴 Close Position",`🔴 <b>Close Position — edgeX Agent</b>\n\nSelect position:\n• BTC LONG | 0.01 | +$12.30\n• ETH SHORT | 0.5 | -$5.20`,[{t:"Close BTC LONG",s:"red full"},{t:"Close ETH SHORT",s:"red full"},{t:"🔙 Back",s:"back full"}],"Trade Hub > Close. Back → Trade Hub.",3)}</div>`;
+html += `<div class="tree-node">${P("quick_orders","📋 Open Orders",`📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n• BTC BUY LIMIT | 100 | $70,000\n• ETH SELL LIMIT | 50 | $4,100`,[{t:"❌ Cancel BTC",s:"red"},{t:"❌ Cancel ETH",s:"red"},{t:"❌ Cancel All",s:"red full"},{t:"🔙 Back",s:"back full"}],"Trade Hub > Orders. Back → Trade Hub.",3)}</div>`;
+html += `<div class="tree-node">${P("quick_history","📜 Recent Trades",`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71,234 | +$2.34\n🔴 DOGE SELL 300 @ $0.096 | -$0.03`,[{t:"🔙 Back",s:"back full"}],"Trade Hub > History. Back → Trade Hub.",3)}</div>`;
+html += `<div class="tree-node">${P("logout_confirm","🚪 Disconnect",`🚪 <b>Disconnect — edgeX Agent</b>\n\nLog out your edgeX account?`,[{t:"✅ Yes, logout",s:"red"},{t:"❌ Cancel",s:"gray"}],"Trade Hub > Disconnect. Cancel → Dashboard.",3)}</div>`;
+html += `<div class="tree-node">${P("login_api","🔑 API Key Entry",`🔑 <b>API Key — edgeX Agent</b>\n\n1. Go to edgex.exchange → API\n2. Copy Account ID\n3. Send it to me:`,[],"Connect > API Key. User types credentials.",3)}</div>`;
+html += `</div></div></div>`;
+
+// ═══ MODULE 2: AI AGENT ═══
+html += `<div class="module"><div class="module-header ai"><div class="icon">🤖</div><div class="info"><h2>AI Agent</h2><p>Personality, AI provider, memory. Requires activation.</p></div></div>`;
+html += `<div class="tree-root">`;
+html += `<div class="states-row" style="margin-bottom:12px">`;
+html += `<div><div class="state-label">Before activation</div>${P("ai_activate","✨ Activate AI",`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,[{t:"💳 edgeX Balance (soon)",s:"gray full"},{t:"🔑 Own API Key",s:"blue full"},{t:"⚡ Aaron's API (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],"Dashboard > Activate AI",2)}</div>`;
+html += `<div class="or-divider">or (after activation)</div>`;
+html += `<div>${P("ai_hub","🤖 AI Agent Hub",`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs, <code>2</code> summaries`,[{t:"🎭 Personality",s:"blue"},{t:"🔑 AI Provider",s:"blue"},{t:"📝 Memory",s:"blue full"},{t:"🔙 Back",s:"back full"}],"Dashboard > AI Agent. Shows config.",2)}</div>`;
+html += `</div>`;
+html += `<div class="tree-branch">`;
+html += `<div class="tree-node">${P("change_persona","🎭 Personality",`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,[{t:"🔥 Degen",s:"blue"},{t:"🎯 Sensei",s:"blue"},{t:"🤖 Cold Blood",s:"blue"},{t:"👀 Shitposter",s:"blue"},{t:"📚 Professor",s:"blue"},{t:"🐺 Wolf",s:"blue"},{t:"🌸 Moe",s:"blue"},{t:"🔙 Back",s:"back full"}],"AI Hub > Personality. Pick → toast → AI Hub.",3)}</div>`;
+html += `<div class="tree-node">${P("ai_provider","🔑 AI Provider",`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,[{t:"OpenAI / DeepSeek",s:"blue full"},{t:"Anthropic (Claude)",s:"blue full"},{t:"Google Gemini",s:"blue full"},{t:"🔙 Back",s:"back full"}],"AI Hub > Provider. Starts /setai wizard.",3)}</div>`;
+html += `<div class="tree-node">${P("settings_memory","📝 Memory",`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,[{t:"🗑 Clear Memory",s:"red full"},{t:"🔙 Back",s:"back full"}],"AI Hub > Memory. Back → AI Hub.",3)}</div>`;
+html += `<div class="tree-node" style="margin-left:30px;border-left:2px solid #444;padding-left:30px;">${P("memory_clear","🗑 Clear Memory",`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll history will be deleted.`,[{t:"✅ Yes, clear",s:"red"},{t:"❌ Keep",s:"gray"}],"Memory > Clear. Keep → Memory.",3)}</div>`;
+html += `</div></div></div>`;
+
+// ═══ MODULE 3: EVENT TRADING ═══
+html += `<div class="module"><div class="module-header event"><div class="icon">📰</div><div class="info"><h2>Event Trading</h2><p>AI-analyzed news with one-tap trade. No login required.</p></div></div>`;
+html += `<div class="tree-root">`;
+html += `${P("news_hub","📰 Event Trading Hub",`📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with one-tap trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off`,[{t:"✅ BWEnews",s:"green",w:"third"},{t:"⏱ 5/hr",s:"gray",w:"third"},{t:"🗑",s:"gray",w:"quarter"},{t:"➕ Add Source",s:"blue full"},{t:"🔙 Back",s:"back full"}],"Dashboard > Event Trading. No login needed.",2)}`;
+html += `<div class="tree-branch">`;
+html += `<div class="tree-node">${P("news_freq","⏱ Push Frequency",`⏱ <b>Push Frequency — edgeX Agent</b>\n\nAlerts per hour?\nCurrent: <b>2/hr</b>`,[{t:"1/hr",s:"gray",w:"third"},{t:"> 2/hr",s:"blue",w:"third"},{t:"3/hr",s:"gray",w:"third"},{t:"5/hr",s:"gray",w:"third"},{t:"10/hr",s:"gray",w:"third"},{t:"🔙 Back",s:"back full"}],"News Hub > Freq. Select → News Hub.",3)}</div>`;
+html += `<div class="tree-node">${P("news_add","➕ Add Source",`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,[{t:"💰 Bitcoin",s:"blue full"},{t:"💠 Ethereum",s:"blue full"},{t:"🌍 DeFi",s:"blue full"},{t:"🔙 Back",s:"back full"}],"News Hub > Add. Select → News Hub.",3)}</div>`;
+html += `</div></div></div>`;
+
+// ═══ PUSH LAYER ═══
+html += `<div class="module"><div class="module-header push"><div class="icon">⚡</div><div class="info"><h2>Push Layer — Bot-Initiated Messages</h2><p>News alerts, AI chat, trade plans/results. Always new messages (separate from dashboard). Arrows show edit-in-place sequence.</p></div></div>`;
+
+// News push flow
+html += `<div style="color:#888;font-size:12px;font-weight:600;margin-bottom:8px;">📰 News Push Flow</div>`;
+html += `<div class="seq-flow">`;
+html += P("news_alert","📰 News Alert",`<b>BWEnews: SEC approves Solana ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH\n\n────────────────\n2026-03-05 08:00 UTC`,[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"},{t:"🔗 Source",s:"gray",w:"third"},{t:"🔕 Mute",s:"gray",w:"third"},{t:"❌ Dismiss",s:"gray",w:"third"}],"Pushed to user. Trade → Plan below.",`P`);
+html += `<div class="seq-arrow"><div>→<br><span class="seq-label">🇨🇳 flag</span></div></div>`;
+html += P("news_tl","🇨🇳 Translated",`<b>BWEnews: SEC批准Solana ETF</b>\n\n🟢 SOL | 看涨 | ███ 高\n\n────────────────\n2026-03-05 08:00 UTC`,[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"}],"New msg. Same trade buttons.",`P`);
+html += `</div>`;
+
+// AI Chat + Trade flow
+html += `<div style="color:#888;font-size:12px;font-weight:600;margin:16px 0 8px;">💬 AI Chat → Trade Execution (edits same message)</div>`;
+html += `<div class="seq-flow">`;
+html += P("ai_chat","💬 AI Chat",`✨ BTC at $71.9k, up 3.6%. Bullish.\n\nLONG $50 at 3x?`,[{t:"🏠 Main Menu",s:"back full"}],"User typed → AI replied.",`P`);
+html += `<div class="seq-arrow"><div>→<br><span class="seq-label">trade request</span></div></div>`;
+html += P("trade_plan","📋 Trade Plan",`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH`,[{t:"✅ Confirm",s:"green"},{t:"❌ Cancel",s:"red"}],"From AI chat or News trade.",`P`);
+html += `<div class="seq-arrow"><div>→<br><span class="seq-label">✅ confirm</span></div></div>`;
+html += P("trade_exec","🔄 Executing",`🔄 <b>Executing LONG BTC — edgeX Agent</b>\n\nPlacing order on edgeX...`,[],"Edits Plan msg. Temporary.",`P`);
+html += `<div class="seq-arrow"><div>→<br><span class="seq-label">success</span></div></div>`;
+html += P("trade_ok","✅ Result",`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n└ ID: <code>abc123</code>`,[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🔴 Close BTC",s:"red full"},{t:"🏠 Menu",s:"back full"}],"Edits Executing msg.",`P`);
+html += `</div>`;
+
+// Branch: cancel / error
+html += `<div style="color:#888;font-size:12px;font-weight:600;margin:16px 0 8px;">❌ Cancel / Error / Disconnect (edits the confirm or executing msg)</div>`;
+html += `<div class="seq-flow">`;
+html += P("trade_cancel","❌ Cancelled",`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,[{t:"📈 Trade",s:"blue"},{t:"🏠 Menu",s:"back full"}],"Edits Plan msg (from ❌ Cancel).",`P`);
+html += `<div style="width:20px"></div>`;
+html += P("trade_err","❌ Trade Error",`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance ($12.34)`,[{t:"🔴 Close Position",s:"red"},{t:"📋 Cancel Orders",s:"red"},{t:"💰 Deposit",s:"blue full"},{t:"🏠 Menu",s:"back full"}],"Edits Executing msg. Smart buttons.",`P`);
+html += `<div style="width:20px"></div>`;
+html += P("close_ok","✅ Position Closed",`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG closed\n├ P&L: <code>+$12.30</code>\n└ Balance: <code>$1,246.86</code>`,[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🏠 Menu",s:"back full"}],"New msg after close.",`P`);
+html += `<div style="width:20px"></div>`;
+html += P("logout_done","🚪 Logged Out",`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out. /start to reconnect.`,[{t:"🔗 Reconnect",s:"blue full"}],"Edits disconnect confirm.",`P`);
+html += `</div>`;
+html += `</div>`;
+
+document.getElementById("app").innerHTML = html;
 
 document.getElementById("search").addEventListener("input", e => {
   const q = e.target.value.toLowerCase();
