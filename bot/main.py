@@ -617,9 +617,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if len(reply_text) > 4000:
                 reply_text = reply_text[:4000] + "..."
             has_edgex = _has_edgex(user)
+            # Smart buttons: if AI mentions balance/margin, add deposit + close
+            reply_lower = reply_text.lower()
+            if has_edgex and ("balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower):
+                kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
+                        InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                    ],
+                    [
+                        InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                        InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                    ],
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ])
+            else:
+                kb = _quick_actions_keyboard(has_edgex)
             await update.message.reply_text(
                 reply_text,
-                reply_markup=_quick_actions_keyboard(has_edgex),
+                reply_markup=kb,
             )
             return
 
@@ -1477,7 +1493,22 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         reply = plan.get("reply", "Could not generate trade plan. Try asking directly.")
                         if reply.lstrip().startswith("{") and '"action"' in reply:
                             reply = ai_trader._strip_json_wrapper(reply)
-                        await safe_send(context, chat_id, reply, parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
+                        # Smart buttons: if AI mentions balance/margin issues, add deposit + close
+                        reply_lower = reply.lower()
+                        if "balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower:
+                            kb = InlineKeyboardMarkup([
+                                [
+                                    InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
+                                    InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                                ],
+                                [
+                                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+                                ],
+                            ])
+                        else:
+                            kb = _quick_actions_keyboard()
+                        await safe_send(context, chat_id, reply, parse_mode="Markdown", reply_markup=kb)
                 except Exception as e:
                     logger.error(f"News trade error: {e}", exc_info=True)
                     await safe_send(context, chat_id, f"\u274c Trade failed: {str(e)[:200]}", reply_markup=_quick_actions_keyboard())
@@ -1674,12 +1705,40 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             # Pre-trade validation: check min order size + balance
             preflight = await edgex_client.pre_trade_check(client, contract_id, plan["side"], raw_size)
             if not preflight["ok"]:
+                error = preflight["error"]
+                suggestion = preflight.get("suggestion", "")
+                # Build smart action buttons based on error type
+                action_rows = []
+                if "balance" in error.lower() or "not enough" in error.lower():
+                    # Insufficient balance: offer deposit link + close positions
+                    try:
+                        summary = await edgex_client.get_account_summary(client)
+                        assets = summary.get("assets", {})
+                        avail = float(assets.get("availableBalance", "0"))
+                        avail_str = f"${avail:.2f}"
+                    except Exception:
+                        avail_str = "unknown"
+                    action_rows.append([
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
+                        InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                    ])
+                    error = f"Insufficient balance (available: {avail_str})"
+                elif "minimum" in error.lower() or "below" in error.lower():
+                    # Min order size issue
+                    action_rows.append([
+                        InlineKeyboardButton("\U0001f4ac Try Different Size", callback_data="back_to_dashboard"),
+                    ])
+                action_rows.append([
+                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                    InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                ])
+                action_rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
                 await query.edit_message_text(
                     f"\u274c **Trade blocked**\n\n"
-                    f"{preflight['error']}\n\n"
-                    f"{preflight.get('suggestion', 'Try again with different parameters.')}",
+                    f"{error}\n\n"
+                    f"{suggestion}",
                     parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard(),
+                    reply_markup=InlineKeyboardMarkup(action_rows),
                 )
                 return
 
@@ -1704,21 +1763,55 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 )
 
                 side_emoji = "\U0001f7e2" if plan["side"] == "BUY" else "\U0001f534"
-                await query.edit_message_text(
-                    f"{side_emoji} **Order Placed!**\n\n"
-                    f"\u251c Asset: {plan['asset']}\n"
-                    f"\u251c Side: {plan['side']}\n"
-                    f"\u251c Size: {plan['size']}\n"
-                    f"\u251c Price: ${plan['entry_price']}\n"
-                    f"\u2514 Order ID: `{order_id}`",
-                    parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard(),
+                side_word = "LONG" if plan["side"] == "BUY" else "SHORT"
+                leverage = plan.get("leverage", "1")
+                tp = plan.get("take_profit", "")
+                sl = plan.get("stop_loss", "")
+                value = plan.get("position_value_usd", "")
+
+                msg = (
+                    f"{side_emoji} **{side_word} {plan['asset']} — Order Placed!**\n\n"
+                    f"\u251c Entry: `${plan['entry_price']}`\n"
+                    f"\u251c Size: `{plan['size']}` ({leverage}x)\n"
                 )
+                if value:
+                    msg += f"\u251c Value: `~${value}`\n"
+                if tp:
+                    msg += f"\u251c TP: `${tp}`\n"
+                if sl:
+                    msg += f"\u251c SL: `${sl}`\n"
+                msg += f"\u2514 Order ID: `{order_id}`"
+
+                # Post-trade action buttons
+                post_trade_kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(f"\U0001f4ca {plan['asset']} Position", callback_data="quick_status"),
+                        InlineKeyboardButton("\U0001f4c8 Live P&L", callback_data="quick_pnl"),
+                    ],
+                    [
+                        InlineKeyboardButton(f"\U0001f534 Close {plan['asset']}", callback_data=f"close_{contract_id}"),
+                        InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
+                    ],
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ])
+                await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=post_trade_kb)
             else:
                 error_msg = result.get("msg") or result.get("error", "Unknown error")
                 friendly = _friendly_order_error(error_msg, plan)
+                # Smart buttons for order errors too
+                error_rows = []
+                if "balance" in error_msg.lower() or "insufficient" in error_msg.lower():
+                    error_rows.append([
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
+                        InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                    ])
+                error_rows.append([
+                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                    InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                ])
+                error_rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
                 await query.edit_message_text(friendly, parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard())
+                    reply_markup=InlineKeyboardMarkup(error_rows))
             return
 
         if query.data.startswith("close_"):
