@@ -339,8 +339,9 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.data == "login_api":
         await safe_edit(query,
             "\U0001f511 *Connect with API Key \u2014 Trade on edgeX*\n\n"
-            "Go to edgex.exchange \u2192 *API Management*\n"
-            "Copy your *Account ID* and send it to me:",
+            "\U0001f449 *Step 1:* Go to edgex.exchange \u2192 *API Management*\n"
+            "Copy your *Account ID* and send it to me.\n\n"
+            "\u2139\ufe0f Format: 18-digit number, e.g. `713029548781863066`",
             parse_mode="Markdown")
         return WAITING_ACCOUNT_ID
 
@@ -355,8 +356,10 @@ async def receive_account_id(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         if not account_id.isdigit():
             await update.message.reply_text(
-                "\u274c That doesn't look like a valid Account ID.\n"
-                "It should be a number like `713029548781863066`.\n\n"
+                "\u274c *Invalid Account ID*\n\n"
+                "Account ID must be digits only.\n"
+                "\u2705 Correct: `713029548781863066`\n"
+                "\u274c Wrong: `abc123`, `71302-xxx`\n\n"
                 "Please send your Account ID again:",
                 parse_mode="Markdown",
             )
@@ -364,17 +367,21 @@ async def receive_account_id(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         if len(account_id) < 10:
             await update.message.reply_text(
-                "\u274c That ID looks too short. edgeX Account IDs are typically 18 digits.\n\n"
+                "\u274c *Account ID too short*\n\n"
+                "edgeX Account IDs are typically 18 digits.\n"
+                "You sent: `" + account_id + "` (" + str(len(account_id)) + " digits)\n\n"
                 "Please check and send again:",
+                parse_mode="Markdown",
             )
             return WAITING_ACCOUNT_ID
 
         context.user_data["pending_account_id"] = account_id
         await update.message.reply_text(
             f"\u2705 Account ID received: `{account_id}`\n\n"
-            "\U0001f449 *Step 3:* Click your Account \u2192 open *L2 Key* \u2192 copy the *privateKey*\n\n"
+            "\U0001f449 *Step 2:* Click your Account \u2192 open *L2 Key* \u2192 copy the *privateKey*\n\n"
             "\U0001f6a8 *Your key will be deleted from chat immediately after I read it.*\n"
             "\u26a0\ufe0f Stored locally only, never shared with anyone.\n\n"
+            "\u2139\ufe0f Format: hex string, e.g. `04074f37e37ba90a5b845d8b...`\n\n"
             "Send me your L2 privateKey:",
             parse_mode="Markdown",
         )
@@ -405,15 +412,21 @@ async def receive_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE
         clean_key = private_key.replace("0x", "").strip()
         if not all(c in "0123456789abcdefABCDEF" for c in clean_key):
             await safe_send(context, chat_id,
-                "\u274c That doesn't look like a valid L2 privateKey.\n"
-                "It should be a hex string like `04074f37e37ba90a5b845d8b...`\n\n"
-                "Please send your L2 privateKey again:")
+                "\u274c *Invalid L2 Private Key*\n\n"
+                "Key must be hexadecimal characters (0-9, a-f) only.\n"
+                "\u2705 Correct: `04074f37e37ba90a5b845d8b...`\n"
+                "\u274c Wrong: contains spaces, special chars, or non-hex\n\n"
+                "Please send your L2 privateKey again:",
+                parse_mode="Markdown")
             return WAITING_PRIVATE_KEY
 
         if len(clean_key) < 30:
             await safe_send(context, chat_id,
-                "\u274c That key looks too short. Please copy the full privateKey from L2 Key dialog.\n\n"
-                "Send your L2 privateKey again:")
+                "\u274c *Key too short*\n\n"
+                f"You sent {len(clean_key)} characters. The full privateKey should be 50+ chars.\n"
+                "Please copy the *complete* privateKey from L2 Key dialog.\n\n"
+                "Send your L2 privateKey again:",
+                parse_mode="Markdown")
             return WAITING_PRIVATE_KEY
 
         await safe_send(context, chat_id, "\U0001f504 Validating your credentials with edgeX...")
@@ -433,7 +446,12 @@ async def receive_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE
                     "4. Then try /start again"
                 )
             await safe_send(context, chat_id,
-                f"\u274c Connection failed:\n{error_msg}{extra}\n\n"
+                f"\u274c *Connection Failed \u2014 Trade on edgeX*\n\n"
+                f"\u2514 `{error_msg}`{extra}\n\n"
+                "Common causes:\n"
+                "\u2022 Account ID doesn't match the private key\n"
+                "\u2022 API access not enabled (whitelist)\n"
+                "\u2022 Key copied incorrectly\n\n"
                 "Send /start to try again.",
                 parse_mode="Markdown")
             return ConversationHandler.END
@@ -825,7 +843,12 @@ async def receive_ai_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
         if len(text) < 10:
-            await safe_send(context, chat_id, "\u274c Key too short. Please send a valid API key.")
+            await safe_send(context, chat_id,
+                "\u274c *API Key too short*\n\n"
+                "API keys are usually 30+ characters.\n"
+                "\u2705 Example: `sk-xxxxxxxxxxxxxxxxxxxxxxxx...`\n\n"
+                "Please send a valid API key:",
+                parse_mode="Markdown")
             return WAITING_AI_KEY
 
         provider_info = context.user_data.get("setai_provider", {})
@@ -920,8 +943,15 @@ async def handle_model_button(update: Update, context: ContextTypes.DEFAULT_TYPE
     test_ok = await ai_trader.test_ai_connection(api_key, base_url, model)
     if not test_ok:
         await safe_send(context, chat_id,
-            f"\u274c Could not connect to {base_url} with model {model}.\n\n"
-            f"Check your API key and try again with /setai.")
+            f"\u274c *API Test Failed \u2014 AI Agent*\n\n"
+            f"\u251c Provider: `{base_url}`\n"
+            f"\u2514 Model: `{model}`\n\n"
+            "Common causes:\n"
+            "\u2022 Invalid or expired API key\n"
+            "\u2022 Model name doesn't match provider\n"
+            "\u2022 Insufficient API credits\n\n"
+            "Try again with /setai.",
+            parse_mode="Markdown")
         return ConversationHandler.END
 
     ai_trader.save_user_ai_config(user_id, api_key, base_url, model)
@@ -950,7 +980,13 @@ async def receive_ai_base_url(update: Update, context: ContextTypes.DEFAULT_TYPE
             text = provider_info.get("base_url", "https://api.deepseek.com")
 
         if not text.startswith("http"):
-            await safe_send(context, chat_id, "\u274c URL must start with `http://` or `https://`. Try again:")
+            await safe_send(context, chat_id,
+                "\u274c *Invalid URL*\n\n"
+                "URL must start with `http://` or `https://`.\n"
+                "\u2705 Correct: `https://api.deepseek.com`\n"
+                "\u274c Wrong: `api.deepseek.com`\n\n"
+                "Try again:",
+                parse_mode="Markdown")
             return WAITING_AI_BASE_URL
 
         context.user_data["setai_base_url"] = text
@@ -990,8 +1026,12 @@ async def receive_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if test_result.get("action") == "NEED_API_KEY":
             await safe_send(context, chat_id,
-                f"\u274c API key test failed: {test_result.get('reply', 'Unknown error')}\n\n"
-                "Please check your key/URL/model and try /setai again.")
+                f"\u274c *API Test Failed \u2014 AI Agent*\n\n"
+                f"\u251c Provider: `{base_url}`\n"
+                f"\u251c Model: `{model}`\n"
+                f"\u2514 Error: `{test_result.get('reply', 'Unknown error')}`\n\n"
+                "Check your key/URL/model and try /setai again.",
+                parse_mode="Markdown")
             context.user_data.pop("setai_api_key", None)
             context.user_data.pop("setai_base_url", None)
             context.user_data.pop("setai_provider", None)
