@@ -153,22 +153,22 @@ def _friendly_order_error(raw_error: str, plan: dict) -> str:
     )
 
 
-async def safe_send(context, chat_id: int, text: str, *kwargs):
+async def safe_send(context, chat_id: int, text: str, **kwargs):
     """Send a NEW message with error handling."""
     try:
         if text and text.lstrip().startswith("{") and '"action"' in text:
             text = ai_trader._strip_json_wrapper(text)
-        return await context.bot.send_message(chat_id=chat_id, text=text, *kwargs)
+        return await context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
     except Exception as e:
         logger.error(f"Failed to send message to {chat_id}: {e}")
 
 
-async def safe_edit(query, text: str, *kwargs):
+async def safe_edit(query, text: str, **kwargs):
     """Edit the current message in-place. Falls back to answering if edit fails."""
     try:
         if text and text.lstrip().startswith("{") and '"action"' in text:
             text = ai_trader._strip_json_wrapper(text)
-        await query.edit_message_text(text=text, *kwargs)
+        await query.edit_message_text(text=text, **kwargs)
     except Exception as e:
         logger.warning(f"Edit failed ({e}), ignoring")
 
@@ -1227,16 +1227,25 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     arrow = "\u2b06\ufe0f" if pnl_f >= 0 else "\u2b07\ufe0f"
                     fill_price = o.get("fillPrice", o.get("price", "?"))
                     fill_size = o.get("fillSize", o.get("size", "?"))
-                    o_leverage = o.get("leverage", "")
-                    lev_str = f"({o_leverage}x)" if o_leverage else ""
+                    fill_value_raw = o.get("fillValue", "0")
+                    try:
+                        fill_value_f = float(fill_value_raw) if fill_value_raw else 0
+                    except (ValueError, TypeError):
+                        fill_value_f = 0
+                    # PnL % = realizePnl / fillValue * 100
+                    if fill_value_f > 0:
+                        pnl_pct = pnl_f / fill_value_f * 100
+                        pnl_pct_str = f"+{pnl_pct:.2f}%" if pnl_pct >= 0 else f"{pnl_pct:.2f}%"
+                    else:
+                        pnl_pct_str = ""
                     o_id = o.get("id", o.get("orderId", ""))
                     try:
                         ts = datetime.fromtimestamp(int(o.get("createdTime", "0")) / 1000).strftime("%m/%d %H:%M")
                     except (ValueError, TypeError, OSError):
                         ts = ""
                     closed_items.append({
-                        "symbol": sym, "side": raw_side, "lev": lev_str,
-                        "pnl_usd": pnl_usd, "arrow": arrow,
+                        "symbol": sym, "side": raw_side,
+                        "pnl_usd": pnl_usd, "pnl_pct_str": pnl_pct_str, "arrow": arrow,
                         "price": fill_price, "size": fill_size,
                         "order_id": o_id, "ts": ts, "pnl_f": pnl_f,
                     })
@@ -1252,7 +1261,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
                     # Open positions section
                     if open_items:
-                        msg += f"\u2b06\ufe0f *OPEN ({len(open_items)}):*\n"
+                        msg += f"\U0001f4c8 *OPEN ({len(open_items)}):*\n"
                         for item in open_items:
                             msg += f"{item['arrow']} {item['symbol']} {item['side']} {item['lev']} | *{item['roi_str']}* ({item['pnl_usd']}) | Entry: `{item['entry']}`\n"
                             btn_label = f"\U0001f4e4 {item['symbol']} {item['side']} {item['roi_str']} ({item['pnl_usd']})"
@@ -1263,14 +1272,16 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     if closed_items:
                         start = page * per_page
                         page_closed = closed_items[start:start + per_page]
-                        msg += f"\u2b07\ufe0f *CLOSED ({len(closed_items)}):*\n"
+                        msg += f"\U0001f4dc *CLOSED ({len(closed_items)}):*\n"
                         for item in page_closed:
+                            pct_part = f" *{item['pnl_pct_str']}*" if item['pnl_pct_str'] else ""
                             ts_str = f" | {item['ts']}" if item['ts'] else ""
-                            msg += f"{item['arrow']} {item['symbol']} {item['side']} {item['lev']} {item['size']} @ ${item['price']} | `{item['pnl_usd']}`{ts_str}\n"
+                            msg += f"{item['arrow']} {item['symbol']} {item['side']} {item['size']} @ ${item['price']} |{pct_part} ({item['pnl_usd']}){ts_str}\n"
                             if item.get("order_id"):
                                 cb = f"share_closed_{item['order_id']}"
                                 if len(cb.encode('utf-8')) <= 64:
-                                    btn_label = f"\U0001f4e4 {item['symbol']} {item['side']} ({item['pnl_usd']})"
+                                    pct_btn = f" {item['pnl_pct_str']}" if item['pnl_pct_str'] else ""
+                                    btn_label = f"\U0001f4e4 {item['symbol']} {item['side']}{pct_btn} ({item['pnl_usd']})"
                                     buttons.append([InlineKeyboardButton(btn_label, callback_data=cb)])
 
                         # Pagination for closed trades
@@ -1393,8 +1404,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 raw_side = target.get("orderSide", target.get("side", "?"))
                 fill_price = target.get("fillPrice", target.get("price", "?"))
                 fill_size = target.get("fillSize", target.get("size", "?"))
-                o_leverage = target.get("leverage", "")
-                lev_str = f" ({o_leverage}x)" if o_leverage else ""
+                fill_value_raw = target.get("fillValue", "0")
                 pnl_raw = target.get("realizePnl", target.get("cumRealizePnl", ""))
                 try:
                     pnl_f = float(pnl_raw) if pnl_raw else 0
@@ -1402,6 +1412,15 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 except (ValueError, TypeError):
                     pnl_f = 0
                     pnl_usd = "N/A"
+                try:
+                    fill_value_f = float(fill_value_raw) if fill_value_raw else 0
+                except (ValueError, TypeError):
+                    fill_value_f = 0
+                if fill_value_f > 0:
+                    pnl_pct = pnl_f / fill_value_f * 100
+                    pnl_pct_str = f"+{pnl_pct:.2f}%" if pnl_pct >= 0 else f"{pnl_pct:.2f}%"
+                else:
+                    pnl_pct_str = ""
                 try:
                     fp = float(fill_price)
                     price_str = f"${fp:,.2f}" if fp >= 1 else f"${fp:.5f}"
@@ -1413,11 +1432,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     ts = datetime.now().strftime("%Y-%m-%d %H:%M UTC")
 
                 arrow = "\u2b06\ufe0f" if pnl_f >= 0 else "\u2b07\ufe0f"
+                roi_line = f"\U0001f3af ROI:  *{pnl_pct_str}*\n" if pnl_pct_str else ""
 
                 share_text = (
                     f"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-                    f"{arrow} *{sym}/USDT* \u00b7 {raw_side}{lev_str}\n"
+                    f"{arrow} *{sym}/USDT* \u00b7 {raw_side}\n"
                     f"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n"
+                    f"{roi_line}"
                     f"\U0001f4b0 Realized PnL:  *{pnl_usd}*\n\n"
                     f"\u251c Price: `{price_str}`\n"
                     f"\u251c Size:  `{fill_size}`\n"
@@ -1425,8 +1446,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     f"\U0001f464 {display_name}\n"
                     f"\u26a1 Traded on *edgeX* via @edgeXAgentBot"
                 )
+                pct_fwd = f" {pnl_pct_str}" if pnl_pct_str else ""
                 share_kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4e4 Forward to Chat", switch_inline_query=f"{arrow} {sym} {raw_side} *{pnl_usd}* on edgeX")],
+                    [InlineKeyboardButton("\U0001f4e4 Forward to Chat", switch_inline_query=f"{arrow} {sym} {raw_side}{pct_fwd} ({pnl_usd}) on edgeX")],
                 ])
                 await safe_send(context, chat_id, share_text, parse_mode="Markdown", reply_markup=share_kb)
             except Exception as e:
