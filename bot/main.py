@@ -516,11 +516,12 @@ async def _keep_typing(bot, chat_id: int, stop_event: asyncio.Event):
 
 
 def _ai_activate_keyboard():
-    """3-button AI activation menu."""
+    """AI activation menu with Back."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("\U0001f4b3 Use edgeX Account Balance", callback_data="ai_edgex_credits")],
+        [InlineKeyboardButton("\U0001f4b3 Use edgeX Account Balance (soon)", callback_data="ai_edgex_credits")],
         [InlineKeyboardButton("\U0001f511 Use My Own API Key", callback_data="ai_own_key_setup")],
         [InlineKeyboardButton("\u26a1 Use Aaron's API (temp)", callback_data="ai_use_free")],
+        [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")],
     ])
 
 
@@ -1171,13 +1172,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             msg = (
                 f"\U0001f916 *AI Agent \u2014 AI Agent*\n\n"
                 f"\u251c \U0001f3ad Personality: `{persona_name}`\n"
-                f"\u251c \U0001f511 Provider: `{ai_model}`\n"
                 f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
             )
             buttons = [
-                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona"),
-                 InlineKeyboardButton("\U0001f511 AI Provider", callback_data="ai_activate_prompt")],
-                [InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
+                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona")],
+                [InlineKeyboardButton("\U0001f511 Provider", callback_data="ai_activate_prompt"),
+                 InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")],
             ]
             await safe_edit(query, msg, parse_mode="Markdown",
@@ -1748,7 +1748,19 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data == "ai_edgex_credits":
             await safe_edit(query,
-                "\U0001f4b3 *edgeX Balance \u2014 AI Agent*\n\nComing Soon.\nUse /setai to add your own API key.",
+                "\U0001f4b3 *edgeX Balance \u2014 AI Agent*\n\n"
+                "Coming Soon! Waiting for edgeX team billing integration.\n\n"
+                "*For edgeX Team:*\n"
+                "AI billing endpoint ready at:\n"
+                "`POST /api/v1/ai/billing/deduct`\n"
+                "\u251c `account_id`: user's edgeX account\n"
+                "\u251c `model`: requested AI model\n"
+                "\u251c `tokens`: input + output token count\n"
+                "\u2514 `session_id`: conversation ID\n\n"
+                "Balance query:\n"
+                "`GET /api/v1/ai/billing/balance?account_id={id}`\n"
+                "\u2514 Returns `{\"balance\": 12.50, \"currency\": \"USDT\"}`\n\n"
+                "For now, use *Own API Key* or *Aaron's API*.",
                 parse_mode="Markdown",
                 reply_markup=_back_button("\U0001f519 Back", "ai_activate_prompt"))
             return
@@ -2056,13 +2068,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             msg = (
                 f"\U0001f916 *AI Agent \u2014 AI Agent*\n\n"
                 f"\u251c \U0001f3ad Personality: `{persona_name}`\n"
-                f"\u251c \U0001f511 Provider: `{ai_model}`\n"
                 f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
             )
             buttons = [
-                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona"),
-                 InlineKeyboardButton("\U0001f511 AI Provider", callback_data="ai_activate_prompt")],
-                [InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
+                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona")],
+                [InlineKeyboardButton("\U0001f511 Provider", callback_data="ai_activate_prompt"),
+                 InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")],
             ]
             await safe_edit(query, msg, parse_mode="Markdown",
@@ -2145,13 +2156,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             msg = (
                 f"\U0001f916 *AI Agent \u2014 AI Agent*\n\n"
                 f"\u251c \U0001f3ad Personality: `{name}`\n"
-                f"\u251c \U0001f511 Provider: `{ai_model}`\n"
                 f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
             )
             buttons = [
-                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona"),
-                 InlineKeyboardButton("\U0001f511 AI Provider", callback_data="ai_activate_prompt")],
-                [InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
+                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona")],
+                [InlineKeyboardButton("\U0001f511 Provider", callback_data="ai_activate_prompt"),
+                 InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")],
             ]
             await safe_edit(query, msg, parse_mode="Markdown",
