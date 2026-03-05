@@ -62,6 +62,16 @@ PERSONA_NAMES = {
     "moe": "\U0001f338 Moe",
 }
 
+PERSONA_GREETINGS = {
+    "degen": "LFG! Aping into every trade with zero fear. NFA but we're gonna make it, fren.",
+    "sensei": "The market rewards patience and discipline. I will guide you with clarity and wisdom.",
+    "coldblood": "Emotions eliminated. All decisions based on data and probability. Ready to execute.",
+    "shitposter": "lmaooo we're about to ratio the entire market. buckle up, this is gonna be hilarious.",
+    "professor": "Excellent choice. I shall provide thorough analysis with proper methodology and citations.",
+    "wolf": "The hunt begins. Every dip is prey, every pump is territory. Let's dominate this market.",
+    "moe": "Yay~ I'll do my best to help you! Let's have fun trading together, okay? Ganbare!",
+}
+
 
 def _back_button(label: str = "\U0001f519 Back", cb: str = "back_to_dashboard") -> InlineKeyboardMarkup:
     """Single Back button — standard for all sub-screens."""
@@ -569,7 +579,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "\u2728 *Activate AI \u2014 AI Agent*\n\n"
                 "Choose how to power your Agent:\n\n"
                 "\U0001f4b3 *edgeX Balance* \u2014 from your edgeX account (coming soon)\n\n"
-                "\U0001f511 *Own API Key* \u2014 unlimited, OpenAI / DeepSeek / Anthropic / Gemini\n\n"
+                "\U0001f511 *Own API Key* \u2014 unlimited, OpenAI-compatible / Anthropic / Gemini\n\n"
                 "\u26a1 *Aaron's API* \u2014 temporary for beta testing",
                 parse_mode="Markdown",
                 reply_markup=_ai_activate_keyboard(),
@@ -712,7 +722,7 @@ WAITING_AI_MODEL = 12
 def _setai_provider_keyboard():
     """Provider selection for own API key."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("OpenAI / DeepSeek", callback_data="setai_openai")],
+        [InlineKeyboardButton("OpenAI-compatible", callback_data="setai_openai")],
         [InlineKeyboardButton("Anthropic (Claude)", callback_data="setai_anthropic")],
         [InlineKeyboardButton("Google Gemini", callback_data="setai_gemini")],
     ])
@@ -734,7 +744,7 @@ async def cmd_setai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{status}\n"
         f"Choose how to power your Agent:\n\n"
         f"\U0001f4b3 *edgeX Account Balance* \u2014 deduct from your edgeX account (coming soon)\n\n"
-        f"\U0001f511 *Own API Key* \u2014 unlimited, use OpenAI / DeepSeek / Anthropic / Gemini\n\n"
+        f"\U0001f511 *Own API Key* \u2014 unlimited, OpenAI-compatible / Anthropic / Gemini\n\n"
         f"\u26a1 *Aaron's API* \u2014 temporary for beta testing, may be removed anytime",
         parse_mode="Markdown",
         reply_markup=_ai_activate_keyboard(),
@@ -752,31 +762,33 @@ async def handle_setai_provider(update: Update, context: ContextTypes.DEFAULT_TY
 
     provider_map = {
         "setai_openai": {
-            "name": "OpenAI / DeepSeek",
+            "name": "OpenAI-compatible",
             "instructions": (
                 "\U0001f511 *OpenAI-compatible API* (Step 1/3)\n\n"
+                "Works with: OpenAI, DeepSeek, Groq, NVIDIA, etc.\n\n"
                 "Send me your *API Key*:\n\n"
                 "Examples:\n"
-                "\u2022 DeepSeek: `sk-xxxxxxxxxxxxxxxx`\n"
                 "\u2022 OpenAI: `sk-proj-xxxxxxxx`\n"
+                "\u2022 DeepSeek: `sk-xxxxxxxxxxxxxxxx`\n"
                 "\u2022 Groq: `gsk_xxxxxxxx`\n\n"
                 "Send /cancel to abort."
             ),
-            "base_url": "https://api.deepseek.com",
-            "model": "deepseek-chat",
+            "base_url": "https://api.openai.com",
+            "model": "gpt-4o",
             "step2_msg": (
                 "\u2705 Key received! (Step 2/3)\n\n"
                 "Choose your provider, or type a custom URL:"
             ),
             "step2_buttons": InlineKeyboardMarkup([
-                [InlineKeyboardButton("DeepSeek (default)", callback_data="url_https://api.deepseek.com")],
                 [InlineKeyboardButton("OpenAI", callback_data="url_https://api.openai.com")],
+                [InlineKeyboardButton("DeepSeek", callback_data="url_https://api.deepseek.com")],
                 [InlineKeyboardButton("Groq", callback_data="url_https://api.groq.com/openai")],
                 [InlineKeyboardButton("NVIDIA", callback_data="url_https://integrate.api.nvidia.com/v1")],
             ]),
             "step3_msg": (
                 "\u2705 URL set! (Step 3/3)\n\n"
-                "Choose a model, or type a custom one:"
+                "Type your model name (e.g. `gpt-4o`, `deepseek-chat`).\n"
+                "Or pick one below:"
             ),
             "needs_base_url": True,
         },
@@ -784,16 +796,17 @@ async def handle_setai_provider(update: Update, context: ContextTypes.DEFAULT_TY
             "name": "Anthropic (Claude)",
             "instructions": (
                 "\U0001f511 *Anthropic API* (Step 1/2)\n\n"
-                "Get your key at: console.anthropic.com\n\n"
+                "\U0001f517 Get your key at: console.anthropic.com\n\n"
                 "Send me your *API Key*:\n\n"
-                "Example: `sk-ant-api03-xxxxxxxx`\n\n"
+                "\u2139\ufe0f Format: `sk-ant-api03-xxxxxxxx`\n\n"
                 "Send /cancel to abort."
             ),
             "base_url": "https://api.anthropic.com",
             "model": "claude-sonnet-4-5-20250929",
             "step3_msg": (
                 "\u2705 Key received! (Step 2/2)\n\n"
-                "Choose a model, or type a custom one:"
+                "Type your model name (e.g. `claude-sonnet-4-5-20250929`).\n"
+                "Or pick one below:"
             ),
             "step3_buttons": InlineKeyboardMarkup([
                 [InlineKeyboardButton("Claude Sonnet 4.5 (default)", callback_data="model_claude-sonnet-4-5-20250929")],
@@ -814,7 +827,8 @@ async def handle_setai_provider(update: Update, context: ContextTypes.DEFAULT_TY
             "model": "gemini-2.0-flash",
             "step3_msg": (
                 "\u2705 Key received! (Step 2/2)\n\n"
-                "Choose a model, or type a custom one:"
+                "Type your model name (e.g. `gemini-2.0-flash`).\n"
+                "Or pick one below:"
             ),
             "step3_buttons": InlineKeyboardMarkup([
                 [InlineKeyboardButton("Gemini 2.0 Flash (default)", callback_data="model_gemini-2.0-flash")],
@@ -963,10 +977,12 @@ async def handle_model_button(update: Update, context: ContextTypes.DEFAULT_TYPE
     await safe_send(context, chat_id,
         f"\u2705 *AI Agent Activated!*\n\n"
         f"\u251c Provider: `{base_url}`\n"
-        f"\u2514 Model: `{model}`\n\n"
-        f"\U0001f3ad *Choose your Agent's personality:*",
+        f"\u2514 Model: `{model}`",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("\U0001f3ad Choose Personality", callback_data="change_persona")],
+            [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+        ]))
     return ConversationHandler.END
 
 
@@ -1046,10 +1062,12 @@ async def receive_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_send(context, chat_id,
             f"\u2705 *AI Agent Activated!*\n\n"
             f"\u251c Provider: `{base_url}`\n"
-            f"\u2514 Model: `{model}`\n\n"
-            f"\U0001f3ad *Choose your Agent's personality:*",
+            f"\u2514 Model: `{model}`",
             parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("\U0001f3ad Choose Personality", callback_data="change_persona")],
+                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+            ]))
         return ConversationHandler.END
 
     except Exception as e:
@@ -1760,7 +1778,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 "Balance query:\n"
                 "`GET /api/v1/ai/billing/balance?account_id={id}`\n"
                 "\u2514 Returns `{\"balance\": 12.50, \"currency\": \"USDT\"}`\n\n"
-                "For now, use *Own API Key* or *Aaron's API*.",
+                "For now, use *Own API Key*.",
                 parse_mode="Markdown",
                 reply_markup=_back_button("\U0001f519 Back", "ai_activate_prompt"))
             return
@@ -2090,8 +2108,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await safe_edit(query,
                 f"\U0001f4dd *Memory \u2014 AI Agent*\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
-                f"\u251c Summaries: `{stats['summaries']}`\n"
-                f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}",
+                f"\u2514 Summaries: `{stats['summaries']}`",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
@@ -2116,8 +2133,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 db.save_user(user_id, "", "")
             ai_trader.save_user_ai_config(user_id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
             await safe_edit(query,
-                "\u2705 *AI Activated \u2014 AI Agent*\n\nChoose your Agent's personality:",
-                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
+                "\u2705 *AI Activated \u2014 AI Agent*\n\n"
+                "\u251c Provider: `Aaron's API`\n"
+                "\u2514 Model: `claude-sonnet-4.5`",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f3ad Choose Personality", callback_data="change_persona")],
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ]))
             return
 
         if query.data == "ai_own_key_setup":
@@ -2128,7 +2150,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         # ── setai_* from ai_own_key_setup (outside ConversationHandler) ──
         if query.data.startswith("setai_"):
-            provider_names = {"setai_openai": "OpenAI / DeepSeek", "setai_anthropic": "Anthropic (Claude)", "setai_gemini": "Google Gemini"}
+            provider_names = {"setai_openai": "OpenAI-compatible", "setai_anthropic": "Anthropic (Claude)", "setai_gemini": "Google Gemini"}
             name = provider_names.get(query.data, "your provider")
             await safe_edit(query,
                 f"\U0001f511 *{name} \u2014 AI Agent*\n\n"
@@ -2147,25 +2169,14 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.commit()
             conn.close()
             name = PERSONA_NAMES.get(persona, persona)
-            await query.answer(f"\u2705 Personality: {name}", show_alert=False)
-            # Return to AI Hub
-            user_ai_cfg = ai_trader.get_user_ai_config(user_id) if ai_trader else None
-            ai_model = (user_ai_cfg or {}).get("model", "none")
-            user_memory = mem.get_user_memory(user_id)
-            stats = user_memory.get_stats()
-            msg = (
-                f"\U0001f916 *AI Agent \u2014 AI Agent*\n\n"
-                f"\u251c \U0001f3ad Personality: `{name}`\n"
-                f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
-            )
-            buttons = [
-                [InlineKeyboardButton("\U0001f3ad Personality", callback_data="change_persona")],
-                [InlineKeyboardButton("\U0001f511 Provider", callback_data="ai_activate_prompt"),
-                 InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory")],
-                [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")],
-            ]
-            await safe_edit(query, msg, parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(buttons))
+            greeting = PERSONA_GREETINGS.get(persona, "Personality set! Ready to trade.")
+            await query.answer(f"\u2705 {name}", show_alert=False)
+            await safe_edit(query,
+                f"\U0001f3ad *Personality Set \u2014 AI Agent*\n\n"
+                f"\u2705 Active: *{name}*\n\n"
+                f"_{greeting}_",
+                parse_mode="Markdown",
+                reply_markup=_main_menu_kb)
             return
 
         if query.data == "memory_clear_confirm":
@@ -2185,15 +2196,22 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory = mem.get_user_memory(user_id)
             stats = user_memory.get_stats()
             count = stats.get('conversations', 0)
+            summaries = stats.get('summaries', 0)
             user_memory.clear()
             await safe_edit(query,
-                f"\U0001f5d1 *Clear Memory \u2014 AI Agent*\n\n\u2705 Memory cleared.\n\u251c Deleted: `{count}` messages\n\u2514 Preferences: reset",
+                f"\U0001f5d1 *Clear Memory \u2014 AI Agent*\n\n"
+                f"\u2705 Memory cleared.\n\n"
+                f"\u251c Deleted: `{count}` messages\n"
+                f"\u2514 Deleted: `{summaries}` summaries\n\n"
+                f"Your Agent starts fresh. Chat to build new memory.",
                 parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
         if query.data == "memory_clear_no":
             await safe_edit(query,
-                "\U0001f5d1 *Clear Memory \u2014 AI Agent*\n\n\u274c Cancelled. Memory kept intact.",
+                "\U0001f5d1 *Clear Memory \u2014 AI Agent*\n\n"
+                "\u274c Cancelled. Your memory is safe.\n\n"
+                "All conversations and preferences kept intact.",
                 parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
@@ -3343,9 +3361,8 @@ async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"\U0001f4dd *Memory*\n\n"
         f"\u251c Messages: `{stats['conversations']}`\n"
-        f"\u251c Summaries: `{stats['summaries']}`"
-        f"{oldest_str}\n"
-        f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}"
+        f"\u2514 Summaries: `{stats['summaries']}`"
+        f"{oldest_str}"
         f"{pref_text}\n\n"
         f"Your Agent remembers past conversations and learns your preferences over time. "
         f"The more you chat, the more personalized your experience becomes.",
