@@ -167,10 +167,7 @@ Respond with ONLY a JSON object:
   "sentiment": "BULLISH" or "BEARISH" or "NEUTRAL",
   "confidence": "HIGH" or "MEDIUM" or "LOW",
   "action": "LONG" or "SHORT" or "NONE",
-  "leverage": "2",
-  "size_pct": "5",
-  "summary": "One sentence summary of why, in the user's likely language",
-  "summary_cn": "Same summary in Chinese"
+  "leverage": "2"
 }}
 
 If the news is not clearly related to any tradeable asset or has no clear directional signal, set action to "NONE".
@@ -263,58 +260,64 @@ async def analyze_news_with_ai(article: dict) -> Optional[dict]:
 
 
 def format_news_alert(article: dict, analysis: dict) -> tuple:
-    """Format news alert message + inline keyboard buttons.
-    Returns (message_text, reply_markup_dict).
+    """Format news alert — clean BWEnews-style with translation links.
+    Returns (message_text, InlineKeyboardMarkup).
     """
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    import urllib.parse
 
     title = article.get("title", "Untitled")
     url = article.get("url", "")
-    source = article.get("source", "unknown")
+    source = article.get("source", "Crypto News")
     asset = analysis.get("asset", "?")
     sentiment = analysis.get("sentiment", "?")
     action = analysis.get("action", "NONE")
     confidence = analysis.get("confidence", "MEDIUM")
     leverage = analysis.get("leverage", "2")
-    summary = analysis.get("summary", "")
-    summary_cn = analysis.get("summary_cn", "")
 
     sent_emoji = "\U0001f7e2" if sentiment == "BULLISH" else "\U0001f534"
     action_emoji = "\U0001f4c8" if action == "LONG" else "\U0001f4c9"
     conf_bar = {"HIGH": "\u2588\u2588\u2588", "MEDIUM": "\u2588\u2588\u2591", "LOW": "\u2588\u2591\u2591"}.get(confidence, "\u2591\u2591\u2591")
 
-    msg = (
-        f"\U0001f4f0 **Breaking News**\n\n"
-        f"{title}\n\n"
-        f"{sent_emoji} **{asset}** | {sentiment} | {conf_bar} {confidence}\n"
-    )
-    if summary:
-        msg += f"\n{summary}\n"
-    if summary_cn and summary_cn != summary:
-        msg += f"{summary_cn}\n"
-    if url:
-        msg += f"\n[Read full article]({url})\n"
+    ts = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+    msg = f"*{source}:* {title}\n\n{sent_emoji} {asset} | {sentiment} | {conf_bar} {confidence}\n\n{'─' * 16}\n{ts}"
 
-    # Trade action buttons with specific dollar amounts
     buttons = []
     if action in ("LONG", "SHORT"):
         side = "BUY" if action == "LONG" else "SELL"
-        small_usd = 50
-        large_usd = 150
         buttons.append([
-            InlineKeyboardButton(
-                f"{action_emoji} {action} {asset} ${small_usd}",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_{small_usd}",
-            ),
-            InlineKeyboardButton(
-                f"{action_emoji} {action} {asset} ${large_usd}",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_{large_usd}",
-            ),
+            InlineKeyboardButton(f"{action_emoji} {action} {asset} $50",
+                callback_data=f"news_trade_{asset}_{side}_{leverage}_50"),
+            InlineKeyboardButton(f"{action_emoji} {action} {asset} $150",
+                callback_data=f"news_trade_{asset}_{side}_{leverage}_150"),
         ])
-    buttons.append([
-        InlineKeyboardButton("\U0001f515 Mute this source", callback_data="news_mute_free_crypto_news"),
-        InlineKeyboardButton("\u274c Dismiss", callback_data="news_dismiss"),
-    ])
+
+    # Translation buttons
+    LANGUAGES = [
+        ("\U0001f1e8\U0001f1f3", "zh"), ("\U0001f1ef\U0001f1f5", "ja"),
+        ("\U0001f1f0\U0001f1f7", "ko"), ("\U0001f1f7\U0001f1fa", "ru"),
+        ("\U0001f1ea\U0001f1f8", "es"), ("\U0001f1e9\U0001f1ea", "de"),
+        ("\U0001f1eb\U0001f1f7", "fr"), ("\U0001f1f9\U0001f1f7", "tr"),
+        ("\U0001f1e6\U0001f1ea", "ar"), ("\U0001f1fb\U0001f1f3", "vi"),
+        ("\U0001f1f9\U0001f1ed", "th"), ("\U0001f1f5\U0001f1f9", "pt"),
+    ]
+    encoded = urllib.parse.quote(title, safe="")
+    row = []
+    for flag, lang_code in LANGUAGES:
+        turl = f"https://translate.google.com/?sl=en&tl={lang_code}&text={encoded}&op=translate"
+        row.append(InlineKeyboardButton(flag, url=turl))
+        if len(row) == 4:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    bottom = []
+    if url:
+        bottom.append(InlineKeyboardButton("\U0001f517 Source", url=url))
+    bottom.append(InlineKeyboardButton("\U0001f515 Mute", callback_data="news_mute_free_crypto_news"))
+    bottom.append(InlineKeyboardButton("\u274c Dismiss", callback_data="news_dismiss"))
+    buttons.append(bottom)
 
     return msg, InlineKeyboardMarkup(buttons)
 

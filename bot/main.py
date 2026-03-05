@@ -24,6 +24,7 @@ import edgex_client
 import ai_trader
 import memory as mem
 import news_push
+import bwenews_monitor
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -2605,8 +2606,9 @@ async def post_init(application: Application):
                 BotCommand("logout", "Disconnect account"),
                 BotCommand("help", "All commands"),
             ])
-            # Start news push background loop
+            # Start news push loops
             news_push.start_news_loop(application.bot)
+            await bwenews_monitor.start_monitor(application.bot)
             await application.bot.set_my_description(
                 "Your personal AI trading agent on edgeX.\n\n"
                 "Tell it your market view in any language — it analyzes, plans, and executes.\n\n"

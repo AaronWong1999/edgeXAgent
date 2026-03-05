@@ -149,9 +149,16 @@ def init_db():
     c.execute("""
         INSERT OR IGNORE INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, poll_interval_sec, created_at)
         VALUES ('free_crypto_news', 'Crypto News (Free)', 'https://modelcontextprotocol.name/mcp/free-crypto-news',
-                'get_latest_news', 'crypto', 1, 600, ?)
+                'get_latest_news', 'crypto', 0, 600, ?)
     """, (time.time(),))
-    c.execute("UPDATE news_sources SET poll_interval_sec = 600 WHERE id = 'free_crypto_news'")
+    # BWEnews as primary default source
+    c.execute("""
+        INSERT OR IGNORE INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, poll_interval_sec, created_at)
+        VALUES ('bwenews', 'BWEnews', '', '', 'crypto', 1, 0, ?)
+    """, (time.time(),))
+    # Migrate: make bwenews default, demote old free_crypto_news
+    c.execute("UPDATE news_sources SET is_default = 1 WHERE id = 'bwenews'")
+    c.execute("UPDATE news_sources SET is_default = 0 WHERE id = 'free_crypto_news'")
     conn.commit()
     conn.close()
 
@@ -229,14 +236,15 @@ def get_user_news_frequency(tg_user_id: int, source_id: str) -> int:
 
 
 def add_news_source(source_id: str, name: str, mcp_url: str, mcp_tool: str = "get_latest_news",
-                    category: str = "crypto", poll_interval_sec: int = 600) -> bool:
-    """Add a new MCP news source. Returns True if added, False if already exists."""
+                    category: str = "crypto", poll_interval_sec: int = 600,
+                    is_default: bool = False) -> bool:
+    """Add a new news source. Returns True if added, False if already exists."""
     conn = get_conn()
     try:
         conn.execute(
             "INSERT INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, enabled, poll_interval_sec, created_at) "
-            "VALUES (?, ?, ?, ?, ?, 0, 1, ?, ?)",
-            (source_id, name, mcp_url, mcp_tool, category, poll_interval_sec, time.time()),
+            "VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)",
+            (source_id, name, mcp_url, mcp_tool, category, 1 if is_default else 0, poll_interval_sec, time.time()),
         )
         conn.commit()
         conn.close()
