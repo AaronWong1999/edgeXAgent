@@ -48,7 +48,7 @@ PERSONA_BUTTONS = [
         InlineKeyboardButton("\U0001f338 Moe", callback_data="persona_moe"),
     ],
     [
-        InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+        InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard"),
     ],
 ]
 
@@ -63,23 +63,14 @@ PERSONA_NAMES = {
 }
 
 
+def _back_button(label: str = "\U0001f519 Back", cb: str = "back_to_dashboard") -> InlineKeyboardMarkup:
+    """Single Back button — standard for all sub-screens."""
+    return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data=cb)]])
+
+
 def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
-    """Default quick-action buttons — the go-to for most screens."""
-    if has_edgex:
-        return InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
-            ],
-            [
-                InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
-                InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
-            ],
-            [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-        ])
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-    ])
+    """Shortcut buttons for command-based screens (e.g. /status, /pnl)."""
+    return _back_button("\U0001f3e0 Main Menu")
 
 
 def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardMarkup:
@@ -178,14 +169,23 @@ def _friendly_order_error(raw_error: str, plan: dict) -> str:
 
 
 async def safe_send(context, chat_id: int, text: str, **kwargs):
-    """Send message with error handling. Strips any leaked JSON before sending."""
+    """Send a NEW message with error handling."""
     try:
-        # Final safety: strip leaked JSON wrappers from any outgoing message
         if text and text.lstrip().startswith("{") and '"action"' in text:
             text = ai_trader._strip_json_wrapper(text)
         return await context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
     except Exception as e:
         logger.error(f"Failed to send message to {chat_id}: {e}")
+
+
+async def safe_edit(query, text: str, **kwargs):
+    """Edit the current message in-place. Falls back to answering if edit fails."""
+    try:
+        if text and text.lstrip().startswith("{") and '"action"' in text:
+            text = ai_trader._strip_json_wrapper(text)
+        await query.edit_message_text(text=text, **kwargs)
+    except Exception as e:
+        logger.warning(f"Edit failed ({e}), ignoring")
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -281,9 +281,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         user = db.get_user(update.effective_user.id)
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id) if user else None
         has_edgex = _has_edgex(user)
-        chat_id = update.effective_chat.id
-        await safe_send(context, chat_id,
-            _dashboard_text(user, user_ai),
+        await safe_edit(query, _dashboard_text(user, user_ai),
             parse_mode="Markdown",
             reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
         return
@@ -1090,11 +1088,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         msg += f"\u2022 {symbol} {side} | PnL: `{pnl_str}`\n"
                 else:
                     msg += "\nNo open positions."
-                await safe_send(context, chat_id, msg, parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, msg, parse_mode="Markdown",
+                    reply_markup=_back_button())
             except Exception as e:
-                await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_back_button())
             return
 
         if query.data == "quick_pnl":
@@ -1145,11 +1143,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 else:
                     msg += "\nNo open positions."
 
-                await safe_send(context, chat_id, msg, parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, msg, parse_mode="Markdown",
+                    reply_markup=_back_button())
             except Exception as e:
-                await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_back_button())
             return
 
         if query.data == "quick_history":
@@ -1163,8 +1161,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 orders = await edgex_client.get_order_history(client, limit=5)
                 if not orders:
-                    await safe_send(context, chat_id, "\U0001f4dc No recent trades.",
-                        reply_markup=_quick_actions_keyboard())
+                    await safe_edit(query, "\U0001f4dc No recent trades.",
+                        reply_markup=_back_button())
                     return
                 msg = "\U0001f4dc **Recent Trades**\n\n"
                 for o in orders[:5]:
@@ -1192,11 +1190,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         ts_str = ""
                     side_emoji = "\U0001f7e2" if side == "BUY" else "\U0001f534"
                     msg += f"{side_emoji} {sym} {side} {fill_size} @ {price_str}{pnl_str}{ts_str}\n"
-                await safe_send(context, chat_id, msg, parse_mode="Markdown",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, msg, parse_mode="Markdown",
+                    reply_markup=_back_button())
             except Exception as e:
-                await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_back_button())
             return
 
         if query.data == "quick_close":
@@ -1212,8 +1210,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 positions = summary.get("positions", [])
                 open_positions = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
                 if not open_positions:
-                    await safe_send(context, chat_id, "No open positions to close.",
-                        reply_markup=_quick_actions_keyboard())
+                    await safe_edit(query, "No open positions to close.",
+                        reply_markup=_back_button())
                     return
                 buttons = []
                 msg = "\U0001f534 **Select position to close:**\n"
@@ -1230,11 +1228,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         pnl_str = f"${pnl_raw}"
                     msg += f"\n\u2022 {symbol} {side} | Size: {size} | PnL: {pnl_str}"
                     buttons.append([InlineKeyboardButton(f"Close {symbol} {side}", callback_data=f"close_{cid}")])
-                buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-                await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+                buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
+                await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
-                await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_back_button())
             return
 
         # ── Quick Orders (inline) ──
@@ -1249,8 +1247,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 orders = await edgex_client.get_open_orders(client)
                 if not orders:
-                    await safe_send(context, chat_id, "\u2705 No open orders.",
-                        reply_markup=_quick_actions_keyboard())
+                    await safe_edit(query, "\u2705 No open orders.",
+                        reply_markup=_back_button())
                     return
                 lines = [f"\U0001f4cb **Open Orders** ({len(orders)}):\n"]
                 buttons = []
@@ -1268,15 +1266,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                             callback_data=f"cancelone_{o_id}"
                         )])
                 buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_all")])
-                buttons.append([
-                    InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
-                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
-                ])
-                await safe_send(context, chat_id, "\n".join(lines), parse_mode="Markdown",
+                buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
+                await safe_edit(query, "\n".join(lines), parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
-                await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
-                    reply_markup=_quick_actions_keyboard())
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_back_button())
             return
 
         # ── Logout flow ──
@@ -1287,8 +1282,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     InlineKeyboardButton("\u274c Cancel", callback_data="logout_no"),
                 ]
             ])
-            await safe_send(context, chat_id,
-                "\U0001f6aa **Logout**\n\nThis will disconnect your account. Are you sure?",
+            await safe_edit(query,
+                "\U0001f6aa **Disconnect**\n\nThis will remove your API key. Are you sure?",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
@@ -1298,14 +1293,18 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.execute("DELETE FROM ai_usage WHERE tg_user_id = ?", (user_id,))
             conn.commit()
             conn.close()
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\u2705 Disconnected. Use /start to reconnect.",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
             return
 
         if query.data == "logout_no":
-            await safe_send(context, chat_id, "\u2705 Cancelled.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+            user = db.get_user(user_id)
+            user_ai = ai_trader.get_user_ai_config(user_id) if user else None
+            has_edgex = _has_edgex(user)
+            await safe_edit(query, _dashboard_text(user, user_ai),
+                parse_mode="Markdown",
+                reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
             return
 
         if query.data == "show_login":
@@ -1314,35 +1313,33 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f511 Connect with API Key", callback_data="login_api")],
             ]
             if config.DEMO_ACCOUNT_ID and config.DEMO_STARK_KEY:
-                rows.append([InlineKeyboardButton("\U0001f464 Use Aaron's edgeX Account (temp)", callback_data="login_demo")])
-            rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-            await safe_send(context, chat_id,
-                "\U0001f517 **Connect edgeX Account**\n\n"
-                "Choose how to connect:",
+                rows.append([InlineKeyboardButton("\U0001f464 Use Aaron's Account (temp)", callback_data="login_demo")])
+            rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
+            await safe_edit(query,
+                "\U0001f517 **Connect edgeX Account**\n\nChoose how to connect:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
         if query.data == "ai_edgex_credits":
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\U0001f4b3 **edgeX Account Balance** (Coming Soon)\n\n"
-                "For now, use /setai to add your own API key or Aaron's API.",
+                "For now, use /setai to add your own API key.",
                 parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                reply_markup=_back_button("\U0001f519 Back", "ai_activate_prompt"))
             return
 
         if query.data == "ai_own_key":
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\U0001f511 Use /setai to add your own API key.\n\n"
                 "Supports: OpenAI, DeepSeek, Anthropic, Google Gemini, Groq",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                reply_markup=_back_button())
             return
 
         if query.data in ("back_to_start", "back_to_dashboard"):
             user = db.get_user(user_id)
             user_ai = ai_trader.get_user_ai_config(user_id) if user else None
             has_edgex = _has_edgex(user)
-            await safe_send(context, chat_id,
-                _dashboard_text(user, user_ai),
+            await safe_edit(query, _dashboard_text(user, user_ai),
                 parse_mode="Markdown",
                 reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
             return
@@ -1350,18 +1347,17 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         # ── News alert callbacks ──
         if query.data == "news_settings":
             msg, keyboard = _news_main_menu(user_id)
-            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_toggle_"):
-            # Format: news_toggle_{source_id}_{on|off} — last segment is on/off
             remainder = query.data[len("news_toggle_"):]
             last_underscore = remainder.rfind("_")
             source_id = remainder[:last_underscore]
             enable = remainder[last_underscore + 1:] == "on"
             db.set_user_subscription(user_id, source_id, enable)
             msg, keyboard = _news_main_menu(user_id)
-            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_freq_"):
@@ -1379,20 +1375,19 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if row:
                 buttons.append(row)
             buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")])
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 f"\u23f1 *Push Frequency*\n\nHow many alerts per hour?\nCurrent: *{current}/hr*",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
         if query.data.startswith("news_setfreq_"):
-            # Format: news_setfreq_{source_id}_{max_per_hour} — last segment is the number
             remainder = query.data[len("news_setfreq_"):]
             last_underscore = remainder.rfind("_")
             source_id = remainder[:last_underscore]
             max_per_hour = int(remainder[last_underscore + 1:])
             db.set_user_news_frequency(user_id, source_id, max_per_hour)
             msg, keyboard = _news_main_menu(user_id)
-            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_remove_"):
@@ -1404,7 +1399,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             else:
                 db.remove_news_source(source_id)
             msg, keyboard = _news_main_menu(user_id)
-            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data == "news_add":
@@ -1414,7 +1409,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f30d DeFi News", callback_data="news_addsrc_defi")],
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
             ]
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\u2795 *Add News Source*\n\nChoose a topic:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
@@ -1436,7 +1431,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 if added:
                     db.set_user_subscription(user_id, sid, True)
             msg, keyboard = _news_main_menu(user_id)
-            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_mute_"):
@@ -1632,8 +1627,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not has_edgex:
                 rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
             rows.append([InlineKeyboardButton("\U0001f6aa Disconnect", callback_data="logout_confirm")])
-            rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-            await safe_send(context, chat_id,
+            rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
+            await safe_edit(query,
                 "\u2699\ufe0f **Settings**",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
@@ -1643,9 +1638,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             stats = user_memory.get_stats()
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("\U0001f5d1 Clear Memory", callback_data="memory_clear_confirm")],
-                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="settings_menu")],
             ])
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 f"\U0001f4dd **Memory**\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
                 f"\u251c Summaries: `{stats['summaries']}`\n"
@@ -1655,7 +1650,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data in ("change_persona", "settings_persona"):
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\U0001f3ad **Choose Agent Personality:**",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
@@ -1664,9 +1659,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             existing = db.get_user(user_id)
             if not existing:
                 db.save_user(user_id, "", "")
-            await safe_send(context, chat_id,
-                "\u2728 **Activate AI Agent**\n\n"
-                "Choose how to power your Agent:",
+            await safe_edit(query,
+                "\u2728 **Activate AI Agent**\n\nChoose how to power your Agent:",
                 parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
             return
 
@@ -1675,13 +1669,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not existing:
                 db.save_user(user_id, "", "")
             ai_trader.save_user_ai_config(user_id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\u2705 **AI Activated!**\n\n\U0001f3ad **Choose your Agent's personality:**",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
         if query.data == "ai_own_key_setup":
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\U0001f511 **Choose your AI provider:**",
                 parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
@@ -1693,20 +1687,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.commit()
             conn.close()
             name = PERSONA_NAMES.get(persona, persona)
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 f"\U0001f525 Personality set: **{name}**\n\nJust talk to me!",
                 parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                reply_markup=_back_button())
             return
 
         if query.data == "memory_clear_confirm":
             keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton("\u2705 Yes, clear all", callback_data="memory_clear_yes"),
-                    InlineKeyboardButton("\u274c Cancel", callback_data="memory_clear_no"),
+                    InlineKeyboardButton("\u274c Keep", callback_data="memory_clear_no"),
                 ]
             ])
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\u26a0\ufe0f **Clear Memory?**\n\nAll conversation history and preferences will be deleted.",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
@@ -1714,13 +1708,23 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data == "memory_clear_yes":
             user_memory = mem.get_user_memory(user_id)
             user_memory.clear()
-            await safe_send(context, chat_id, "\u2705 Memory cleared.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+            await safe_edit(query, "\u2705 Memory cleared.",
+                reply_markup=_back_button("\U0001f519 Back", "settings_menu"))
             return
 
         if query.data == "memory_clear_no":
-            await safe_send(context, chat_id, "\u2705 Memory kept.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+            user_memory = mem.get_user_memory(user_id)
+            stats = user_memory.get_stats()
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("\U0001f5d1 Clear Memory", callback_data="memory_clear_confirm")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="settings_menu")],
+            ])
+            await safe_edit(query,
+                f"\U0001f4dd **Memory**\n\n"
+                f"\u251c Messages: `{stats['conversations']}`\n"
+                f"\u251c Summaries: `{stats['summaries']}`\n"
+                f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}",
+                parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data == "cancel_trade":
@@ -2546,7 +2550,7 @@ def _news_main_menu(user_id: int) -> tuple:
         row.append(InlineKeyboardButton("\U0001f5d1", callback_data=f"news_remove_{sid}"))
         buttons.append(row)
     buttons.append([InlineKeyboardButton("\u2795 Add News Source", callback_data="news_add")])
-    buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
+    buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
     return msg, InlineKeyboardMarkup(buttons)
 
 
