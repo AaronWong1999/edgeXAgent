@@ -144,6 +144,12 @@ html+=`<div class="tree-item"><div class="flow-row">${P('quick_history','📜 Hi
 // Logout modal
 html+=`<div class="tree-item"><div class="flow-row">${P('logout','🚪 Disconnect',`🚪 <b>Disconnect — Trade on edgeX</b>\n\nThis will log out your edgeX account. Are you sure?`,[{t:'✅ Yes, logout',c:'rd'},{t:'❌ Cancel',c:'gy'}],'NEW message (modal). Yes/No → edits modal.',3,'M')}${A('✅ or ❌')}${P('logout_result','Result',`🚪 <b>Disconnect — Trade on edgeX</b>\n\n✅ Successfully logged out.\n\n<span class="d">or: ❌ Logout cancelled. Your account is still connected.</span>`,[{t:'🏠 Main Menu',c:'bk f'}],'Edits modal. Main Menu → back_to_dashboard.',3)}</div></div>`;
 
+html+=`<div class="flow-label" style="margin-top:10px">💬 AI Chat / 📰 Event → Trade Plan → Execute (bot-triggered)</div><div class="tree-indent">`;
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_chat','💬 AI Response',`✨ BTC at $71.9k. Bullish.\nLONG $50 at 3x?`,[{t:'🏠 Main Menu',c:'bk f'}],'User typed → AI replied (new msg).','P')}${A('TRADE')}${P('trade_plan','📋 Trade Plan',`⬆️ <b>Trade Plan — Trade on edgeX</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH\n<span class="d">Bitcoin showing strong momentum...</span>`,[{t:'✅ Confirm Execute',c:'gn'},{t:'❌ Cancel',c:'rd'}],'confirm_trade / cancel_trade. Triggered by AI chat or news LONG button.','P','S')}${A('✅')}${P('trade_exec','🔄 Executing',`🔄 <b>Executing LONG BTC — Trade on edgeX</b>\n\nPlacing order on edgeX...`,[],'Edits Plan msg.','P')}${A('result')}${P('trade_ok','✅ Trade Result',`⬆️ <b>LONG BTC — Trade on edgeX</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n├ Value: <code>~$100</code>\n├ TP: <code>$75,000</code>\n├ SL: <code>$70,000</code>\n└ Order ID: <code>abc123</code>`,[{t:'📊 BTC Position',c:'bl'},{t:'📤 Share PnL',c:'bl'},{t:'🔴 Close BTC',c:'rd'},{t:'📜 History',c:'bl'},{t:'🏠 Main Menu',c:'bk f'}],'Edits Executing msg.','P')}</div></div>`;
+html+=`<div class="tree-item">${NOTE('<b>Alternate outcomes:</b>')}</div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('trade_cancel','❌ Cancelled',`❌ <b>Trade Cancelled — Trade on edgeX</b>\n\nNo order was placed.`,[{t:'📈 Trade on edgeX',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'Edits Plan msg when user clicks ❌ Cancel.','P')}${OR()}${P('trade_err','❌ Blocked',`❌ <b>Trade Blocked — Trade on edgeX</b>\n\nInsufficient balance (available: <code>$12.34</code>)`,[{t:'🔴 Close a Position',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit USDT',c:'bl f'},{t:'📊 Status',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'Edits Executing msg when API returns error.','P')}</div></div>`;
+html+=`</div>`;
+
 html+=`</div></div></div>`;
 
 // ═══ MODULE 2: AI AGENT ═══
@@ -180,31 +186,13 @@ html+=P('news_hub','📰 Event Trading',`📰 <b>Event Trading — Event Trading
 html+=`</div><div class="flow-label" style="margin-top:10px">Hub → sub-screens</div><div class="tree-indent">`;
 html+=`<div class="tree-item"><div class="flow-row">${P('news_freq','⏱ Frequency',`⏱ <b>Push Frequency — Event Trading</b>\n\nHow many alerts per hour?\nCurrent: <b>2/hr</b>`,[{t:'1/hr',c:'gy',w:'t'},{t:'> 2/hr',c:'bl',w:'t'},{t:'3/hr',c:'gy',w:'t'},{t:'5/hr',c:'gy',w:'t'},{t:'10/hr',c:'gy',w:'t'},{t:'🔙 Back',c:'bk f'}],'Select → Hub. Back → news_settings',3)}</div></div>`;
 html+=`<div class="tree-item"><div class="flow-row">${P('news_add','➕ Add Source',`➕ <b>Add News Source — Event Trading</b>\n\nChoose a topic:`,[{t:'💰 Bitcoin News',c:'bl f'},{t:'💠 Ethereum News',c:'bl f'},{t:'🌍 DeFi News',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'Select → Hub. Back → news_settings',3)}</div></div>`;
-html+=`</div></div></div>`;
-
-// ═══ PUSH LAYER ═══
-html+=`<div class="module"><div class="mod-hdr m-push"><div class="ic">⚡</div><div class="inf"><h2>Push Layer</h2><p>Bot-initiated NEW messages. → = edits same msg in sequence.</p></div></div>`;
-html+=`<div class="flow-section"><div class="flow-label">📰 News Alert → Translate / Trade</div><div class="flow-row">`;
+html+=`</div>`;
+html+=`<div class="flow-section"><div class="flow-label" style="margin-top:10px">📰 Push: News Alert → Translate / Trade (bot-initiated)</div><div class="flow-row">`;
 html+=P('news_alert','📰 News Alert',`<b>BWEnews: SEC approves Solana ETF</b>\n\n────────────────\n2026-03-05 08:00 UTC\n\n⬆️ SOL | BULLISH | ███ HIGH`,[{t:'📈 LONG SOL $50',c:'gn'},{t:'📈 LONG SOL $150',c:'gn'},{t:'🇨🇳 中',c:'gy',w:'q'},{t:'🇯🇵 日',c:'gy',w:'q'},{t:'🇰🇷 韩',c:'gy',w:'q'},{t:'🇷🇺 Ру',c:'gy',w:'q'},{t:'🔗 Source',c:'gy',w:'t'},{t:'🔕 Mute',c:'gy',w:'t'},{t:'❌ Dismiss',c:'gy',w:'t'}],'LONG→news_trade_. Flags→tl_. Mute→toast. Dismiss→delete.','P');
 html+=A('🇨🇳');
 html+=P('news_tl','🇨🇳 Translation',`<b>BWEnews: SEC批准Solana ETF</b>\n\n⬆️ SOL | 看涨 | ███ 高`,[{t:'📈 LONG SOL $50',c:'gn'},{t:'📈 LONG SOL $150',c:'gn'}],'New msg. Same trade buttons.','P');
 html+=`</div></div>`;
-
-html+=`<div class="flow-section"><div class="flow-label">💬 AI Chat → Trade Plan → Execute → Result</div><div class="flow-row">`;
-html+=P('ai_chat','💬 AI Response',`✨ BTC at $71.9k. Bullish.\nLONG $50 at 3x?`,[{t:'🏠 Main Menu',c:'bk f'}],'User typed → AI replied (new msg).','P');
-html+=A('TRADE');
-html+=P('trade_plan','📋 Trade Plan',`⬆️ <b>Trade Plan — Trade on edgeX</b>\n\nBUY BTC (5x)\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ Value: <code>$100</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH\n<span class="d">Bitcoin showing strong momentum...</span>`,[{t:'✅ Confirm Execute',c:'gn'},{t:'❌ Cancel',c:'rd'}],'confirm_trade / cancel_trade. From AI or news.','P','S');
-html+=A('✅');
-html+=P('trade_exec','🔄 Executing',`🔄 <b>Executing LONG BTC — Trade on edgeX</b>\n\nPlacing order on edgeX...`,[],'Edits Plan msg.','P');
-html+=A('result');
-html+=P('trade_ok','✅ Trade Result',`⬆️ <b>LONG BTC — Trade on edgeX</b>\n\n✅ Order Placed!\n\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n├ Value: <code>~$100</code>\n├ TP: <code>$75,000</code>\n├ SL: <code>$70,000</code>\n└ Order ID: <code>abc123</code>`,[{t:'📊 BTC Position',c:'bl'},{t:'📤 Share PnL',c:'bl'},{t:'🔴 Close BTC',c:'rd'},{t:'📜 History',c:'bl'},{t:'🏠 Main Menu',c:'bk f'}],'Edits Executing msg.','P');
 html+=`</div></div>`;
-
-html+=`<div class="flow-section"><div class="flow-label">❌ Alternate outcomes + other push screens</div><div class="flow-row">`;
-html+=P('trade_cancel','❌ Cancelled',`❌ <b>Trade Cancelled — Trade on edgeX</b>\n\nNo order was placed.`,[{t:'📈 Trade on edgeX',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'Edits Plan msg.','P');
-html+=`<div style="width:8px"></div>`;
-html+=P('trade_err','❌ Blocked',`❌ <b>Trade Blocked — Trade on edgeX</b>\n\nInsufficient balance (available: <code>$12.34</code>)`,[{t:'🔴 Close a Position',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit USDT',c:'bl f'},{t:'📊 Status',c:'bl'},{t:'🏠 Main Menu',c:'bk'}],'Edits Executing. Smart buttons.','P');
-html+=`</div></div></div>`;
 
 document.getElementById("app").innerHTML=html;
 document.getElementById("search").addEventListener("input",e=>{const q=e.target.value.toLowerCase();document.querySelectorAll(".phone").forEach(p=>{if(!q){p.classList.remove("dimmed","highlight");return;}if(p.dataset.search.includes(q)){p.classList.add("highlight");p.classList.remove("dimmed");}else{p.classList.add("dimmed");p.classList.remove("highlight");}});});
