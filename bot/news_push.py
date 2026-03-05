@@ -288,11 +288,12 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
     buttons = []
     if action in ("LONG", "SHORT"):
         side = "BUY" if action == "LONG" else "SELL"
+        cb_asset = asset[:20]  # Truncate to stay within Telegram's 64-byte callback_data limit
         buttons.append([
             InlineKeyboardButton(f"{action_emoji} {action} {asset} $50",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_50"),
+                callback_data=f"news_trade_{cb_asset}_{side}_{leverage}_50"),
             InlineKeyboardButton(f"{action_emoji} {action} {asset} $150",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_150"),
+                callback_data=f"news_trade_{cb_asset}_{side}_{leverage}_150"),
         ])
 
     # Translation buttons — one row, flags only

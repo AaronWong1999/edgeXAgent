@@ -279,13 +279,15 @@ def format_bwenews_alert(headline: str, analysis: Optional[dict],
 
         msg += f"\n\n{sent_emoji} {asset} | {sentiment} | {conf_bar} {confidence}"
 
+        # Truncate asset to stay within Telegram's 64-byte callback_data limit
+        cb_asset = asset[:20]
         buttons.append([
             InlineKeyboardButton(
                 f"{action_emoji} {action} {asset} $50",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_50"),
+                callback_data=f"news_trade_{cb_asset}_{side}_{leverage}_50"),
             InlineKeyboardButton(
                 f"{action_emoji} {action} {asset} $150",
-                callback_data=f"news_trade_{asset}_{side}_{leverage}_150"),
+                callback_data=f"news_trade_{cb_asset}_{side}_{leverage}_150"),
         ])
 
     # Translation buttons — one row: 中 日 韩 俄
