@@ -244,9 +244,8 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         conn.commit()
         conn.close()
         await safe_edit(query,
-            "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u2705 Successfully logged out. Use /start to reconnect.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
+            "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u2705 Successfully logged out.\nPress **Start** to reconnect.",
+            parse_mode="Markdown")
         return ConversationHandler.END
 
     if query.data == "logout_no":
@@ -1608,19 +1607,14 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.commit()
             conn.close()
             await safe_edit(query,
-                "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u2705 Successfully logged out. Use /start to reconnect.",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
+                "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u2705 Successfully logged out.\nPress **Start** to reconnect.",
+                parse_mode="Markdown")
             return
 
         if query.data == "logout_no":
             await safe_edit(query,
                 "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u274c Logout cancelled. Your account is still connected.",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub"),
-                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ]))
+                parse_mode="Markdown")
             return
 
         if query.data == "show_login":
@@ -2117,21 +2111,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory.clear()
             await safe_edit(query,
                 f"\U0001f5d1 **Clear Memory \u2014 AI Agent**\n\n\u2705 Memory cleared.\n\u251c Deleted: `{count}` messages\n\u2514 Preferences: reset",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f916 AI Agent", callback_data="ai_hub"),
-                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ]))
+                parse_mode="Markdown")
             return
 
         if query.data == "memory_clear_no":
             await safe_edit(query,
                 "\U0001f5d1 **Clear Memory \u2014 AI Agent**\n\n\u274c Cancelled. Memory kept intact.",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory"),
-                     InlineKeyboardButton("\U0001f916 AI Agent", callback_data="ai_hub")],
-                ]))
+                parse_mode="Markdown")
             return
 
         if query.data == "cancel_trade":
@@ -2351,11 +2337,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data == "close_cancel":
             await safe_edit(query,
                 "\U0001f4b0 **Position \u2014 Trade on edgeX**\n\n\u274c Close cancelled. No positions were closed.",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4b0 Position", callback_data="quick_close"),
-                     InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub")],
-                ]))
+                parse_mode="Markdown")
             return
 
         # ── Close all positions ──
@@ -2383,14 +2365,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         msg += f"\u2705 {sym} closed\n"
                     else:
                         msg += f"\u274c {sym}: {r.get('error', r.get('msg', 'failed'))[:60]}\n"
-                await safe_edit(query, msg, parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub"),
-                         InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                    ]))
+                await safe_edit(query, msg, parse_mode="Markdown")
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
-                    reply_markup=_back_button("\U0001f519 Back", "trade_hub"))
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}")
             return
 
         if query.data.startswith("close_"):
@@ -2498,27 +2475,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 if order_id:
                     msg += f"\u2514 Order ID: `{order_id}`"
 
-                post_close_kb = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                        InlineKeyboardButton("\U0001f4e4 Share PnL", callback_data="quick_pnl"),
-                    ],
-                    [
-                        InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
-                        InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
-                    ],
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ])
-                await safe_edit(query, msg, parse_mode="Markdown", reply_markup=post_close_kb)
+                await safe_edit(query, msg, parse_mode="Markdown")
             else:
                 error_msg = result.get("msg", result.get("error", "Unknown"))
                 await safe_edit(query,
                     f"\u274c **Close Failed \u2014 Trade on edgeX**\n\n{error_msg}",
-                    parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f4b0 Position", callback_data="quick_close"),
-                         InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub")],
-                    ]))
+                    parse_mode="Markdown")
             return
 
         # ── Cancel orders for a contract ──
@@ -2632,11 +2594,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data == "cancel_dismiss":
             await safe_edit(query,
                 "\U0001f4cb **Orders \u2014 Trade on edgeX**\n\n\u274c Cancelled. Orders kept.",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
-                     InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub")],
-                ]))
+                parse_mode="Markdown")
             return
 
         # ── Cancel a single order (edits modal) ──
@@ -2653,25 +2611,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             result = await edgex_client.cancel_order(client, user["account_id"], order_id)
 
             if result.get("code") == "SUCCESS":
-                kb = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("\U0001f4cb View Orders", callback_data="quick_orders"),
-                        InlineKeyboardButton("\U0001f4b0 Position", callback_data="quick_close"),
-                    ],
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ])
                 await safe_edit(query,
                     f"\u2705 **Order Cancelled \u2014 Trade on edgeX**\n\nOrder `{order_id[:16]}...` cancelled successfully.",
-                    parse_mode="Markdown",
-                    reply_markup=kb)
+                    parse_mode="Markdown")
             else:
                 await safe_edit(query,
                     f"\u274c **Cancel Failed \u2014 Trade on edgeX**\n\n{result.get('error', 'Unknown')}",
-                    parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
-                         InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub")],
-                    ]))
+                    parse_mode="Markdown")
             return
 
     except Exception as e:
@@ -3240,18 +3186,7 @@ async def post_init(application: Application):
     for attempt in range(3):
         try:
             await application.bot.set_my_commands([
-                BotCommand("start", "Start / Dashboard"),
-                BotCommand("status", "Balance & positions"),
-                BotCommand("close", "Close a position"),
-                BotCommand("orders", "View & cancel open orders"),
-                BotCommand("history", "Recent trades"),
-                BotCommand("pnl", "P&L report"),
-                BotCommand("setai", "Configure AI"),
-                BotCommand("memory", "View Agent's memory"),
-                BotCommand("news", "Manage news alerts"),
-                BotCommand("feedback", "Suggest features / report bugs"),
-                BotCommand("logout", "Disconnect account"),
-                BotCommand("help", "All commands"),
+                BotCommand("start", "Start"),
             ])
             # Start news push loop (polls all MCP sources including BWEnews)
             news_push.start_news_loop(application.bot)
