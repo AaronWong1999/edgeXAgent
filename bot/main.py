@@ -63,7 +63,7 @@ PERSONA_NAMES = {
 
 
 def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
-    """Reusable quick-action buttons for the bottom of most screens."""
+    """Default quick-action buttons — the go-to for most screens."""
     if has_edgex:
         return InlineKeyboardMarkup([
             [
@@ -71,8 +71,8 @@ def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
                 InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
             ],
             [
-                InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
                 InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
+                InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
             ],
             [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
         ])
@@ -82,7 +82,7 @@ def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
 
 
 def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardMarkup:
-    """Standard dashboard button layout used everywhere."""
+    """Main dashboard — hub for all actions."""
     rows = []
     if has_edgex:
         rows.append([
@@ -90,15 +90,15 @@ def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardM
             InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
         ])
         rows.append([
-            InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
             InlineKeyboardButton("\U0001f534 Close Position", callback_data="quick_close"),
+            InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
         ])
         rows.append([
-            InlineKeyboardButton("\U0001f4dd Memory", callback_data="settings_memory"),
+            InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
+            InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings"),
+        ])
+        rows.append([
             InlineKeyboardButton("\U0001f3ad Personality", callback_data="settings_persona"),
-        ])
-        rows.append([
-            InlineKeyboardButton("\U0001f4f0 News Alerts", callback_data="news_settings"),
             InlineKeyboardButton("\u2699\ufe0f Settings", callback_data="settings_menu"),
         ])
         rows.append([
@@ -623,11 +623,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 kb = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
+                        InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
                     ],
                     [
-                        InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                        InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                     ],
                     [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
                 ])
@@ -1234,6 +1233,48 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     reply_markup=_quick_actions_keyboard())
             return
 
+        # ── Quick Orders (inline) ──
+        if query.data == "quick_orders":
+            await query.answer()
+            user = db.get_user(user_id)
+            if not user:
+                await safe_send(context, chat_id, "\u274c Session expired. Use /start.")
+                return
+            try:
+                await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+                client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                orders = await edgex_client.get_open_orders(client)
+                if not orders:
+                    await safe_send(context, chat_id, "\u2705 No open orders.",
+                        reply_markup=_quick_actions_keyboard())
+                    return
+                lines = [f"\U0001f4cb **Open Orders** ({len(orders)}):\n"]
+                buttons = []
+                for o in orders:
+                    sym = o.get("symbol", edgex_client.resolve_symbol(o.get("contractId", "")))
+                    o_side = o.get("side", "?")
+                    o_price = o.get("price", "?")
+                    o_size = o.get("size", "?")
+                    o_type = o.get("type", "LIMIT")
+                    o_id = o.get("id", o.get("orderId", ""))
+                    lines.append(f"  \u2022 {sym} {o_side} {o_type} | Size: {o_size} | Price: ${o_price}")
+                    if o_id:
+                        buttons.append([InlineKeyboardButton(
+                            f"\u274c Cancel {sym} {o_side} {o_size}@{o_price}",
+                            callback_data=f"cancelone_{o_id}"
+                        )])
+                buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_all")])
+                buttons.append([
+                    InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
+                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+                ])
+                await safe_send(context, chat_id, "\n".join(lines), parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(buttons))
+            except Exception as e:
+                await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_quick_actions_keyboard())
+            return
+
         # ── Logout flow ──
         if query.data == "logout_confirm":
             keyboard = InlineKeyboardMarkup([
@@ -1726,7 +1767,6 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 # Build smart action buttons based on error type
                 action_rows = []
                 if "balance" in error.lower() or "not enough" in error.lower():
-                    # Insufficient balance: offer deposit link + close positions
                     try:
                         summary = await edgex_client.get_account_summary(client)
                         assets = summary.get("assets", {})
@@ -1736,19 +1776,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         avail_str = "unknown"
                     action_rows.append([
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                        InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
+                    ])
+                    action_rows.append([
                         InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                     ])
                     error = f"Insufficient balance (available: {avail_str})"
                 elif "minimum" in error.lower() or "below" in error.lower():
-                    # Min order size issue
                     action_rows.append([
                         InlineKeyboardButton("\U0001f4ac Try Different Size", callback_data="back_to_dashboard"),
                     ])
                 action_rows.append([
                     InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                    InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
                 ])
-                action_rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
                 await safe_send(context, chat_id,
                     f"\u274c **Trade blocked**\n\n"
                     f"{error}\n\n"
@@ -1813,18 +1854,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             else:
                 error_msg = result.get("msg") or result.get("error", "Unknown error")
                 friendly = _friendly_order_error(error_msg, plan)
-                # Smart buttons for order errors too
                 error_rows = []
-                if "balance" in error_msg.lower() or "insufficient" in error_msg.lower():
+                err_lower = error_msg.lower()
+                if "balance" in err_lower or "insufficient" in err_lower or "margin" in err_lower:
                     error_rows.append([
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                        InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
+                    ])
+                    error_rows.append([
                         InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                     ])
                 error_rows.append([
                     InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                    InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
                 ])
-                error_rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
                 await safe_send(context, chat_id, friendly, parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(error_rows))
             return
@@ -1870,8 +1913,35 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 pnl_emoji = "\u2753"
 
             result = await edgex_client.close_position(client, contract_id, target)
+
+            if result.get("code") == "MARGIN_BLOCKED_BY_ORDERS":
+                orders = result.get("open_orders", [])
+                order_count = len(orders)
+                order_lines = []
+                for o in orders[:5]:
+                    o_side = o.get("side", "?")
+                    o_price = o.get("price", "?")
+                    o_size = o.get("size", "?")
+                    o_type = o.get("type", "LIMIT")
+                    order_lines.append(f"  • {o_side} {o_type} | Size: {o_size} | Price: ${o_price}")
+                order_detail = "\n".join(order_lines) if order_lines else ""
+
+                msg = (
+                    f"\u26a0\ufe0f **{symbol} {side} close failed — margin insufficient**\n\n"
+                    f"You have **{order_count}** open order(s) for {symbol} occupying margin:\n"
+                    f"{order_detail}\n\n"
+                    f"Cancel these orders to free up margin, then retry close."
+                )
+                kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(f"\u274c Cancel All {symbol} Orders", callback_data=f"cancelorders_{contract_id}")],
+                    [InlineKeyboardButton(f"\U0001f504 Retry Close {symbol}", callback_data=f"close_{contract_id}")],
+                    [InlineKeyboardButton("\U0001f4cb View Orders", callback_data=f"vieworders_{contract_id}"),
+                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ])
+                await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=kb)
+                return
+
             if result.get("code") == "SUCCESS":
-                # Wait briefly then fetch updated balance
                 import asyncio as _aio
                 await _aio.sleep(1.5)
                 try:
@@ -1891,7 +1961,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 )
                 if balance_line:
                     msg += f"{balance_line}\n"
-                order_id = result.get("data", {}).get("orderId", "")
+                order_id = result.get("data", {}).get("orderId", result.get("orderId", ""))
                 if order_id:
                     msg += f"\u2514 Order ID: `{order_id}`"
 
@@ -1902,13 +1972,126 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     ],
                     [
                         InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
-                        InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+                        InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders"),
                     ],
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
                 ])
                 await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=post_close_kb)
             else:
+                error_msg = result.get("msg", result.get("error", "Unknown"))
                 await safe_send(context, chat_id,
-                    f"\u274c Close failed: {result.get('msg', result.get('error', 'Unknown'))}",
+                    f"\u274c Close failed: {error_msg}",
+                    reply_markup=_quick_actions_keyboard())
+            return
+
+        # ── Cancel orders for a contract ──
+        if query.data.startswith("cancelorders_"):
+            target_id = query.data.replace("cancelorders_", "")
+            user = db.get_user(user_id)
+            if not user:
+                await query.answer("\u274c Not connected.", show_alert=True)
+                return
+            await query.answer()
+
+            client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+            if target_id == "all":
+                await safe_send(context, chat_id, "\U0001f504 Cancelling all orders...")
+                result = await edgex_client.cancel_all_orders(client)
+                label = "all"
+            else:
+                symbol = edgex_client.resolve_symbol(target_id)
+                await safe_send(context, chat_id, f"\U0001f504 Cancelling all {symbol} orders...")
+                result = await edgex_client.cancel_all_orders(client, target_id)
+                label = symbol
+
+            if result.get("code") == "SUCCESS":
+                btns = []
+                if target_id != "all":
+                    btns.append([InlineKeyboardButton(f"\U0001f534 Close {symbol}", callback_data=f"close_{target_id}")])
+                btns.append([
+                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+                ])
+                await safe_send(context, chat_id,
+                    f"\u2705 {label} orders cancelled! Margin freed.",
+                    reply_markup=InlineKeyboardMarkup(btns))
+            else:
+                await safe_send(context, chat_id,
+                    f"\u274c Failed to cancel orders: {result.get('error', 'Unknown')}",
+                    reply_markup=_quick_actions_keyboard())
+            return
+
+        # ── View open orders for a contract ──
+        if query.data.startswith("vieworders_"):
+            contract_id = query.data.replace("vieworders_", "")
+            user = db.get_user(user_id)
+            if not user:
+                await query.answer("\u274c Not connected.", show_alert=True)
+                return
+            await query.answer()
+            symbol = edgex_client.resolve_symbol(contract_id)
+
+            client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+            orders = await edgex_client.get_open_orders(client, contract_id)
+
+            if not orders:
+                await safe_send(context, chat_id,
+                    f"\u2705 No open orders for {symbol}.",
+                    reply_markup=_quick_actions_keyboard())
+                return
+
+            lines = [f"\U0001f4cb **Open Orders for {symbol}** ({len(orders)}):\n"]
+            buttons = []
+            for o in orders:
+                o_side = o.get("side", "?")
+                o_price = o.get("price", "?")
+                o_size = o.get("size", "?")
+                o_type = o.get("type", "LIMIT")
+                o_id = o.get("id", o.get("orderId", ""))
+                lines.append(f"  • {o_side} {o_type} | Size: {o_size} | Price: ${o_price}")
+                if o_id:
+                    buttons.append([InlineKeyboardButton(
+                        f"\u274c Cancel {o_side} {o_size}@{o_price}",
+                        callback_data=f"cancelone_{o_id}"
+                    )])
+
+            buttons.append([InlineKeyboardButton(
+                f"\u274c Cancel All {symbol} Orders",
+                callback_data=f"cancelorders_{contract_id}"
+            )])
+            buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
+
+            await safe_send(context, chat_id,
+                "\n".join(lines), parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        # ── Cancel a single order ──
+        if query.data.startswith("cancelone_"):
+            order_id = query.data.replace("cancelone_", "")
+            user = db.get_user(user_id)
+            if not user:
+                await query.answer("\u274c Not connected.", show_alert=True)
+                return
+            await query.answer()
+
+            client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+            result = await edgex_client.cancel_order(client, user["account_id"], order_id)
+
+            if result.get("code") == "SUCCESS":
+                kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("\U0001f4cb View Orders", callback_data="quick_orders"),
+                        InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
+                    ],
+                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                ])
+                await safe_send(context, chat_id,
+                    f"\u2705 Order cancelled.",
+                    reply_markup=kb)
+            else:
+                await safe_send(context, chat_id,
+                    f"\u274c Failed: {result.get('error', 'Unknown')}",
                     reply_markup=_quick_actions_keyboard())
             return
 
@@ -2004,6 +2187,57 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ──────────────────────────────────────────
 # /close — Close a position
+# ──────────────────────────────────────────
+# /orders — View and manage open orders
+# ──────────────────────────────────────────
+
+async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    try:
+        user = db.get_user(update.effective_user.id)
+        if not user or not user.get("account_id") or len(user.get("account_id", "")) < 5:
+            await update.message.reply_text("\U0001f517 Connect your edgeX account first.\nUse /start to connect.")
+            return
+
+        client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+        orders = await edgex_client.get_open_orders(client)
+
+        if not orders:
+            await safe_send(context, chat_id,
+                "\u2705 No open orders.",
+                reply_markup=_quick_actions_keyboard())
+            return
+
+        lines = [f"\U0001f4cb **Open Orders** ({len(orders)}):\n"]
+        buttons = []
+        for o in orders:
+            symbol = o.get("symbol", edgex_client.resolve_symbol(o.get("contractId", "")))
+            o_side = o.get("side", "?")
+            o_price = o.get("price", "?")
+            o_size = o.get("size", "?")
+            o_type = o.get("type", "LIMIT")
+            o_id = o.get("id", o.get("orderId", ""))
+            lines.append(f"  \u2022 {symbol} {o_side} {o_type} | Size: {o_size} | Price: ${o_price}")
+            if o_id:
+                buttons.append([InlineKeyboardButton(
+                    f"\u274c Cancel {symbol} {o_side} {o_size}@{o_price}",
+                    callback_data=f"cancelone_{o_id}"
+                )])
+
+        buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_all")])
+        buttons.append([
+            InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
+            InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+        ])
+
+        await safe_send(context, chat_id,
+            "\n".join(lines), parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(buttons))
+    except Exception as e:
+        logger.error(f"cmd_orders error: {e}", exc_info=True)
+        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}")
+
+
 # ──────────────────────────────────────────
 
 async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2323,6 +2557,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start \u2014 dashboard\n"
         "/status \u2014 check your bags\n"
         "/close \u2014 close a position\n"
+        "/orders \u2014 view & cancel open orders\n"
         "/history \u2014 recent trades\n"
         "/pnl \u2014 today's damage report\n"
         "/setai \u2014 switch AI provider\n"
@@ -2432,6 +2667,7 @@ async def post_init(application: Application):
                 BotCommand("start", "Start / Dashboard"),
                 BotCommand("status", "Balance & positions"),
                 BotCommand("close", "Close a position"),
+                BotCommand("orders", "View & cancel open orders"),
                 BotCommand("history", "Recent trades"),
                 BotCommand("pnl", "P&L report"),
                 BotCommand("setai", "Configure AI"),
@@ -2540,6 +2776,7 @@ def main():
     app.add_handler(feedback_handler)
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("close", cmd_close))
+    app.add_handler(CommandHandler("orders", cmd_orders))
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("pnl", cmd_pnl))
     app.add_handler(CommandHandler("memory", cmd_memory))

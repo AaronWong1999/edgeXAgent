@@ -335,101 +335,118 @@ async def place_order(client: Client, contract_id: str, side: str, size: str, pr
     try:
         symbol = resolve_symbol(contract_id)
         side_word = "buy" if side.upper() == "BUY" else "sell"
-        account_id = ""
-        stark_key = ""
-        try:
-            account_id = str(client.internal_client.account_id)
-            stark_key = client.internal_client.stark_pri_key
-        except Exception:
-            pass
+        account_id, stark_key = _get_cli_creds(client)
         if not account_id or not stark_key:
-            # Fallback to SDK
             order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
             return await client.create_limit_order(contract_id=contract_id, size=size, price=price, side=order_side)
 
         result = await _run_cli(account_id, stark_key, [
             "order", "create", symbol, side_word, "limit", size, "--price", price, "-y"
         ])
+
+        # If margin error, report it (don't auto-cancel user's orders)
+
         return result
     except Exception as e:
         logger.error(f"place_order error: {e}")
         return {"code": "ERROR", "error": str(e)}
 
 
+def _get_cli_creds(client: Client) -> tuple:
+    """Extract account_id and stark_key from SDK client for CLI usage."""
+    try:
+        return str(client.internal_client.account_id), client.internal_client.stark_pri_key
+    except Exception:
+        return "", ""
+
+
+async def get_open_orders(client: Client, contract_id: str = None) -> list:
+    """Get open orders, optionally filtered by contract."""
+    account_id, stark_key = _get_cli_creds(client)
+    if not account_id or not stark_key:
+        return []
+    args = ["account", "orders"]
+    if contract_id:
+        symbol = resolve_symbol(contract_id)
+        args.extend(["-s", symbol])
+    result = await _run_cli(account_id, stark_key, args)
+    if isinstance(result, dict):
+        return result.get("dataList", [])
+    if isinstance(result, list):
+        return result
+    return []
+
+
+async def cancel_all_orders(client: Client, contract_id: str = None) -> dict:
+    """Cancel all open orders, optionally filtered by symbol."""
+    account_id, stark_key = _get_cli_creds(client)
+    if not account_id or not stark_key:
+        return {"code": "ERROR", "error": "No CLI credentials"}
+    args = ["order", "cancel-all"]
+    if contract_id:
+        symbol = resolve_symbol(contract_id)
+        args.extend(["-s", symbol])
+    result = await _run_cli(account_id, stark_key, args)
+    logger.info(f"cancel_all_orders: {result}")
+    return result
+
+
 async def cancel_order(client: Client, account_id: str, order_id: str) -> dict:
-    """Cancel an order."""
+    """Cancel a specific order by ID."""
+    aid, stark_key = _get_cli_creds(client)
+    if aid and stark_key:
+        return await _run_cli(aid, stark_key, ["order", "cancel", order_id])
     try:
         from edgex_sdk import CancelOrderParams
         params = CancelOrderParams(order_id=order_id)
-        result = await client.cancel_order(params)
-        return result
+        return await client.cancel_order(params)
     except Exception as e:
-        logger.error(f"cancel_order error: {e}")
         return {"code": "ERROR", "error": str(e)}
 
 
 async def close_position(client: Client, contract_id: str, position: dict) -> dict:
-    """Close a position via edgex-cli market order. Auto-batches if margin insufficient."""
+    """Close a position via market order. If margin insufficient, check for open orders."""
     try:
         symbol = resolve_symbol(contract_id)
         current_side = position.get("side", "")
         side_word = "sell" if current_side == "LONG" else "buy"
         total_size = abs(float(position.get("size", "0")))
 
-        account_id = ""
-        stark_key = ""
-        try:
-            account_id = str(client.internal_client.account_id)
-            stark_key = client.internal_client.stark_pri_key
-        except Exception as e:
-            logger.warning(f"close_position: could not extract creds: {e}")
-        logger.info(f"close_position: symbol={symbol}, side={side_word}, size={total_size}, has_creds={bool(account_id and stark_key)}")
+        account_id, stark_key = _get_cli_creds(client)
         if not account_id or not stark_key:
-            logger.warning("close_position: falling back to SDK (no CLI creds)")
             close_side = OrderSide.SELL if current_side == "LONG" else OrderSide.BUY
             return await client.create_market_order(contract_id=contract_id, size=str(total_size), side=close_side)
 
-        # Get min order size for this contract
-        specs = await get_contract_specs(client, contract_id)
-        min_size = float(specs.get("minOrderSize", "300")) if specs else 300
-        batch_size = max(min_size, total_size / 4)  # Close in up to 4 batches
+        size_str = str(int(total_size)) if total_size == int(total_size) else str(total_size)
+        result = await _run_cli(account_id, stark_key, [
+            "order", "create", symbol, side_word, "market", size_str, "-y"
+        ])
 
-        remaining = total_size
-        closed = 0
-        last_result = {}
-        max_batches = 10
+        if result.get("code") == "SUCCESS":
+            return result
 
-        logger.info(f"close_position: starting batch close, min_size={min_size}, batch_size={batch_size}")
-        while remaining >= min_size and max_batches > 0:
-            chunk = min(batch_size, remaining)
-            if remaining - chunk < min_size and remaining - chunk > 0:
-                chunk = remaining
-            size_str = str(int(chunk)) if chunk == int(chunk) else str(chunk)
-            cli_args = ["order", "create", symbol, side_word, "market", size_str, "-y"]
-            logger.info(f"close_position: CLI args: {cli_args}")
-            result = await _run_cli(account_id, stark_key, cli_args)
-            logger.info(f"close_position: CLI result: {result}")
-            last_result = result
-            if result.get("code") == "SUCCESS":
-                closed += chunk
-                remaining -= chunk
-                logger.info(f"Closed {chunk} {symbol}, remaining: {remaining}")
-                if remaining > 0:
-                    await asyncio.sleep(1)  # Let margin settle
-            else:
-                error = result.get("error", "")
-                if "MARGIN" in error.upper() and batch_size > min_size:
-                    batch_size = max(min_size, batch_size / 2)  # Reduce batch size
-                    logger.warning(f"Margin error, reducing batch to {batch_size}")
-                    continue
-                break
-            max_batches -= 1
+        error = result.get("error", "")
+        if "MARGIN" not in error.upper():
+            return result
 
-        if closed > 0:
-            return {"code": "SUCCESS", "data": {"closedSize": closed, "remaining": remaining, **last_result}}
-        return last_result
+        # Margin error — check if open orders are blocking
+        orders = await get_open_orders(client, contract_id)
+        if orders:
+            # Return special code so main.py can show smart buttons
+            return {
+                "code": "MARGIN_BLOCKED_BY_ORDERS",
+                "error": f"Margin insufficient — you have {len(orders)} open order(s) for {symbol} occupying margin.",
+                "open_orders": orders,
+                "contract_id": contract_id,
+            }
+
+        # No open orders — genuine balance issue
+        return {
+            "code": "ERROR",
+            "error": f"Insufficient margin to close {symbol}. Deposit more USDT or reduce position size.",
+        }
     except Exception as e:
-        logger.error(f"close_position error: {e}")
+        logger.error(f"close_position error: {e}", exc_info=True)
         return {"code": "ERROR", "error": str(e)}
 
 
