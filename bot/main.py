@@ -459,16 +459,14 @@ async def receive_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE
         db.save_user(user_id, account_id, clean_key)
         context.user_data.pop("pending_account_id", None)
 
-        masked = account_id[:4] + "..." + account_id[-4:]
-
         # Check if AI is already configured (user might have set it up before connecting edgeX)
         user_ai = ai_trader.get_user_ai_config(user_id)
         if user_ai:
             keyboard = _dashboard_keyboard(True, has_ai=True)
             await safe_send(context, chat_id,
                 f"\u2705 *edgeX Connected!*\n\n"
-                f"\U0001f464 Account: `{masked}`\n"
-                f"\u2728 AI: active \u2705\n\n"
+                f"\U0001f464 edgeX: `{account_id}` \u2705\n"
+                f"\u2728 AI: Active \u2705\n\n"
                 f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
                 f"_\"BTC's looking juicy, should I ape in?\"_\n"
                 f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
@@ -479,7 +477,7 @@ async def receive_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE
         else:
             await safe_send(context, chat_id,
                 f"\u2705 *edgeX Connected!*\n\n"
-                f"\U0001f464 Account: `{masked}`\n\n"
+                f"\U0001f464 edgeX: `{account_id}` \u2705\n\n"
                 f"Now activate your AI Agent to start trading:",
                 parse_mode="Markdown",
                 reply_markup=_ai_activate_keyboard())
