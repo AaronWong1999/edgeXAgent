@@ -1048,7 +1048,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.answer()
             user = db.get_user(user_id)
             if not user:
-                await query.edit_message_text("\u274c Session expired. Use /start.")
+                await safe_send(context, chat_id, "\u274c Session expired. Use /start.")
                 return
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -1098,7 +1098,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.answer()
             user = db.get_user(user_id)
             if not user:
-                await query.edit_message_text("\u274c Session expired. Use /start.")
+                await safe_send(context, chat_id, "\u274c Session expired. Use /start.")
                 return
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -1153,7 +1153,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.answer()
             user = db.get_user(user_id)
             if not user:
-                await query.edit_message_text("\u274c Session expired. Use /start.")
+                await safe_send(context, chat_id, "\u274c Session expired. Use /start.")
                 return
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -1200,7 +1200,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.answer()
             user = db.get_user(user_id)
             if not user:
-                await query.edit_message_text("\u274c Session expired. Use /start.")
+                await safe_send(context, chat_id, "\u274c Session expired. Use /start.")
                 return
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
@@ -1675,31 +1675,35 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data == "cancel_trade":
             pending_plans.pop(user_id, None)
-            await query.edit_message_text("\u274c Trade cancelled.")
+            await query.answer("\u274c Cancelled", show_alert=False)
+            await safe_send(context, chat_id, "\u274c Trade cancelled.")
             return
 
         if query.data == "confirm_trade":
             plan = pending_plans.pop(user_id, None)
             if not plan:
-                await query.edit_message_text("\u274c Trade plan expired. Send a new thesis.")
+                await query.answer()
+                await safe_send(context, chat_id, "\u274c Trade plan expired. Send a new request.")
                 return
 
             user = db.get_user(user_id)
             if not user:
-                await query.edit_message_text("\u274c Account not connected. Use /start.")
+                await query.answer()
+                await safe_send(context, chat_id, "\u274c Account not connected. Use /start.")
                 return
 
-            await query.edit_message_text("\U0001f504 Executing trade on edgeX...")
+            await query.answer()
+            await safe_send(context, chat_id, "\U0001f504 Executing trade on edgeX...")
 
             client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
             contract_id = await edgex_client.resolve_contract_id(plan["asset"])
 
             if not contract_id:
-                await query.edit_message_text(
+                await safe_send(context, chat_id,
                     f"\u274c **Asset not found:** {plan.get('asset')}\n\n"
                     f"This asset might not be available on edgeX right now. "
-                    f"Try a different one like BTC, ETH, or SOL."
-                )
+                    f"Try a different one like BTC, ETH, or SOL.",
+                    parse_mode="Markdown")
                 return
 
             # Sanitize size/price: strip non-numeric chars, resolve "market" price
@@ -1709,9 +1713,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not raw_price or raw_price.lower() in ("market", "current", ""):
                 raw_price = await edgex_client.get_market_price(plan["asset"])
                 if not raw_price:
-                    await query.edit_message_text(
-                        f"\u274c Couldn't fetch market price for {plan['asset']}. Try again."
-                    )
+                    await safe_send(context, chat_id,
+                        f"\u274c Couldn't fetch market price for {plan['asset']}. Try again.")
                     return
             raw_price = re.sub(r'[^\d.]', '', raw_price)
 
@@ -1746,13 +1749,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
                 ])
                 action_rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-                await query.edit_message_text(
+                await safe_send(context, chat_id,
                     f"\u274c **Trade blocked**\n\n"
                     f"{error}\n\n"
                     f"{suggestion}",
                     parse_mode="Markdown",
-                    reply_markup=InlineKeyboardMarkup(action_rows),
-                )
+                    reply_markup=InlineKeyboardMarkup(action_rows))
                 return
 
             result = await edgex_client.place_order(
@@ -1807,7 +1809,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     ],
                     [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
                 ])
-                await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=post_trade_kb)
+                await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=post_trade_kb)
             else:
                 error_msg = result.get("msg") or result.get("error", "Unknown error")
                 friendly = _friendly_order_error(error_msg, plan)
@@ -1823,7 +1825,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
                 ])
                 error_rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-                await query.edit_message_text(friendly, parse_mode="Markdown",
+                await safe_send(context, chat_id, friendly, parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(error_rows))
             return
 
@@ -1831,10 +1833,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             contract_id = query.data.replace("close_", "")
             user = db.get_user(user_id)
             if not user:
-                await query.edit_message_text("\u274c Account not connected.")
+                await query.answer("\u274c Account not connected.", show_alert=True)
                 return
 
-            await query.edit_message_text("\U0001f504 Closing position...")
+            await query.answer()
+            await safe_send(context, chat_id, "\U0001f504 Closing position...")
 
             client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
             summary = await edgex_client.get_account_summary(client)
@@ -1847,29 +1850,71 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     break
 
             if not target:
-                await query.edit_message_text("\u274c Position not found. It may have already been closed.")
+                await safe_send(context, chat_id,
+                    "\u274c Position not found. It may have already been closed.",
+                    reply_markup=_quick_actions_keyboard())
                 return
+
+            # Capture pre-close P&L info
+            symbol = edgex_client.resolve_symbol(contract_id)
+            side = target.get("side", "?")
+            entry_price = target.get("entryPrice", "0")
+            size = target.get("size", "0")
+            pnl_raw = target.get("unrealizedPnl", "0")
+            try:
+                pnl_f = float(pnl_raw)
+                pnl_str = f"+${pnl_f:.2f}" if pnl_f >= 0 else f"-${abs(pnl_f):.2f}"
+                pnl_emoji = "\U0001f7e2" if pnl_f >= 0 else "\U0001f534"
+            except (ValueError, TypeError):
+                pnl_str = f"${pnl_raw}"
+                pnl_emoji = "\u2753"
 
             result = await edgex_client.close_position(client, contract_id, target)
             if result.get("code") == "SUCCESS":
-                symbol = edgex_client.resolve_symbol(contract_id)
-                await query.edit_message_text(
-                    f"\u2705 Close order placed for {symbol}.",
-                    reply_markup=_quick_actions_keyboard(),
+                # Wait briefly then fetch updated balance
+                import asyncio as _aio
+                await _aio.sleep(1.5)
+                try:
+                    new_summary = await edgex_client.get_account_summary(client)
+                    new_assets = new_summary.get("assets", {})
+                    new_equity = float(new_assets.get("totalEquityValue", "0"))
+                    new_avail = float(new_assets.get("availableBalance", "0"))
+                    balance_line = f"\u251c Balance: `${new_equity:.2f}` (Available: `${new_avail:.2f}`)"
+                except Exception:
+                    balance_line = ""
+
+                msg = (
+                    f"{pnl_emoji} **{symbol} {side} — Closed**\n\n"
+                    f"\u251c Entry: `${entry_price}`\n"
+                    f"\u251c Size: `{size}`\n"
+                    f"\u251c Realized P&L: `{pnl_str}`\n"
                 )
+                if balance_line:
+                    msg += f"{balance_line}\n"
+                order_id = result.get("data", {}).get("orderId", "")
+                if order_id:
+                    msg += f"\u2514 Order ID: `{order_id}`"
+
+                post_close_kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                        InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
+                    ],
+                    [
+                        InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
+                        InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+                    ],
+                ])
+                await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=post_close_kb)
             else:
-                await query.edit_message_text(
+                await safe_send(context, chat_id,
                     f"\u274c Close failed: {result.get('msg', result.get('error', 'Unknown'))}",
-                    reply_markup=_quick_actions_keyboard(),
-                )
+                    reply_markup=_quick_actions_keyboard())
             return
 
     except Exception as e:
         logger.error(f"handle_trade_callback error: {e}", exc_info=True)
-        try:
-            await query.edit_message_text(f"\u274c Error: {str(e)[:200]}")
-        except Exception:
-            await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}")
+        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}")
 
 
 # ──────────────────────────────────────────

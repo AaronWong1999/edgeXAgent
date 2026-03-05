@@ -244,6 +244,7 @@ async def get_contract_specs(client: Client, contract_id: str) -> dict:
             _metadata_cache[cid] = {
                 "minOrderSize": c.get("minOrderSize", "0"),
                 "stepSize": c.get("stepSize", "0"),
+                "tickSize": c.get("tickSize", "0.01"),
                 "contractName": c.get("contractName", ""),
             }
         _metadata_cache_time = now
@@ -294,16 +295,61 @@ async def pre_trade_check(client: Client, contract_id: str, side: str, size: str
     return {"ok": True}
 
 
-async def place_order(client: Client, contract_id: str, side: str, size: str, price: str) -> dict:
-    """Place a limit order on edgeX."""
+async def _run_cli(account_id: str, stark_key: str, args: list, timeout: int = 30) -> dict:
+    """Run edgex-cli with credentials and return parsed JSON or error dict."""
+    import os
+    env = os.environ.copy()
+    env["EDGEX_ACCOUNT_ID"] = str(account_id)
+    env["EDGEX_STARK_PRIVATE_KEY"] = f"0x{stark_key}" if not stark_key.startswith("0x") else stark_key
     try:
-        order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
-        result = await client.create_limit_order(
-            contract_id=contract_id,
-            size=size,
-            price=price,
-            side=order_side,
+        proc = await asyncio.create_subprocess_exec(
+            EDGEX_CLI_PATH, "--json", *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        out = stdout.decode().strip()
+        err = stderr.decode().strip()
+        if proc.returncode == 0 and out:
+            try:
+                data = json.loads(out)
+                if isinstance(data, dict):
+                    data["code"] = "SUCCESS"
+                return data
+            except json.JSONDecodeError:
+                return {"code": "SUCCESS", "raw": out}
+        error_msg = err or out or "Unknown CLI error"
+        # Extract bracketed error code if present
+        if "[" in error_msg and "]" in error_msg:
+            error_msg = error_msg.split("]", 1)[-1].strip()
+        return {"code": "ERROR", "error": error_msg}
+    except asyncio.TimeoutError:
+        return {"code": "ERROR", "error": "CLI command timed out"}
+    except Exception as e:
+        return {"code": "ERROR", "error": str(e)}
+
+
+async def place_order(client: Client, contract_id: str, side: str, size: str, price: str) -> dict:
+    """Place a limit order via edgex-cli."""
+    try:
+        symbol = resolve_symbol(contract_id)
+        side_word = "buy" if side.upper() == "BUY" else "sell"
+        account_id = ""
+        stark_key = ""
+        try:
+            account_id = str(client.internal_client.account_id)
+            stark_key = client.internal_client.stark_pri_key
+        except Exception:
+            pass
+        if not account_id or not stark_key:
+            # Fallback to SDK
+            order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
+            return await client.create_limit_order(contract_id=contract_id, size=size, price=price, side=order_side)
+
+        result = await _run_cli(account_id, stark_key, [
+            "order", "create", symbol, side_word, "limit", size, "--price", price, "-y"
+        ])
         return result
     except Exception as e:
         logger.error(f"place_order error: {e}")
@@ -323,32 +369,65 @@ async def cancel_order(client: Client, account_id: str, order_id: str) -> dict:
 
 
 async def close_position(client: Client, contract_id: str, position: dict) -> dict:
-    """Close a position by placing an opposing market-like order."""
+    """Close a position via edgex-cli market order. Auto-batches if margin insufficient."""
     try:
+        symbol = resolve_symbol(contract_id)
         current_side = position.get("side", "")
-        close_side = OrderSide.SELL if current_side == "LONG" else OrderSide.BUY
-        size = position.get("size", "0")
+        side_word = "sell" if current_side == "LONG" else "buy"
+        total_size = abs(float(position.get("size", "0")))
 
-        price_data = await get_price(client, contract_id)
-        if "error" in price_data:
-            return {"code": "ERROR", "error": f"Failed to get price: {price_data['error']}"}
+        account_id = ""
+        stark_key = ""
+        try:
+            account_id = str(client.internal_client.account_id)
+            stark_key = client.internal_client.stark_pri_key
+        except Exception as e:
+            logger.warning(f"close_position: could not extract creds: {e}")
+        logger.info(f"close_position: symbol={symbol}, side={side_word}, size={total_size}, has_creds={bool(account_id and stark_key)}")
+        if not account_id or not stark_key:
+            logger.warning("close_position: falling back to SDK (no CLI creds)")
+            close_side = OrderSide.SELL if current_side == "LONG" else OrderSide.BUY
+            return await client.create_market_order(contract_id=contract_id, size=str(total_size), side=close_side)
 
-        last_price = float(price_data.get("last_price", "0"))
-        if last_price == 0:
-            return {"code": "ERROR", "error": "Could not get current price"}
+        # Get min order size for this contract
+        specs = await get_contract_specs(client, contract_id)
+        min_size = float(specs.get("minOrderSize", "300")) if specs else 300
+        batch_size = max(min_size, total_size / 4)  # Close in up to 4 batches
 
-        if close_side == OrderSide.SELL:
-            close_price = str(round(last_price * 0.995, 2))
-        else:
-            close_price = str(round(last_price * 1.005, 2))
+        remaining = total_size
+        closed = 0
+        last_result = {}
+        max_batches = 10
 
-        result = await client.create_limit_order(
-            contract_id=contract_id,
-            size=size,
-            price=close_price,
-            side=close_side,
-        )
-        return result
+        logger.info(f"close_position: starting batch close, min_size={min_size}, batch_size={batch_size}")
+        while remaining >= min_size and max_batches > 0:
+            chunk = min(batch_size, remaining)
+            if remaining - chunk < min_size and remaining - chunk > 0:
+                chunk = remaining
+            size_str = str(int(chunk)) if chunk == int(chunk) else str(chunk)
+            cli_args = ["order", "create", symbol, side_word, "market", size_str, "-y"]
+            logger.info(f"close_position: CLI args: {cli_args}")
+            result = await _run_cli(account_id, stark_key, cli_args)
+            logger.info(f"close_position: CLI result: {result}")
+            last_result = result
+            if result.get("code") == "SUCCESS":
+                closed += chunk
+                remaining -= chunk
+                logger.info(f"Closed {chunk} {symbol}, remaining: {remaining}")
+                if remaining > 0:
+                    await asyncio.sleep(1)  # Let margin settle
+            else:
+                error = result.get("error", "")
+                if "MARGIN" in error.upper() and batch_size > min_size:
+                    batch_size = max(min_size, batch_size / 2)  # Reduce batch size
+                    logger.warning(f"Margin error, reducing batch to {batch_size}")
+                    continue
+                break
+            max_batches -= 1
+
+        if closed > 0:
+            return {"code": "SUCCESS", "data": {"closedSize": closed, "remaining": remaining, **last_result}}
+        return last_result
     except Exception as e:
         logger.error(f"close_position error: {e}")
         return {"code": "ERROR", "error": str(e)}
