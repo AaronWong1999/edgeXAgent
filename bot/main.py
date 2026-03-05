@@ -1097,9 +1097,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                             pnl_str = f"+${upnl:.2f}" if upnl >= 0 else f"-${abs(upnl):.2f}"
                         except (ValueError, TypeError):
                             pnl_str = f"${pnl_raw}"
-                        pnl_emoji = "\U0001f7e2" if upnl >= 0 else "\U0001f534"
+                        pnl_emoji = "\u2b06\ufe0f" if upnl >= 0 else "\u2b07\ufe0f"
                         msg += f"{pnl_emoji} {symbol} {side} `{pos_val}`{lev_str} @ `{entry_str}` | PnL: `{pnl_str}`\n"
-                    total_emoji = "\U0001f7e2" if total_upnl >= 0 else "\U0001f534"
+                    total_emoji = "\u2b06\ufe0f" if total_upnl >= 0 else "\u2b07\ufe0f"
                     total_str = f"+${total_upnl:.2f}" if total_upnl >= 0 else f"-${abs(total_upnl):.2f}"
                     msg += f"\nUnrealized P&L: {total_emoji} `{total_str}`"
                 else:
@@ -1498,7 +1498,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     except (ValueError, TypeError, OSError):
                         ts_str = ""
                     type_str = f" {o_type}" if o_type else ""
-                    side_emoji = "\U0001f7e2" if side == "BUY" else "\U0001f534"
+                    side_emoji = "\u2b06\ufe0f" if side == "BUY" else "\u2b07\ufe0f"
                     msg += f"{side_emoji} {sym} {side}{type_str}{lev_str} {fill_size} @ {price_str}{pnl_str}{ts_str}\n"
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_tb)
             except Exception as e:
@@ -1550,7 +1550,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         pnl_str = f"+${pnl_f:.2f}" if pnl_f >= 0 else f"-${abs(pnl_f):.2f}"
                     except (ValueError, TypeError):
                         pnl_str = f"${pnl_raw}"
-                    pnl_emoji = "\U0001f7e2" if pnl_f >= 0 else "\U0001f534"
+                    pnl_emoji = "\u2b06\ufe0f" if pnl_f >= 0 else "\u2b07\ufe0f"
                     msg += f"{pnl_emoji} *{symbol} {side}*{lev_str}\n"
                     msg += f"  \u251c Value: `{pos_val}` | Entry: `{entry_str}`\n"
                     msg += f"  \u2514 PnL: `{pnl_str}`\n\n"
@@ -1866,7 +1866,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 line = line.strip()
                 if line and line[0].isdigit() and "UTC" in line:
                     ts_line = line
-                if line and ("\U0001f7e2" in line or "\U0001f534" in line):
+                if line and ("\u2b06\ufe0f" in line or "\u2b07\ufe0f" in line):
                     sentiment_line = line
             if not headline or len(headline) < 5:
                 await safe_send(context, chat_id, "\u274c No headline to translate.")
@@ -2282,7 +2282,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     thesis=plan.get("reasoning", ""),
                 )
 
-                side_emoji = "\U0001f7e2" if plan["side"] == "BUY" else "\U0001f534"
+                side_emoji = "\u2b06\ufe0f" if plan["side"] == "BUY" else "\u2b07\ufe0f"
                 side_word = "LONG" if plan["side"] == "BUY" else "SHORT"
                 leverage = plan.get("leverage", "1")
                 tp = plan.get("take_profit", "")
@@ -2439,7 +2439,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             try:
                 pnl_f = float(pnl_raw)
                 pnl_str = f"+${pnl_f:.2f}" if pnl_f >= 0 else f"-${abs(pnl_f):.2f}"
-                pnl_emoji = "\U0001f7e2" if pnl_f >= 0 else "\U0001f534"
+                pnl_emoji = "\u2b06\ufe0f" if pnl_f >= 0 else "\u2b07\ufe0f"
             except (ValueError, TypeError):
                 pnl_str = f"${pnl_raw}"
                 pnl_emoji = "\u2753"
@@ -2590,7 +2590,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub"),
                            InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
 
-            await safe_send(context, chat_id,
+            await safe_edit(query,
                 "\n".join(lines), parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(buttons))
             return
@@ -2716,7 +2716,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 liq = p.get("liquidatePrice", "0")
                 try:
                     upnl = float(unrealized)
-                    pnl_emoji = "\U0001f7e2" if upnl >= 0 else "\U0001f534"
+                    pnl_emoji = "\u2b06\ufe0f" if upnl >= 0 else "\u2b07\ufe0f"
                     pnl_str = f"+${upnl:.2f}" if upnl >= 0 else f"-${abs(upnl):.2f}"
                 except (ValueError, TypeError):
                     pnl_emoji = "\u26aa"
@@ -2888,7 +2888,7 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for t in trades:
                 symbol = edgex_client.resolve_symbol(t["contract_id"])
                 ts = datetime.fromtimestamp(t["created_at"]).strftime("%m/%d %H:%M")
-                side_emoji = "\U0001f7e2" if t["side"] == "BUY" else "\U0001f534"
+                side_emoji = "\u2b06\ufe0f" if t["side"] == "BUY" else "\u2b07\ufe0f"
                 msg += f"\n{side_emoji} {symbol} {t['side']} | {t['size']} @ ${t['price']} | {t['status']} | {ts}"
 
             await update.message.reply_text(msg, parse_mode="Markdown",
@@ -2916,7 +2916,7 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ts = datetime.fromtimestamp(int(o.get("createdTime", "0")) / 1000).strftime("%m/%d %H:%M")
             except (ValueError, TypeError, OSError):
                 ts = "?"
-            side_emoji = "\U0001f7e2" if side == "BUY" else "\U0001f534"
+            side_emoji = "\u2b06\ufe0f" if side == "BUY" else "\u2b07\ufe0f"
             msg += f"\n{side_emoji} {symbol} {side} | {size} @ {price_f} | PnL: {pnl_str} | {ts}"
 
         await update.message.reply_text(msg, parse_mode="Markdown",
@@ -2980,7 +2980,7 @@ async def cmd_pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
         total_pnl = realized_pnl + unrealized_pnl
-        pnl_emoji = "\U0001f7e2" if total_pnl >= 0 else "\U0001f534"
+        pnl_emoji = "\u2b06\ufe0f" if total_pnl >= 0 else "\u2b07\ufe0f"
         pnl_sign = "+" if total_pnl >= 0 else ""
 
         card = (
@@ -3009,7 +3009,7 @@ async def cmd_pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 liq = p.get("liquidatePrice", "0")
                 try:
                     upnl_f = float(upnl)
-                    pos_emoji = "\U0001f7e2" if upnl_f >= 0 else "\U0001f534"
+                    pos_emoji = "\u2b06\ufe0f" if upnl_f >= 0 else "\u2b07\ufe0f"
                     upnl_s = f"+${upnl_f:.2f}" if upnl_f >= 0 else f"-${abs(upnl_f):.2f}"
                 except (ValueError, TypeError):
                     pos_emoji = "\u26aa"
