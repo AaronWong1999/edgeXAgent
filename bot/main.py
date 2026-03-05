@@ -1404,8 +1404,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     f"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
                     f"{arrow} *{symbol}/USDT* \u00b7 {side}{lev_str}\n"
                     f"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n"
-                    f"\U0001f3af ROI:  *{roi_str}*\n"
-                    f"\U0001f4b0 PnL:  *{pnl_usd}*\n\n"
+                    f"\U0001f4b0 PnL%:  *{roi_str}*\n\n"
                     f"\u251c Entry: `{entry_str}`\n"
                     f"\u251c Mark:  `{cur_str}`\n"
                     f"\u2514 {now_str}\n\n"
@@ -1472,14 +1471,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     ts = datetime.now().strftime("%Y-%m-%d %H:%M UTC")
 
                 arrow = "\u2b06\ufe0f" if pnl_f >= 0 else "\u2b07\ufe0f"
-                roi_line = f"\U0001f3af ROI:  *{pnl_pct_str}*\n" if pnl_pct_str else ""
+                pnl_pct_line = f"\U0001f4b0 PnL%:  *{pnl_pct_str}*\n\n" if pnl_pct_str else ""
 
                 share_text = (
                     f"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
                     f"{arrow} *{sym}/USDT* \u00b7 {raw_side}\n"
                     f"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n"
-                    f"{roi_line}"
-                    f"\U0001f4b0 Realized PnL:  *{pnl_usd}*\n\n"
+                    f"{pnl_pct_line}"
                     f"\u251c Price: `{price_str}`\n"
                     f"\u251c Size:  `{fill_size}`\n"
                     f"\u2514 {ts}\n\n"
