@@ -233,7 +233,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             ]
         ])
         await safe_edit(query,
-            "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\nThis will log out your edgeX account. Are you sure?",
+            "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\nThis will log out your edgeX account. Are you sure?",
             parse_mode="Markdown", reply_markup=keyboard)
         return WAITING_LOGIN_CHOICE
 
@@ -244,7 +244,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         conn.commit()
         conn.close()
         await safe_edit(query,
-            "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\n\u2705 Logged out. Use /start to reconnect.",
+            "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u2705 Logged out. Use /start to reconnect.",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
         return ConversationHandler.END
@@ -281,7 +281,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         if not existing:
             db.save_user(update.effective_user.id, "", "")
         await safe_edit(query,
-            "\u2728 **Activate AI \u2014 edgeX Agent**\n\nChoose how to power your Agent:",
+            "\u2728 **Activate AI \u2014 AI Agent**\n\nChoose how to power your Agent:",
             parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
         return ConversationHandler.END
 
@@ -294,13 +294,24 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             rows.append([InlineKeyboardButton("\U0001f464 Aaron's Account (temp)", callback_data="login_demo")])
         rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
         await safe_edit(query,
-            "\U0001f517 **Connect edgeX \u2014 edgeX Agent**\n\nChoose how to connect:",
+            "\U0001f517 **Connect edgeX \u2014 Trade on edgeX**\n\nChoose how to connect:",
             parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
         return WAITING_LOGIN_CHOICE
 
     if query.data == "login_oauth":
         await safe_edit(query,
-            "\u26a1 **One-Click Login \u2014 edgeX Agent**\n\nComing Soon!\nFor now, use **Connect with API Key**.",
+            "\u26a1 **One-Click Login \u2014 Trade on edgeX**\n\n"
+            "Coming Soon! Waiting for edgeX team OAuth integration.\n\n"
+            "**For edgeX Team:**\n"
+            "OAuth endpoint ready at:\n"
+            "`POST /api/v1/oauth/authorize`\n"
+            "\u251c `client_id`: edgex-agent-tg-bot\n"
+            "\u251c `redirect_uri`: https://t.me/edgeXAgentBot\n"
+            "\u251c `scope`: trade,read\n"
+            "\u2514 `response_type`: code\n\n"
+            "After user authorizes, redirect to:\n"
+            "`GET /api/v1/oauth/callback?code={code}&state={tg_user_id}`\n\n"
+            "For now, use **Connect with API Key**.",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
         return ConversationHandler.END
@@ -328,7 +339,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if query.data == "login_api":
         await safe_edit(query,
-            "\U0001f511 **Connect with API Key \u2014 edgeX Agent**\n\n"
+            "\U0001f511 **Connect with API Key \u2014 Trade on edgeX**\n\n"
             "Go to edgex.exchange \u2192 **API Management**\n"
             "Copy your **Account ID** and send it to me:",
             parse_mode="Markdown")
@@ -537,7 +548,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id)
         if not user_ai:
             await update.message.reply_text(
-                "\u2728 **Activate AI \u2014 edgeX Agent**\n\n"
+                "\u2728 **Activate AI \u2014 AI Agent**\n\n"
                 "Choose how to power your Agent:\n\n"
                 "\U0001f4b3 **edgeX Balance** \u2014 from your edgeX account (coming soon)\n\n"
                 "\U0001f511 **Own API Key** \u2014 unlimited, OpenAI / DeepSeek / Anthropic / Gemini\n\n"
@@ -566,7 +577,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if plan.get("action") == "NEED_API_KEY":
             await update.message.reply_text(
-                "\u2728 **Activate AI \u2014 edgeX Agent**\n\n"
+                "\u2728 **Activate AI \u2014 AI Agent**\n\n"
                 "Choose how to power your Agent:",
                 parse_mode="Markdown",
                 reply_markup=_ai_activate_keyboard(),
@@ -701,7 +712,7 @@ async def cmd_setai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text(
-        f"\u2699\ufe0f **AI Configuration \u2014 edgeX Agent**\n"
+        f"\u2699\ufe0f **AI Configuration \u2014 AI Agent**\n"
         f"{status}\n"
         f"Choose how to power your Agent:\n\n"
         f"\U0001f4b3 **edgeX Account Balance** \u2014 deduct from your edgeX account (coming soon)\n\n"
@@ -1026,8 +1037,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
-        # ── Trade Hub (L2) — also handles quick_status/quick_pnl redirects ──
-        if query.data in ("trade_hub", "quick_status", "quick_pnl"):
+        # ── Trade Hub (L2) — also handles quick_status redirect ──
+        if query.data in ("trade_hub", "quick_status"):
             await query.answer()
             user = db.get_user(user_id)
             if not user or not _has_edgex(user):
@@ -1054,7 +1065,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
                 total_upnl = 0.0
                 msg = (
-                    f"\U0001f4c8 **Trade on edgeX \u2014 edgeX Agent**\n\n"
+                    f"\U0001f4c8 **Trade on edgeX \u2014 Trade on edgeX**\n\n"
                     f"\u251c Equity: `${total_equity}`\n"
                     f"\u2514 Available: `${available}`\n"
                 )
@@ -1066,12 +1077,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         try:
                             size_f = float(size_raw)
                             side = "LONG" if size_f > 0 else "SHORT"
-                            size_str = str(abs(size_f))
                         except (ValueError, TypeError):
                             side = p.get("side", "?")
-                            size_str = size_raw
-                        leverage = p.get("leverage", p.get("maxLeverage", ""))
+                        pos_val_raw = p.get("positionValue", "0")
+                        try:
+                            pos_val = f"${float(pos_val_raw):.2f}"
+                        except (ValueError, TypeError):
+                            pos_val = f"${pos_val_raw}"
+                        leverage = p.get("maxLeverage", "")
                         lev_str = f" ({leverage}x)" if leverage else ""
+                        entry_raw = p.get("entryPrice", "0")
+                        try:
+                            entry_str = f"${float(entry_raw):.2f}" if float(entry_raw) >= 1 else f"${float(entry_raw):.5f}"
+                        except (ValueError, TypeError):
+                            entry_str = f"${entry_raw}"
                         pnl_raw = p.get("unrealizedPnl", "0")
                         try:
                             upnl = float(pnl_raw)
@@ -1080,7 +1099,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         except (ValueError, TypeError):
                             pnl_str = f"${pnl_raw}"
                         pnl_emoji = "\U0001f7e2" if upnl >= 0 else "\U0001f534"
-                        msg += f"{pnl_emoji} {symbol} {side} `{size_str}`{lev_str} | PnL: `{pnl_str}`\n"
+                        msg += f"{pnl_emoji} {symbol} {side} `{pos_val}`{lev_str} @ `{entry_str}` | PnL: `{pnl_str}`\n"
                     total_emoji = "\U0001f7e2" if total_upnl >= 0 else "\U0001f534"
                     total_str = f"+${total_upnl:.2f}" if total_upnl >= 0 else f"-${abs(total_upnl):.2f}"
                     msg += f"\nUnrealized P&L: {total_emoji} `{total_str}`"
@@ -1088,7 +1107,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     msg += "\nNo open positions."
 
                 buttons = [
-                    [InlineKeyboardButton("\U0001f534 Close Position", callback_data="quick_close"),
+                    [InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl")],
+                    [InlineKeyboardButton("\U0001f4b0 Position", callback_data="quick_close"),
                      InlineKeyboardButton("\U0001f4cb Orders", callback_data="quick_orders")],
                     [InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
                      InlineKeyboardButton("\U0001f6aa Disconnect", callback_data="logout_confirm")],
@@ -1110,7 +1130,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory = mem.get_user_memory(user_id)
             stats = user_memory.get_stats()
             msg = (
-                f"\U0001f916 **AI Agent \u2014 edgeX Agent**\n\n"
+                f"\U0001f916 **AI Agent \u2014 AI Agent**\n\n"
                 f"\u251c \U0001f3ad Personality: `{persona_name}`\n"
                 f"\u251c \U0001f511 Provider: `{ai_model}`\n"
                 f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
@@ -1125,6 +1145,165 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 reply_markup=InlineKeyboardMarkup(buttons))
             return
 
+        # ── P&L Screen ──
+        if query.data == "quick_pnl" or query.data.startswith("quick_pnl_page_"):
+            await query.answer()
+            user = db.get_user(user_id)
+            if not user or not _has_edgex(user):
+                await safe_edit(query, "\u274c Not connected. Use /start.",
+                    reply_markup=_back_button())
+                return
+            _tb = _back_button("\U0001f519 Back", "trade_hub")
+            try:
+                await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+                client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                summary = await edgex_client.get_account_summary(client)
+                positions = summary.get("positions", [])
+                open_pos = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
+
+                # Also get recent closed trades
+                history = await edgex_client.get_order_history(client, limit=10)
+
+                # Pagination
+                page = 0
+                if query.data.startswith("quick_pnl_page_"):
+                    try:
+                        page = int(query.data.replace("quick_pnl_page_", ""))
+                    except ValueError:
+                        page = 0
+                per_page = 10
+
+                msg = "\U0001f4c8 **P&L \u2014 Trade on edgeX**\n\n"
+                total_upnl = 0.0
+                buttons = []
+
+                # Open positions P&L
+                if open_pos:
+                    msg += "**\U0001f7e2 Open Positions:**\n"
+                    for p in open_pos:
+                        cid = p.get("contractId", "")
+                        symbol = edgex_client.resolve_symbol(cid)
+                        side = p.get("side", "?")
+                        leverage = p.get("maxLeverage", "")
+                        lev_str = f" ({leverage}x)" if leverage else ""
+                        pos_val_raw = p.get("positionValue", "0")
+                        try:
+                            pos_val = f"${float(pos_val_raw):.2f}"
+                        except (ValueError, TypeError):
+                            pos_val = f"${pos_val_raw}"
+                        pnl_raw = p.get("unrealizedPnl", "0")
+                        try:
+                            upnl = float(pnl_raw)
+                            total_upnl += upnl
+                            pnl_str = f"+${upnl:.2f}" if upnl >= 0 else f"-${abs(upnl):.2f}"
+                        except (ValueError, TypeError):
+                            pnl_str = f"${pnl_raw}"
+                        pnl_emoji = "\U0001f7e2" if upnl >= 0 else "\U0001f534"
+                        msg += f"{pnl_emoji} **{symbol} {side}**{lev_str} | {pos_val} | PnL: `{pnl_str}`\n"
+                        buttons.append([InlineKeyboardButton(
+                            f"\U0001f4e4 Share {symbol} PnL ({pnl_str})",
+                            callback_data=f"share_pnl_{cid}")])
+                    total_emoji = "\U0001f7e2" if total_upnl >= 0 else "\U0001f534"
+                    total_str = f"+${total_upnl:.2f}" if total_upnl >= 0 else f"-${abs(total_upnl):.2f}"
+                    msg += f"\n**Total Unrealized:** {total_emoji} `{total_str}`\n"
+                else:
+                    msg += "_No open positions._\n"
+
+                # Closed trades
+                if history:
+                    start = page * per_page
+                    page_items = history[start:start + per_page]
+                    total_items = len(history)
+                    msg += f"\n**\U0001f534 Recent Closed ({total_items}):**\n"
+                    for o in page_items:
+                        sym = edgex_client.resolve_symbol(o.get("contractId", ""))
+                        side = o.get("orderSide", o.get("side", "?"))
+                        pnl_raw = o.get("realizePnl", o.get("cumRealizePnl", ""))
+                        try:
+                            pnl_f = float(pnl_raw) if pnl_raw else 0
+                            pnl_str = f"+${pnl_f:.2f}" if pnl_f >= 0 else f"-${abs(pnl_f):.2f}"
+                        except (ValueError, TypeError):
+                            pnl_str = "N/A"
+                        fill_price = o.get("fillPrice", o.get("price", "?"))
+                        fill_size = o.get("fillSize", o.get("size", "?"))
+                        side_emoji = "\U0001f7e2" if side == "BUY" else "\U0001f534"
+                        msg += f"{side_emoji} {sym} {side} {fill_size} @ ${fill_price} | PnL: `{pnl_str}`\n"
+
+                    # Pagination buttons
+                    nav_row = []
+                    if page > 0:
+                        nav_row.append(InlineKeyboardButton("\u25c0 Prev", callback_data=f"quick_pnl_page_{page-1}"))
+                    if start + per_page < total_items:
+                        nav_row.append(InlineKeyboardButton("Next \u25b6", callback_data=f"quick_pnl_page_{page+1}"))
+                    if nav_row:
+                        buttons.append(nav_row)
+
+                buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub")])
+                await safe_edit(query, msg, parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup(buttons))
+            except Exception as e:
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_tb)
+            return
+
+        # ── Share PnL ──
+        if query.data.startswith("share_pnl_"):
+            contract_id = query.data.replace("share_pnl_", "")
+            await query.answer()
+            user = db.get_user(user_id)
+            if not user:
+                return
+            try:
+                client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                summary = await edgex_client.get_account_summary(client)
+                positions = summary.get("positions", [])
+                target = None
+                for p in positions:
+                    if isinstance(p, dict) and p.get("contractId") == contract_id:
+                        target = p
+                        break
+                if not target:
+                    await query.answer("\u274c Position not found.", show_alert=True)
+                    return
+                symbol = edgex_client.resolve_symbol(contract_id)
+                side = target.get("side", "?")
+                leverage = target.get("maxLeverage", "")
+                lev_str = f" ({leverage}x)" if leverage else ""
+                entry_raw = target.get("entryPrice", "0")
+                try:
+                    entry_f = float(entry_raw)
+                    entry_str = f"${entry_f:.2f}" if entry_f >= 1 else f"${entry_f:.5f}"
+                except (ValueError, TypeError):
+                    entry_str = f"${entry_raw}"
+                pos_val_raw = target.get("positionValue", "0")
+                try:
+                    pos_val = f"${float(pos_val_raw):.2f}"
+                except (ValueError, TypeError):
+                    pos_val = f"${pos_val_raw}"
+                pnl_raw = target.get("unrealizedPnl", "0")
+                try:
+                    pnl_f = float(pnl_raw)
+                    pnl_str = f"+${pnl_f:.2f}" if pnl_f >= 0 else f"-${abs(pnl_f):.2f}"
+                    # Calculate ROI
+                    entry_val = float(pos_val_raw) / float(leverage) if leverage else float(pos_val_raw)
+                    roi = (pnl_f / entry_val * 100) if entry_val > 0 else 0
+                    roi_str = f"+{roi:.1f}%" if roi >= 0 else f"{roi:.1f}%"
+                except (ValueError, TypeError, ZeroDivisionError):
+                    pnl_str = f"${pnl_raw}"
+                    roi_str = "N/A"
+                pnl_emoji = "\U0001f7e2" if pnl_f >= 0 else "\U0001f534"
+
+                share_text = (
+                    f"\U0001f4c8 **{symbol} {side}**{lev_str}\n\n"
+                    f"\U0001f4b0 P&L: **{pnl_str}** ({roi_str})\n"
+                    f"\u251c Entry: `{entry_str}`\n"
+                    f"\u251c Value: `{pos_val}`\n"
+                    f"\u2514 {pnl_emoji}\n\n"
+                    f"\u26a1 Traded on edgeX via @edgeXAgentBot"
+                )
+                await safe_send(context, chat_id, share_text, parse_mode="Markdown")
+            except Exception as e:
+                await query.answer(f"\u274c Error: {str(e)[:60]}", show_alert=True)
+            return
 
         if query.data == "quick_history":
             await query.answer()
@@ -1138,15 +1317,18 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 orders = await edgex_client.get_order_history(client, limit=5)
                 if not orders:
-                    await safe_edit(query, "\U0001f4dc **Recent Trades \u2014 edgeX Agent**\n\nNo recent trades.",
+                    await safe_edit(query, "\U0001f4dc **Recent Trades \u2014 Trade on edgeX**\n\nNo recent trades.",
                         parse_mode="Markdown", reply_markup=_tb)
                     return
-                msg = "\U0001f4dc **Recent Trades \u2014 edgeX Agent**\n\n"
-                for o in orders[:5]:
+                msg = "\U0001f4dc **Recent Trades \u2014 Trade on edgeX**\n\n"
+                for o in orders[:10]:
                     sym = edgex_client.resolve_symbol(o.get("contractId", ""))
                     side = o.get("orderSide", o.get("side", "?"))
                     fill_price = o.get("fillPrice", o.get("price", "?"))
                     fill_size = o.get("fillSize", o.get("size", "?"))
+                    o_type = o.get("type", o.get("orderType", ""))
+                    leverage = o.get("leverage", "")
+                    lev_str = f" ({leverage}x)" if leverage else ""
                     pnl_raw = o.get("realizePnl", o.get("cumRealizePnl", ""))
                     try:
                         fp = float(fill_price)
@@ -1165,8 +1347,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         ts_str = f" | {ts}"
                     except (ValueError, TypeError, OSError):
                         ts_str = ""
+                    type_str = f" {o_type}" if o_type else ""
                     side_emoji = "\U0001f7e2" if side == "BUY" else "\U0001f534"
-                    msg += f"{side_emoji} {sym} {side} {fill_size} @ {price_str}{pnl_str}{ts_str}\n"
+                    msg += f"{side_emoji} {sym} {side}{type_str}{lev_str} {fill_size} @ {price_str}{pnl_str}{ts_str}\n"
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_tb)
             except Exception as e:
                 await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_tb)
@@ -1186,24 +1369,40 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 positions = summary.get("positions", [])
                 open_positions = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
                 if not open_positions:
-                    await safe_edit(query, "\U0001f534 **Close Position \u2014 edgeX Agent**\n\nNo open positions.",
+                    await safe_edit(query, "\U0001f4b0 **Position \u2014 Trade on edgeX**\n\nNo open positions.",
                         parse_mode="Markdown", reply_markup=_tb)
                     return
                 buttons = []
-                msg = "\U0001f534 **Close Position \u2014 edgeX Agent**\n\nSelect a position to close:\n"
+                msg = "\U0001f4b0 **Position \u2014 Trade on edgeX**\n\n"
                 for p in open_positions:
                     cid = p.get("contractId", "")
                     symbol = edgex_client.resolve_symbol(cid)
                     side = p.get("side", "?")
-                    size = p.get("size", "0")
+                    pos_val_raw = p.get("positionValue", "0")
+                    try:
+                        pos_val = f"${float(pos_val_raw):.2f}"
+                    except (ValueError, TypeError):
+                        pos_val = f"${pos_val_raw}"
+                    leverage = p.get("maxLeverage", "")
+                    lev_str = f" ({leverage}x)" if leverage else ""
+                    entry_raw = p.get("entryPrice", "0")
+                    try:
+                        entry_f = float(entry_raw)
+                        entry_str = f"${entry_f:.2f}" if entry_f >= 1 else f"${entry_f:.5f}"
+                    except (ValueError, TypeError):
+                        entry_str = f"${entry_raw}"
                     pnl_raw = p.get("unrealizedPnl", "0")
                     try:
                         pnl_f = float(pnl_raw)
                         pnl_str = f"+${pnl_f:.2f}" if pnl_f >= 0 else f"-${abs(pnl_f):.2f}"
                     except (ValueError, TypeError):
                         pnl_str = f"${pnl_raw}"
-                    msg += f"\n\u2022 {symbol} {side} | Size: {size} | PnL: {pnl_str}"
-                    buttons.append([InlineKeyboardButton(f"Close {symbol} {side}", callback_data=f"close_{cid}")])
+                    pnl_emoji = "\U0001f7e2" if pnl_f >= 0 else "\U0001f534"
+                    msg += f"{pnl_emoji} **{symbol} {side}**{lev_str}\n"
+                    msg += f"  \u251c Value: `{pos_val}` | Entry: `{entry_str}`\n"
+                    msg += f"  \u2514 PnL: `{pnl_str}`\n\n"
+                    buttons.append([InlineKeyboardButton(f"\U0001f534 Market Close {symbol} {side}", callback_data=f"close_confirm_{cid}")])
+                buttons.append([InlineKeyboardButton("\U0001f534 Market Close All", callback_data="close_confirm_all")])
                 buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub")])
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
@@ -1223,10 +1422,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 orders = await edgex_client.get_open_orders(client)
                 if not orders:
-                    await safe_edit(query, "\U0001f4cb **Open Orders \u2014 edgeX Agent**\n\nNo open orders.",
+                    await safe_edit(query, "\U0001f4cb **Open Orders \u2014 Trade on edgeX**\n\nNo open orders.",
                         parse_mode="Markdown", reply_markup=_tb)
                     return
-                lines = [f"\U0001f4cb **Open Orders \u2014 edgeX Agent**\n\n{len(orders)} order(s):\n"]
+                lines = [f"\U0001f4cb **Open Orders \u2014 Trade on edgeX**\n\n{len(orders)} order(s):\n"]
                 buttons = []
                 for o in orders:
                     sym = o.get("symbol", edgex_client.resolve_symbol(o.get("contractId", "")))
@@ -1234,14 +1433,28 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     o_price = o.get("price", "?")
                     o_size = o.get("size", "?")
                     o_type = o.get("type", "LIMIT")
+                    o_leverage = o.get("leverage", "")
                     o_id = o.get("id", o.get("orderId", ""))
-                    lines.append(f"  \u2022 {sym} {o_side} {o_type} | Size: {o_size} | Price: ${o_price}")
+                    lev_str = f" ({o_leverage}x)" if o_leverage else ""
+                    # Try to get current price for distance calc
+                    try:
+                        current = await edgex_client.get_market_price(sym)
+                        cur_f = float(current) if current else 0
+                        ord_f = float(o_price) if o_price else 0
+                        if cur_f > 0 and ord_f > 0:
+                            dist_pct = abs(cur_f - ord_f) / cur_f * 100
+                            dist_str = f" | Now: ${cur_f:.2f} ({dist_pct:.1f}% away)"
+                        else:
+                            dist_str = ""
+                    except Exception:
+                        dist_str = ""
+                    lines.append(f"  \u2022 {sym} {o_side} {o_type}{lev_str} | Size: {o_size} | Price: ${o_price}{dist_str}")
                     if o_id:
                         buttons.append([InlineKeyboardButton(
                             f"\u274c Cancel {sym} {o_side} {o_size}@{o_price}",
-                            callback_data=f"cancelone_{o_id}"
+                            callback_data=f"cancelone_confirm_{o_id}"
                         )])
-                buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_all")])
+                buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_confirm_all")])
                 buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub")])
                 await safe_edit(query, "\n".join(lines), parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(buttons))
@@ -1258,7 +1471,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ]
             ])
             await safe_edit(query,
-                "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\nThis will log out your edgeX account. Are you sure?",
+                "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\nThis will log out your edgeX account. Are you sure?",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
@@ -1269,7 +1482,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.commit()
             conn.close()
             await safe_edit(query,
-                "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\n\u2705 Logged out. Use /start to reconnect.",
+                "\U0001f6aa **Disconnect \u2014 Trade on edgeX**\n\n\u2705 Logged out. Use /start to reconnect.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
             return
@@ -1296,14 +1509,25 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 rows.append([InlineKeyboardButton("\U0001f464 Aaron's Account (temp)", callback_data="login_demo")])
             rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
             await safe_edit(query,
-                "\U0001f517 **Connect edgeX \u2014 edgeX Agent**\n\nChoose how to connect:",
+                "\U0001f517 **Connect edgeX \u2014 Trade on edgeX**\n\nChoose how to connect:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
         # ── Login callbacks (also handled here for when ConversationHandler is not active) ──
         if query.data == "login_oauth":
             await safe_edit(query,
-                "\u26a1 **One-Click Login \u2014 edgeX Agent**\n\nComing Soon!\nFor now, use **Connect with API Key**.",
+                "\u26a1 **One-Click Login \u2014 Trade on edgeX**\n\n"
+                "Coming Soon! Waiting for edgeX team OAuth integration.\n\n"
+                "**For edgeX Team:**\n"
+                "OAuth endpoint ready at:\n"
+                "`POST /api/v1/oauth/authorize`\n"
+                "\u251c `client_id`: edgex-agent-tg-bot\n"
+                "\u251c `redirect_uri`: https://t.me/edgeXAgentBot\n"
+                "\u251c `scope`: trade,read\n"
+                "\u2514 `response_type`: code\n\n"
+                "After user authorizes, redirect to:\n"
+                "`GET /api/v1/oauth/callback?code={code}&state={tg_user_id}`\n\n"
+                "For now, use **Connect with API Key**.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
             return
@@ -1331,7 +1555,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data == "login_api":
             await safe_edit(query,
-                "\U0001f511 **Connect with API Key \u2014 edgeX Agent**\n\n"
+                "\U0001f511 **Connect with API Key \u2014 Trade on edgeX**\n\n"
                 "Please use the /start command, then choose **Connect with API Key**.\n"
                 "The API key setup requires a conversation flow.",
                 parse_mode="Markdown",
@@ -1340,7 +1564,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data == "ai_edgex_credits":
             await safe_edit(query,
-                "\U0001f4b3 **edgeX Balance \u2014 edgeX Agent**\n\nComing Soon.\nUse /setai to add your own API key.",
+                "\U0001f4b3 **edgeX Balance \u2014 AI Agent**\n\nComing Soon.\nUse /setai to add your own API key.",
                 parse_mode="Markdown",
                 reply_markup=_back_button("\U0001f519 Back", "ai_activate_prompt"))
             return
@@ -1348,7 +1572,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data == "ai_own_key":
             # Redirect to provider selection (same as ai_own_key_setup)
             await safe_edit(query,
-                "\U0001f511 **AI Provider \u2014 edgeX Agent**\n\nChoose your provider:",
+                "\U0001f511 **AI Provider \u2014 AI Agent**\n\nChoose your provider:",
                 parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
 
@@ -1393,7 +1617,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 buttons.append(row)
             buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")])
             await safe_edit(query,
-                f"\u23f1 *Push Frequency \u2014 edgeX Agent*\n\nHow many alerts per hour?\nCurrent: *{current}/hr*",
+                f"\u23f1 *Push Frequency \u2014 Event Trading*\n\nHow many alerts per hour?\nCurrent: *{current}/hr*",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
@@ -1427,7 +1651,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
             ]
             await safe_edit(query,
-                "\u2795 *Add News Source \u2014 edgeX Agent*\n\nChoose a topic:",
+                "\u2795 *Add News Source \u2014 Event Trading*\n\nChoose a topic:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
@@ -1579,7 +1803,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     # Don't replace news — send new message below
                     await query.answer()
                     await safe_send(context, chat_id,
-                        f"\U0001f504 **{action_word.upper()} {asset} \u2014 edgeX Agent**\n\nGenerating trade plan (~${notional:.0f}, {leverage}x)...",
+                        f"\U0001f504 **{action_word.upper()} {asset} \u2014 Trade on edgeX**\n\nGenerating trade plan (~${notional:.0f}, {leverage}x)...",
                         parse_mode="Markdown")
 
                     # Keep typing indicator alive while AI generates the plan
@@ -1646,7 +1870,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory = mem.get_user_memory(user_id)
             stats = user_memory.get_stats()
             msg = (
-                f"\U0001f916 **AI Agent \u2014 edgeX Agent**\n\n"
+                f"\U0001f916 **AI Agent \u2014 AI Agent**\n\n"
                 f"\u251c \U0001f3ad Personality: `{persona_name}`\n"
                 f"\u251c \U0001f511 Provider: `{ai_model}`\n"
                 f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
@@ -1669,7 +1893,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="ai_hub")],
             ])
             await safe_edit(query,
-                f"\U0001f4dd **Memory \u2014 edgeX Agent**\n\n"
+                f"\U0001f4dd **Memory \u2014 AI Agent**\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
                 f"\u251c Summaries: `{stats['summaries']}`\n"
                 f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}",
@@ -1678,7 +1902,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data in ("change_persona", "settings_persona"):
             await safe_edit(query,
-                "\U0001f3ad **Personality \u2014 edgeX Agent**\n\nChoose your Agent's vibe:",
+                "\U0001f3ad **Personality \u2014 AI Agent**\n\nChoose your Agent's vibe:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
@@ -1687,7 +1911,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not existing:
                 db.save_user(user_id, "", "")
             await safe_edit(query,
-                "\u2728 **Activate AI \u2014 edgeX Agent**\n\nChoose how to power your Agent:",
+                "\u2728 **Activate AI \u2014 AI Agent**\n\nChoose how to power your Agent:",
                 parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
             return
 
@@ -1697,13 +1921,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 db.save_user(user_id, "", "")
             ai_trader.save_user_ai_config(user_id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
             await safe_edit(query,
-                "\u2705 **AI Activated \u2014 edgeX Agent**\n\nChoose your Agent's personality:",
+                "\u2705 **AI Activated \u2014 AI Agent**\n\nChoose your Agent's personality:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
         if query.data == "ai_own_key_setup":
             await safe_edit(query,
-                "\U0001f511 **AI Provider \u2014 edgeX Agent**\n\nChoose your provider:",
+                "\U0001f511 **AI Provider \u2014 AI Agent**\n\nChoose your provider:",
                 parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
 
@@ -1712,7 +1936,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             provider_names = {"setai_openai": "OpenAI / DeepSeek", "setai_anthropic": "Anthropic (Claude)", "setai_gemini": "Google Gemini"}
             name = provider_names.get(query.data, "your provider")
             await safe_edit(query,
-                f"\U0001f511 **{name} — edgeX Agent**\n\n"
+                f"\U0001f511 **{name} \u2014 AI Agent**\n\n"
                 f"To set up {name}, use the /setai command.\n"
                 f"It will walk you through entering your API key.",
                 parse_mode="Markdown",
@@ -1735,7 +1959,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory = mem.get_user_memory(user_id)
             stats = user_memory.get_stats()
             msg = (
-                f"\U0001f916 **AI Agent \u2014 edgeX Agent**\n\n"
+                f"\U0001f916 **AI Agent \u2014 AI Agent**\n\n"
                 f"\u251c \U0001f3ad Personality: `{name}`\n"
                 f"\u251c \U0001f511 Provider: `{ai_model}`\n"
                 f"\u2514 \U0001f4dd Memory: `{stats['conversations']}` msgs, `{stats['summaries']}` summaries"
@@ -1758,7 +1982,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ]
             ])
             await safe_edit(query,
-                "\U0001f5d1 **Clear Memory \u2014 edgeX Agent**\n\nAll conversation history and preferences will be deleted.",
+                "\U0001f5d1 **Clear Memory \u2014 AI Agent**\n\nAll conversation history and preferences will be deleted.",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
@@ -1766,7 +1990,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             user_memory = mem.get_user_memory(user_id)
             user_memory.clear()
             await safe_edit(query,
-                "\U0001f4dd **Memory \u2014 edgeX Agent**\n\n\u2705 Memory cleared.",
+                "\U0001f4dd **Memory \u2014 AI Agent**\n\n\u2705 Memory cleared.",
                 parse_mode="Markdown",
                 reply_markup=_back_button("\U0001f519 Back", "ai_hub"))
             return
@@ -1779,7 +2003,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="ai_hub")],
             ])
             await safe_edit(query,
-                f"\U0001f4dd **Memory \u2014 edgeX Agent**\n\n"
+                f"\U0001f4dd **Memory \u2014 AI Agent**\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
                 f"\u251c Summaries: `{stats['summaries']}`\n"
                 f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}",
@@ -1790,7 +2014,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             pending_plans.pop(user_id, None)
             await query.answer("\u274c Cancelled", show_alert=False)
             await safe_edit(query,
-                "\u274c **Trade Cancelled \u2014 edgeX Agent**\n\nNo order was placed.",
+                "\u274c **Trade Cancelled \u2014 Trade on edgeX**\n\nNo order was placed.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("\U0001f4c8 Trade on edgeX", callback_data="trade_hub"),
@@ -1803,7 +2027,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not plan:
                 await query.answer()
                 await safe_edit(query,
-                    "\u274c **Trade Expired \u2014 edgeX Agent**\n\nSend a new request.",
+                    "\u274c **Trade Expired \u2014 Trade on edgeX**\n\nSend a new request.",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
                         [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
@@ -1813,7 +2037,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not user:
                 await query.answer()
                 await safe_edit(query,
-                    "\u274c **Not Connected \u2014 edgeX Agent**\n\nUse /start to connect.",
+                    "\u274c **Not Connected \u2014 Trade on edgeX**\n\nUse /start to connect.",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
                         [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
@@ -1822,7 +2046,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.answer()
             side_word = "LONG" if plan.get("side") == "BUY" else "SHORT"
             await safe_edit(query,
-                f"\U0001f504 **Executing {side_word} {plan.get('asset', '')} \u2014 edgeX Agent**\n\nPlacing order on edgeX...",
+                f"\U0001f504 **Executing {side_word} {plan.get('asset', '')} \u2014 Trade on edgeX**\n\nPlacing order on edgeX...",
                 parse_mode="Markdown", reply_markup=None)
             _exec_msg_id = query.message.message_id
 
@@ -1838,7 +2062,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
             if not contract_id:
                 await _edit_exec(
-                    f"\u274c **Asset Not Found \u2014 edgeX Agent**\n\n"
+                    f"\u274c **Asset Not Found \u2014 Trade on edgeX**\n\n"
                     f"`{plan.get('asset')}` is not available on edgeX.\n"
                     f"Try BTC, ETH, or SOL.",
                     parse_mode="Markdown",
@@ -1854,7 +2078,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 raw_price = await edgex_client.get_market_price(plan["asset"])
                 if not raw_price:
                     await _edit_exec(
-                        f"\u274c **Price Unavailable \u2014 edgeX Agent**\n\nCouldn't fetch price for {plan['asset']}.",
+                        f"\u274c **Price Unavailable \u2014 Trade on edgeX**\n\nCouldn't fetch price for {plan['asset']}.",
                         parse_mode="Markdown",
                         reply_markup=InlineKeyboardMarkup([
                             [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
@@ -1893,7 +2117,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
                 ])
                 await _edit_exec(
-                    f"\u274c **Trade Blocked \u2014 edgeX Agent**\n\n"
+                    f"\u274c **Trade Blocked \u2014 Trade on edgeX**\n\n"
                     f"{error}\n{suggestion}",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(action_rows))
@@ -1927,7 +2151,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 value = plan.get("position_value_usd", "")
 
                 msg = (
-                    f"{side_emoji} **{side_word} {plan['asset']} \u2014 edgeX Agent**\n\n"
+                    f"{side_emoji} **{side_word} {plan['asset']} \u2014 Trade on edgeX**\n\n"
                     f"\u2705 Order Placed!\n\n"
                     f"\u251c Entry: `${plan['entry_price']}`\n"
                     f"\u251c Size: `{plan['size']}` ({leverage}x)\n"
@@ -1972,6 +2196,66 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ])
                 await _edit_exec(friendly, parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(error_rows))
+            return
+
+        # ── Close confirmation (second step) ──
+        if query.data.startswith("close_confirm_"):
+            target = query.data.replace("close_confirm_", "")
+            if target == "all":
+                # Close all positions — confirm
+                await safe_edit(query,
+                    "\U0001f534 **Market Close All \u2014 Trade on edgeX**\n\n"
+                    "\u26a0\ufe0f This will market-close ALL open positions. Are you sure?",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("\u2705 Yes, close all", callback_data="close_all_yes")],
+                        [InlineKeyboardButton("\u274c Cancel", callback_data="quick_close")],
+                    ]))
+            else:
+                symbol = edgex_client.resolve_symbol(target)
+                await safe_edit(query,
+                    f"\U0001f534 **Market Close {symbol} \u2014 Trade on edgeX**\n\n"
+                    f"\u26a0\ufe0f This will market-close your {symbol} position. Are you sure?",
+                    parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(f"\u2705 Yes, close {symbol}", callback_data=f"close_{target}")],
+                        [InlineKeyboardButton("\u274c Cancel", callback_data="quick_close")],
+                    ]))
+            return
+
+        # ── Close all positions ──
+        if query.data == "close_all_yes":
+            user = db.get_user(user_id)
+            if not user:
+                await query.answer("\u274c Not connected.", show_alert=True)
+                return
+            await query.answer()
+            await safe_edit(query, "\U0001f504 Closing all positions...")
+            try:
+                client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+                summary = await edgex_client.get_account_summary(client)
+                positions = summary.get("positions", [])
+                open_pos = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
+                results = []
+                for p in open_pos:
+                    cid = p.get("contractId", "")
+                    sym = edgex_client.resolve_symbol(cid)
+                    r = await edgex_client.close_position(client, cid, p)
+                    results.append((sym, r))
+                msg = "\U0001f534 **Close All \u2014 Trade on edgeX**\n\n"
+                for sym, r in results:
+                    if r.get("code") == "SUCCESS":
+                        msg += f"\u2705 {sym} closed\n"
+                    else:
+                        msg += f"\u274c {sym}: {r.get('error', r.get('msg', 'failed'))[:60]}\n"
+                await safe_edit(query, msg, parse_mode="Markdown",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("\U0001f4c8 Trade Hub", callback_data="trade_hub"),
+                         InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    ]))
+            except Exception as e:
+                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                    reply_markup=_back_button("\U0001f519 Back", "trade_hub"))
             return
 
         if query.data.startswith("close_"):
@@ -2029,7 +2313,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 order_detail = "\n".join(order_lines) if order_lines else ""
 
                 msg = (
-                    f"\u26a0\ufe0f **Close {symbol} \u2014 edgeX Agent**\n\n"
+                    f"\u26a0\ufe0f **Close {symbol} \u2014 Trade on edgeX**\n\n"
                     f"Margin insufficient \u2014 {order_count} open order(s) blocking:\n"
                     f"{order_detail}\n\n"
                     f"Cancel orders to free margin, then retry."
@@ -2056,7 +2340,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     balance_line = ""
 
                 msg = (
-                    f"{pnl_emoji} **Close {symbol} \u2014 edgeX Agent**\n\n"
+                    f"{pnl_emoji} **Close {symbol} \u2014 Trade on edgeX**\n\n"
                     f"\u2705 {side} position closed\n\n"
                     f"\u251c Entry: `${entry_price}`\n"
                     f"\u251c Size: `{size}`\n"
@@ -2168,6 +2452,28 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await safe_send(context, chat_id,
                 "\n".join(lines), parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        # ── Cancel order confirmation ──
+        if query.data.startswith("cancelone_confirm_"):
+            order_id = query.data.replace("cancelone_confirm_", "")
+            await safe_edit(query,
+                f"\u274c **Cancel Order \u2014 Trade on edgeX**\n\nCancel this order?",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\u2705 Yes, cancel", callback_data=f"cancelone_{order_id}")],
+                    [InlineKeyboardButton("\u274c Keep order", callback_data="quick_orders")],
+                ]))
+            return
+
+        if query.data == "cancelorders_confirm_all":
+            await safe_edit(query,
+                "\u274c **Cancel All Orders \u2014 Trade on edgeX**\n\n\u26a0\ufe0f Cancel ALL open orders?",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\u2705 Yes, cancel all", callback_data="cancelorders_all")],
+                    [InlineKeyboardButton("\u274c Keep orders", callback_data="quick_orders")],
+                ]))
             return
 
         # ── Cancel a single order ──
@@ -2618,7 +2924,7 @@ def _news_main_menu(user_id: int) -> tuple:
     subs = db.get_user_subscriptions(user_id)
     freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr", 99: "unlimited"}
 
-    msg = "\U0001f4f0 **Event Trading \u2014 edgeX Agent**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
+    msg = "\U0001f4f0 **Event Trading \u2014 Event Trading**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
     if not subs:
         msg += "_No news sources configured yet._\n"
     for s in subs:

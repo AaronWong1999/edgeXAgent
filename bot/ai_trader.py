@@ -932,7 +932,7 @@ def format_trade_plan(plan: dict) -> str:
     conf_bar = {"HIGH": "\u2588\u2588\u2588\u2588\u2588", "MEDIUM": "\u2588\u2588\u2588\u2591\u2591", "LOW": "\u2588\u2591\u2591\u2591\u2591"}.get(confidence, "\u2591\u2591\u2591\u2591\u2591")
 
     return (
-        f"{side_emoji} **Trade Plan \u2014 edgeX Agent**\n\n"
+        f"{side_emoji} **Trade Plan \u2014 Trade on edgeX**\n\n"
         f"{side} {asset} ({leverage}x)\n\n"
         f"\u251c Entry: `${entry}`\n"
         f"\u251c Size: `{size}`\n"
