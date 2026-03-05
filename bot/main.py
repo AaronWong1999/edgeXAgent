@@ -1183,7 +1183,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     for p in open_pos:
                         cid = p.get("contractId", "")
                         symbol = edgex_client.resolve_symbol(cid)
-                        side = p.get("side", "?")
+                        try:
+                            side = "LONG" if float(p.get("size", "0")) > 0 else "SHORT"
+                        except (ValueError, TypeError):
+                            side = p.get("side", "?")
                         leverage = p.get("maxLeverage", "")
                         lev_str = f" ({leverage}x)" if leverage else ""
                         pos_val_raw = p.get("positionValue", "0")
@@ -1265,7 +1268,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     await query.answer("\u274c Position not found.", show_alert=True)
                     return
                 symbol = edgex_client.resolve_symbol(contract_id)
-                side = target.get("side", "?")
+                try:
+                    side = "LONG" if float(target.get("size", "0")) > 0 else "SHORT"
+                except (ValueError, TypeError):
+                    side = target.get("side", "?")
                 leverage = target.get("maxLeverage", "")
                 lev_str = f" ({leverage}x)" if leverage else ""
                 entry_raw = target.get("entryPrice", "0")
@@ -1315,7 +1321,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
-                orders = await edgex_client.get_order_history(client, limit=5)
+                orders = await edgex_client.get_order_history(client, limit=10)
                 if not orders:
                     await safe_edit(query, "\U0001f4dc **Recent Trades \u2014 Trade on edgeX**\n\nNo recent trades.",
                         parse_mode="Markdown", reply_markup=_tb)
@@ -1377,7 +1383,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 for p in open_positions:
                     cid = p.get("contractId", "")
                     symbol = edgex_client.resolve_symbol(cid)
-                    side = p.get("side", "?")
+                    try:
+                        side = "LONG" if float(p.get("size", "0")) > 0 else "SHORT"
+                    except (ValueError, TypeError):
+                        side = p.get("side", "?")
                     pos_val_raw = p.get("positionValue", "0")
                     try:
                         pos_val = f"${float(pos_val_raw):.2f}"
@@ -2562,8 +2571,11 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for p in positions:
                 cid = p.get("contractId", "")
                 symbol = edgex_client.resolve_symbol(cid)
-                side = p.get("side", "?")
                 size = p.get("size", "0")
+                try:
+                    side = "LONG" if float(size) > 0 else "SHORT"
+                except (ValueError, TypeError):
+                    side = p.get("side", "?")
                 entry = p.get("entryPrice", "0")
                 unrealized = p.get("unrealizedPnl", "0")
                 liq = p.get("liquidatePrice", "0")
@@ -2689,7 +2701,10 @@ async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for p in open_positions:
             cid = p.get("contractId", "")
             symbol = edgex_client.resolve_symbol(cid)
-            side = p.get("side", "?")
+            try:
+                side = "LONG" if float(p.get("size", "0")) > 0 else "SHORT"
+            except (ValueError, TypeError):
+                side = p.get("side", "?")
             size = p.get("size", "0")
             pnl_raw = p.get("unrealizedPnl", "0")
             try:
@@ -2849,8 +2864,11 @@ async def cmd_pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             card += f"**Open Positions ({len(positions)}):**\n"
             for p in positions:
                 sym = edgex_client.resolve_symbol(p.get("contractId", ""))
-                side = p.get("side", "?")
                 size = p.get("size", "0")
+                try:
+                    side = "LONG" if float(size) > 0 else "SHORT"
+                except (ValueError, TypeError):
+                    side = p.get("side", "?")
                 entry = p.get("entryPrice", "0")
                 upnl = p.get("unrealizedPnl", "0")
                 liq = p.get("liquidatePrice", "0")
