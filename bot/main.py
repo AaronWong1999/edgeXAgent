@@ -622,8 +622,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if has_edgex and ("balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower):
                 kb = InlineKeyboardMarkup([
                     [
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                     ],
                     [
                         InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
@@ -1451,12 +1451,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
                 user = db.get_user(user_id)
                 if not user or not _has_edgex(user):
-                    await query.edit_message_text("\u274c Connect your edgeX account first. Use /start")
+                    await query.answer("\u274c Connect your edgeX account first. Use /start", show_alert=True)
                     return
 
                 user_ai = ai_trader.get_user_ai_config(user_id)
                 if not user_ai:
-                    await query.edit_message_text("\u274c Activate AI first. Use /setai")
+                    await query.answer("\u274c Activate AI first. Use /setai", show_alert=True)
                     return
 
                 try:
@@ -1470,7 +1470,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     action_word = "long" if side == "BUY" else "short"
                     prompt = f"{action_word} {asset} with ${notional:.0f} at {leverage}x leverage, execute immediately"
 
-                    await query.edit_message_text(f"\U0001f504 Generating trade plan: {action_word.upper()} {asset} (~${notional:.0f}, {leverage}x)...")
+                    # Don't replace news — send new message below
+                    await query.answer()
+                    await safe_send(context, chat_id, f"\U0001f504 Generating trade plan: {action_word.upper()} {asset} (~${notional:.0f}, {leverage}x)...")
 
                     # Keep typing indicator alive while AI generates the plan
                     stop_typing = asyncio.Event()
@@ -1509,8 +1511,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         if "balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower:
                             kb = InlineKeyboardMarkup([
                                 [
-                                    InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                                     InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                                    InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                                 ],
                                 [
                                     InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
@@ -1730,8 +1732,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     except Exception:
                         avail_str = "unknown"
                     action_rows.append([
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                     ])
                     error = f"Insufficient balance (available: {avail_str})"
                 elif "minimum" in error.lower() or "below" in error.lower():
@@ -1813,8 +1815,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 error_rows = []
                 if "balance" in error_msg.lower() or "insufficient" in error_msg.lower():
                     error_rows.append([
-                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                         InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                        InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
                     ])
                 error_rows.append([
                     InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),

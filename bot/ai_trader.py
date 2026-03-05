@@ -294,7 +294,8 @@ When generating a TRADE response, your "reasoning" field MUST:
 - When asked about price/market data, use the live data provided above and give specific numbers.
 - For trade plans, always include entry price, TP, SL, size, and position value.
 - For market analysis, give clear bullish/bearish assessment with supporting data.
-- Keep responses concise and actionable. No fluff.
+- **CRITICAL: Keep responses SHORT. Max 3-5 sentences for simple queries, max 8 sentences for analysis. No essays. No filler. No "let me analyze" preamble. Just give the answer directly.**
+- If user doesn't have enough balance: just say "余额不足 ($X available), 需要先平仓释放保证金" (or English equivalent). ONE sentence. Don't write a full margin analysis report.
 """
 
 PERSONALITY_PROMPTS = {
@@ -673,6 +674,13 @@ async def build_system_prompt(extra_symbols: list = None, personality: str = "de
             "NEVER assume the user still holds a position from memory. Check the REAL Portfolio section above instead.\n\n"
             f"{memory_context}"
         )
+
+    # Final brevity enforcement (MUST be last to override personality verbosity)
+    prompt += (
+        "\n\n## FINAL RULE — BREVITY\n"
+        "MAX 3-5 sentences. No essays, no bullet lists, no numbered alternatives. "
+        "If balance is insufficient: ONE sentence stating the shortfall + tell user to close a position. Done."
+    )
     return prompt
 
 
