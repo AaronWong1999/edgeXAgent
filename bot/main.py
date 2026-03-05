@@ -576,6 +576,54 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
 
+        # Check if user is adding an MCP news source
+        if context.user_data.get("awaiting_mcp_url"):
+            text = update.message.text.strip()
+            if text.startswith("/"):
+                context.user_data.pop("awaiting_mcp_url", None)
+            else:
+                context.user_data.pop("awaiting_mcp_url", None)
+                if not text.startswith("http"):
+                    await update.message.reply_text(
+                        "\u274c Invalid URL. Must start with `http://` or `https://`\n\nSend /cancel to go back.",
+                        parse_mode="Markdown")
+                    context.user_data["awaiting_mcp_url"] = True
+                    return
+                # Test the MCP endpoint
+                try:
+                    import httpx as hx
+                    async with hx.AsyncClient(timeout=10) as hc:
+                        payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+                        resp = await hc.post(text, json=payload, headers={"Content-Type": "application/json"})
+                        data = resp.json()
+                        tools = data.get("result", {}).get("tools", [])
+                        if not tools:
+                            await update.message.reply_text(
+                                "\u274c No MCP tools found at this URL.\n\nMake sure the server supports `tools/list`.",
+                                parse_mode="Markdown",
+                                reply_markup=InlineKeyboardMarkup([
+                                    [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")]
+                                ]))
+                            return
+                        tool_name = tools[0]["name"]
+                        tool_desc = tools[0].get("description", tool_name)
+                        source_id = tool_name.replace(" ", "_").lower()[:20]
+                        name = tool_desc[:30] if tool_desc else tool_name
+                        db.add_news_source(source_id=source_id, name=name, mcp_url=text, mcp_tool=tool_name)
+                        db.set_user_subscription(update.effective_user.id, source_id, True)
+                        msg, keyboard = _news_main_menu(update.effective_user.id)
+                        await update.message.reply_text(
+                            f"\u2705 Added *{name}*\n\n" + msg,
+                            parse_mode="Markdown", reply_markup=keyboard)
+                except Exception as e:
+                    await update.message.reply_text(
+                        f"\u274c Failed to connect: `{str(e)[:100]}`\n\nCheck the URL and try again.",
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")]
+                        ]))
+                return
+
         user = db.get_user(update.effective_user.id)
         if not user:
             # Silently create minimal user record so they can proceed
@@ -1648,6 +1696,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
+        if query.data.startswith("news_noop_"):
+            await query.answer()
+            return
+
         if query.data.startswith("news_toggle_"):
             remainder = query.data[len("news_toggle_"):]
             last_underscore = remainder.rfind("_")
@@ -1701,35 +1753,17 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data == "news_add":
-            buttons = [
-                [InlineKeyboardButton("\U0001f4b0 Bitcoin News", callback_data="news_addsrc_btc")],
-                [InlineKeyboardButton("\U0001f4a0 Ethereum News", callback_data="news_addsrc_eth")],
-                [InlineKeyboardButton("\U0001f30d DeFi News", callback_data="news_addsrc_defi")],
-                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
-            ]
+            context.user_data["awaiting_mcp_url"] = True
             await safe_edit(query,
-                "\u2795 *Add News Source \u2014 Event Trading*\n\nChoose a topic:",
-                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
-            return
-
-        if query.data.startswith("news_addsrc_"):
-            topic = query.data[len("news_addsrc_"):]
-            topic_map = {
-                "btc": ("bitcoin_news", "Bitcoin News", "get_bitcoin_news"),
-                "eth": ("ethereum_news", "Ethereum News", "get_ethereum_news"),
-                "defi": ("defi_news", "DeFi News", "get_defi_news"),
-            }
-            if topic in topic_map:
-                sid, name, tool = topic_map[topic]
-                added = db.add_news_source(
-                    source_id=sid, name=name,
-                    mcp_url="https://modelcontextprotocol.name/mcp/free-crypto-news",
-                    mcp_tool=tool, category="crypto",
-                )
-                if added:
-                    db.set_user_subscription(user_id, sid, True)
-            msg, keyboard = _news_main_menu(user_id)
-            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
+                "\u2795 *Add News Source \u2014 Event Trading*\n\n"
+                "Send an MCP news server URL:\n\n"
+                "Format: `https://your-server.com/mcp`\n\n"
+                "_The server must support MCP JSON-RPC `tools/call`._\n\n"
+                "Send /cancel to go back.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")]
+                ]))
             return
 
         if query.data.startswith("news_mute_"):
@@ -3049,12 +3083,13 @@ def _news_main_menu(user_id: int) -> tuple:
     for s in subs:
         is_on = bool(s.get("subscribed"))
         sid = s["id"]
+        name = s["name"]
         row = []
         if is_on:
-            row.append(InlineKeyboardButton(f"\u274c {s['name'][:12]}", callback_data=f"news_toggle_{sid}_off"))
+            row.append(InlineKeyboardButton(f"{name} \U0001f7e2ON", callback_data=f"news_toggle_{sid}_off"))
         else:
-            row.append(InlineKeyboardButton(f"\u2705 {s['name'][:12]}", callback_data=f"news_toggle_{sid}_on"))
-        row.append(InlineKeyboardButton("\u23f1 Frequency", callback_data=f"news_freq_{sid}"))
+            row.append(InlineKeyboardButton(f"{name} \U0001f534OFF", callback_data=f"news_toggle_{sid}_on"))
+        row.append(InlineKeyboardButton("\U0001f552", callback_data=f"news_freq_{sid}"))
         row.append(InlineKeyboardButton("\U0001f5d1", callback_data=f"news_remove_{sid}"))
         buttons.append(row)
     buttons.append([InlineKeyboardButton("\u2795 Add News Source", callback_data="news_add")])

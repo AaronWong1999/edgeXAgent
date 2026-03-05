@@ -269,7 +269,7 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
     """
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-    title = article.get("title", "Untitled")
+    title = article.get("title", "Untitled").replace("**", "").replace("__", "").replace("*", "").strip()
     url = article.get("url", "")
     source = article.get("source", "Crypto News")
     asset = analysis.get("asset", "?")

@@ -1,6 +1,9 @@
 """BWEnews MCP Server — standalone service that monitors @BWEnews TG channel
 and serves news via MCP JSON-RPC protocol.
 
+Architecture: polls recent messages from @BWEnews every 30s using Telethon
+get_messages (reliable, no event listener dependency).
+
 Run as: python3 bwenews_mcp.py
 Listens on http://localhost:8788/mcp
 """
@@ -13,10 +16,10 @@ import time
 from collections import deque
 
 from aiohttp import web
-from telethon import TelegramClient, events
+from telethon import TelegramClient
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("bwenews_mcp")
@@ -26,9 +29,12 @@ TG_API_HASH = os.environ.get("TG_API_HASH", "")
 BWENEWS_CHANNEL = "BWEnews"
 MCP_PORT = int(os.environ.get("BWENEWS_MCP_PORT", "8788"))
 
-# Store recent articles (last 100)
 _articles = deque(maxlen=100)
+_seen_ids = set()
 _telethon_client = None
+_channel_entity = None
+_last_poll_time = 0
+POLL_INTERVAL = 30
 
 
 def _is_cjk_heavy(text: str) -> bool:
@@ -61,6 +67,9 @@ def _extract_headline(text: str) -> str:
         if headline.upper().startswith(prefix.upper()):
             headline = headline[len(prefix):].strip()
             break
+    # Strip markdown bold markers that break TG Markdown parsing
+    headline = headline.replace("**", "").replace("__", "")
+    headline = headline.strip("*").strip()
     return headline
 
 
@@ -69,32 +78,64 @@ def _extract_url(text: str) -> str:
     return urls[0] if urls else ""
 
 
-async def handle_new_post(event):
-    text = event.message.text or event.message.message or ""
-    if not text or len(text) < 10:
+async def _poll_channel():
+    """Poll @BWEnews for recent messages and add to articles deque."""
+    global _last_poll_time
+    if not _telethon_client or not _channel_entity:
         return
 
-    headline = _extract_headline(text)
-    if not headline or len(headline) < 15:
+    now = time.time()
+    if now - _last_poll_time < POLL_INTERVAL:
         return
+    _last_poll_time = now
 
-    url = _extract_url(text)
-    post_time = event.message.date.timestamp() if event.message.date else time.time()
+    try:
+        msgs = await _telethon_client.get_messages(_channel_entity, limit=10)
+        new_count = 0
+        for m in reversed(msgs):
+            if m.id in _seen_ids:
+                continue
+            _seen_ids.add(m.id)
 
-    article = {
-        "title": headline,
-        "url": url,
-        "body": "",
-        "source": "BWEnews",
-        "categories": "crypto,finance,breaking",
-        "published_at": post_time,
-    }
-    _articles.appendleft(article)
-    logger.info(f"New article: {headline[:80]}")
+            text = m.text or m.message or ""
+            if not text or len(text) < 10:
+                continue
+
+            headline = _extract_headline(text)
+            if not headline or len(headline) < 15:
+                continue
+
+            url = _extract_url(text)
+            post_time = m.date.timestamp() if m.date else time.time()
+
+            article = {
+                "title": headline,
+                "url": url,
+                "body": "",
+                "source": "BWEnews",
+                "categories": "crypto,finance,breaking",
+                "published_at": post_time,
+            }
+            _articles.appendleft(article)
+            new_count += 1
+            logger.info(f"New article: {headline[:80]}")
+
+        if new_count:
+            logger.info(f"Polled {new_count} new articles from @BWEnews")
+    except Exception as e:
+        logger.error(f"Poll error: {e}")
+        # Try to reconnect if session/connection error
+        if "AuthKey" in str(e) or "connection" in str(e).lower() or "disconnect" in str(e).lower():
+            logger.info("Attempting reconnect...")
+            try:
+                await _telethon_client.disconnect()
+                await _telethon_client.connect()
+                logger.info("Reconnected successfully")
+            except Exception as re:
+                logger.error(f"Reconnect failed: {re}")
 
 
 async def mcp_handler(request):
-    """Handle MCP JSON-RPC requests."""
     try:
         body = await request.json()
     except Exception:
@@ -123,6 +164,7 @@ async def mcp_handler(request):
         limit = args.get("limit", 10)
 
         if tool_name == "get_bwenews":
+            await _poll_channel()
             articles = list(_articles)[:limit]
             return web.json_response({
                 "jsonrpc": "2.0", "id": req_id,
@@ -148,31 +190,35 @@ async def health_handler(request):
     })
 
 
-async def start_telethon():
-    global _telethon_client
+async def poll_loop():
+    """Background loop: poll channel every POLL_INTERVAL seconds."""
+    while True:
+        try:
+            await _poll_channel()
+        except Exception as e:
+            logger.error(f"Poll loop error: {e}")
+        await asyncio.sleep(POLL_INTERVAL)
+
+
+async def start_telethon(app):
+    global _telethon_client, _channel_entity
     if not TG_API_ID or not TG_API_HASH:
-        logger.error("TG_API_ID/TG_API_HASH not set")
+        logger.error("TG_API_ID/TG_API_HASH not set — BWEnews will not work")
         return
 
     session_path = os.path.join(os.path.dirname(__file__), "bwenews_session")
     _telethon_client = TelegramClient(session_path, TG_API_ID, TG_API_HASH)
     await _telethon_client.start()
 
-    channel = await _telethon_client.get_entity(BWENEWS_CHANNEL)
-    logger.info(f"Connected to @{BWENEWS_CHANNEL} (id={channel.id})")
+    _channel_entity = await _telethon_client.get_entity(BWENEWS_CHANNEL)
+    logger.info(f"Connected to @{BWENEWS_CHANNEL} (id={_channel_entity.id})")
 
-    @_telethon_client.on(events.NewMessage(chats=channel))
-    async def handler(event):
-        try:
-            await handle_new_post(event)
-        except Exception as e:
-            logger.error(f"Handler error: {e}")
+    # Initial load: fetch last 10 messages
+    await _poll_channel()
+    logger.info(f"Initial load: {len(_articles)} articles")
 
-    logger.info("Telethon listener started")
-
-
-async def on_startup(app):
-    await start_telethon()
+    # Start background poll loop
+    asyncio.ensure_future(poll_loop())
 
 
 async def on_cleanup(app):
@@ -184,7 +230,7 @@ def main():
     app = web.Application()
     app.router.add_post("/mcp", mcp_handler)
     app.router.add_get("/health", health_handler)
-    app.on_startup.append(on_startup)
+    app.on_startup.append(start_telethon)
     app.on_cleanup.append(on_cleanup)
 
     logger.info(f"BWEnews MCP server starting on port {MCP_PORT}")
