@@ -3,6 +3,7 @@ Your AI trader. Tell it what you think. It trades for you.
 """
 import asyncio
 import logging
+import os
 import traceback
 import time
 from datetime import datetime
@@ -1464,6 +1465,57 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 await query.delete_message()
             except Exception:
                 await query.edit_message_text("\u2714\ufe0f Dismissed")
+            return
+
+        # ── Inline translation ──
+        if query.data.startswith("tl_"):
+            lang_code = query.data[3:]
+            LANG_NAMES = {
+                "zh": "\U0001f1e8\U0001f1f3 \u4e2d\u6587", "ja": "\U0001f1ef\U0001f1f5 \u65e5\u672c\u8a9e",
+                "ko": "\U0001f1f0\U0001f1f7 \ud55c\uad6d\uc5b4", "ru": "\U0001f1f7\U0001f1fa \u0420\u0443\u0441\u0441\u043a\u0438\u0439",
+            }
+            lang_label = LANG_NAMES.get(lang_code, lang_code)
+            # Extract headline from the message (first line, strip bold markers)
+            msg_text = query.message.text or ""
+            first_line = msg_text.split("\n")[0].strip()
+            # Remove source prefix like "BWEnews: " or "CryptoNews: "
+            if ": " in first_line:
+                headline = first_line.split(": ", 1)[1]
+            else:
+                headline = first_line
+            if not headline or len(headline) < 5:
+                await safe_send(context, chat_id, "\u274c No headline to translate.")
+                return
+            try:
+                await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+                import asyncio as _aio
+                factory_key = os.environ.get("FACTORY_API_KEY", "")
+                proc = await _aio.create_subprocess_exec(
+                    "/home/ubuntu/.local/bin/droid", "exec",
+                    "-m", "claude-sonnet-4-5-20250929",
+                    f"Translate the following news headline to {lang_code}. Return ONLY the translation, nothing else:\n\n{headline}",
+                    stdout=_aio.subprocess.PIPE, stderr=_aio.subprocess.PIPE,
+                    env={"PATH": "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin",
+                         "HOME": "/home/ubuntu", "FACTORY_API_KEY": factory_key},
+                )
+                stdout, _ = await _aio.wait_for(proc.communicate(), timeout=20)
+                translation = stdout.decode().strip().lstrip('\x00\x01\x02\x03\x04\x05\x06\x07\x08')
+                # Droid exec with json format wraps in {"result": "..."}
+                try:
+                    import json as _json
+                    wrapper = _json.loads(translation)
+                    translation = wrapper.get("result", translation)
+                except (ValueError, TypeError):
+                    pass
+                translation = translation.strip().strip('"').strip("'")
+                if translation:
+                    await safe_send(context, chat_id, f"{lang_label}\n\n*{translation}*",
+                        parse_mode="Markdown")
+                else:
+                    await safe_send(context, chat_id, "\u274c Translation failed.")
+            except Exception as e:
+                logger.warning(f"Translation error: {e}")
+                await safe_send(context, chat_id, "\u274c Translation service unavailable.")
             return
 
         if query.data.startswith("news_trade_"):

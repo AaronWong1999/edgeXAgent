@@ -41,18 +41,10 @@ _DEEPL_URL = "https://www.deepl.com/translator#en/{lang}/{text}"
 
 # Language flags + codes for translation buttons
 LANGUAGES = [
-    ("🇨🇳", "zh", "中文"),
-    ("🇯🇵", "ja", "日本語"),
-    ("🇰🇷", "ko", "한국어"),
-    ("🇷🇺", "ru", "Русский"),
-    ("🇪🇸", "es", "Español"),
-    ("🇩🇪", "de", "Deutsch"),
-    ("🇫🇷", "fr", "Français"),
-    ("🇹🇷", "tr", "Türkçe"),
-    ("🇦🇪", "ar", "العربية"),
-    ("🇻🇳", "vi", "Tiếng Việt"),
-    ("🇹🇭", "th", "ไทย"),
-    ("🇵🇹", "pt", "Português"),
+    ("\U0001f1e8\U0001f1f3", "zh", "\u4e2d"),
+    ("\U0001f1ef\U0001f1f5", "ja", "\u65e5"),
+    ("\U0001f1f0\U0001f1f7", "ko", "\u97e9"),
+    ("\U0001f1f7\U0001f1fa", "ru", "\u0420\u0443"),
 ]
 
 
@@ -62,16 +54,9 @@ def set_bot(bot):
 
 
 def _can_push_to_user(user_id: int) -> bool:
-    max_per_hour = db.get_user_news_frequency(user_id, SOURCE_ID)
-    if max_per_hour <= 0:
-        return False
-    now = time.time()
-    cutoff = now - 3600
-    key = (user_id, SOURCE_ID)
-    times = _user_push_times.get(key, [])
-    times = [t for t in times if t > cutoff]
-    _user_push_times[key] = times
-    return len(times) < max_per_hour
+    """BWEnews has no rate limit — always push if subscribed."""
+    sub = db.is_user_subscribed(user_id, SOURCE_ID)
+    return sub
 
 
 def _record_push(user_id: int):
@@ -268,13 +253,12 @@ def format_bwenews_alert(headline: str, analysis: Optional[dict],
     Returns (message_text, InlineKeyboardMarkup).
     """
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    import urllib.parse
 
     url = _extract_url(original_text)
     ts = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(post_time)) if post_time else ""
 
     # Main message: bold headline + source + timestamp
-    msg = f"*BWEnews:* {headline}"
+    msg = f"*BWEnews: {headline}*"
     if ts:
         msg += f"\n\n{'─' * 16}\n{ts}"
 
@@ -304,17 +288,11 @@ def format_bwenews_alert(headline: str, analysis: Optional[dict],
                 callback_data=f"news_trade_{asset}_{side}_{leverage}_150"),
         ])
 
-    # Translation buttons — 4 per row
-    encoded = urllib.parse.quote(headline, safe="")
-    row = []
-    for flag, lang_code, _name in LANGUAGES:
-        turl = f"https://translate.google.com/?sl=en&tl={lang_code}&text={encoded}&op=translate"
-        row.append(InlineKeyboardButton(f"{flag}", url=turl))
-        if len(row) == 4:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
+    # Translation buttons — one row: 中 日 韩 俄
+    buttons.append([
+        InlineKeyboardButton(f"{flag} {label}", callback_data=f"tl_{lang_code}")
+        for flag, lang_code, label in LANGUAGES
+    ])
 
     # Source link + dismiss
     bottom = []

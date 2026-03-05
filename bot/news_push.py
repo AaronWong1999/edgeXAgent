@@ -264,7 +264,6 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
     Returns (message_text, InlineKeyboardMarkup).
     """
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-    import urllib.parse
 
     title = article.get("title", "Untitled")
     url = article.get("url", "")
@@ -280,7 +279,7 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
     conf_bar = {"HIGH": "\u2588\u2588\u2588", "MEDIUM": "\u2588\u2588\u2591", "LOW": "\u2588\u2591\u2591"}.get(confidence, "\u2591\u2591\u2591")
 
     ts = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
-    msg = f"*{source}:* {title}\n\n{sent_emoji} {asset} | {sentiment} | {conf_bar} {confidence}\n\n{'─' * 16}\n{ts}"
+    msg = f"*{source}: {title}*\n\n{sent_emoji} {asset} | {sentiment} | {conf_bar} {confidence}\n\n{'─' * 16}\n{ts}"
 
     buttons = []
     if action in ("LONG", "SHORT"):
@@ -292,25 +291,13 @@ def format_news_alert(article: dict, analysis: dict) -> tuple:
                 callback_data=f"news_trade_{asset}_{side}_{leverage}_150"),
         ])
 
-    # Translation buttons
-    LANGUAGES = [
-        ("\U0001f1e8\U0001f1f3", "zh"), ("\U0001f1ef\U0001f1f5", "ja"),
-        ("\U0001f1f0\U0001f1f7", "ko"), ("\U0001f1f7\U0001f1fa", "ru"),
-        ("\U0001f1ea\U0001f1f8", "es"), ("\U0001f1e9\U0001f1ea", "de"),
-        ("\U0001f1eb\U0001f1f7", "fr"), ("\U0001f1f9\U0001f1f7", "tr"),
-        ("\U0001f1e6\U0001f1ea", "ar"), ("\U0001f1fb\U0001f1f3", "vi"),
-        ("\U0001f1f9\U0001f1ed", "th"), ("\U0001f1f5\U0001f1f9", "pt"),
-    ]
-    encoded = urllib.parse.quote(title, safe="")
-    row = []
-    for flag, lang_code in LANGUAGES:
-        turl = f"https://translate.google.com/?sl=en&tl={lang_code}&text={encoded}&op=translate"
-        row.append(InlineKeyboardButton(flag, url=turl))
-        if len(row) == 4:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
+    # Translation buttons — one row: 中 日 韩 俄
+    buttons.append([
+        InlineKeyboardButton("\U0001f1e8\U0001f1f3 \u4e2d", callback_data="tl_zh"),
+        InlineKeyboardButton("\U0001f1ef\U0001f1f5 \u65e5", callback_data="tl_ja"),
+        InlineKeyboardButton("\U0001f1f0\U0001f1f7 \u97e9", callback_data="tl_ko"),
+        InlineKeyboardButton("\U0001f1f7\U0001f1fa \u0420\u0443", callback_data="tl_ru"),
+    ])
 
     bottom = []
     if url:
