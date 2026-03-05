@@ -3,94 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>edgeX Agent — Navigation Blueprint v4</title>
+<title>edgeX Agent — Navigation Blueprint v5</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#1a1a2e; color:#eee; min-height:100vh; }
-h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
-.subtitle { text-align:center; color:#888; font-size:13px; margin-bottom:20px; }
-.stats { display:flex; justify-content:center; gap:40px; margin-bottom:24px; }
-.stat { text-align:center; }
-.stat-num { font-size:28px; font-weight:700; color:#4a90d9; }
-.stat-label { font-size:11px; color:#888; }
-.rule-box { background:#111827; border:1px solid #333; border-radius:10px; padding:16px 20px; margin:0 auto 24px; max-width:900px; font-size:13px; line-height:1.6; }
-.rule-box h3 { color:#4a90d9; margin-bottom:8px; } .rule-box li { color:#ccc; margin-bottom:4px; } .rule-box b { color:#fff; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#0f0f1a; color:#eee; min-height:100vh; }
+h1 { text-align:center; padding:24px 0 4px; font-size:24px; }
+.subtitle { text-align:center; color:#888; font-size:12px; margin-bottom:16px; }
+.stats { display:flex; justify-content:center; gap:40px; margin-bottom:20px; }
+.stat { text-align:center; } .stat-num { font-size:28px; font-weight:700; color:#4a90d9; } .stat-label { font-size:11px; color:#888; }
+.legend { background:#111827; border:1px solid #333; border-radius:10px; padding:14px 18px; margin:0 auto 20px; max-width:780px; font-size:12px; line-height:1.5; display:flex; flex-wrap:wrap; gap:16px; justify-content:center; }
+.legend-item { display:flex; align-items:center; gap:6px; }
+.legend-color { width:14px; height:14px; border-radius:3px; }
 .search-bar { display:flex; justify-content:center; margin-bottom:20px; }
-.search-bar input { padding:7px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
+.search-bar input { padding:6px 14px; border-radius:20px; border:1px solid #444; background:#0e1621; color:#eee; font-size:13px; width:280px; outline:none; }
 .search-bar input:focus { border-color:#4a90d9; }
 
-.module { margin:0 auto 48px; max-width:1500px; padding:0 20px; }
-.module-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; padding:12px 20px; border-radius:10px; }
-.module-header.trade { background:linear-gradient(135deg,#1a4a3a,#0e2a1f); border:1px solid #2d6a4f; }
-.module-header.ai { background:linear-gradient(135deg,#1a2a4a,#0e1a2f); border:1px solid #4a90d9; }
-.module-header.event { background:linear-gradient(135deg,#3a2a1a,#2f1a0e); border:1px solid #e07c24; }
-.module-header.push { background:linear-gradient(135deg,#3a1a1a,#2f0e0e); border:1px solid #c0392b; }
-.module-header .icon { font-size:28px; }
-.module-header .info h2 { font-size:18px; color:#fff; } .module-header .info p { font-size:12px; color:#999; margin-top:2px; }
+/* Module */
+.module { margin:0 auto 40px; max-width:1600px; padding:0 16px; }
+.mod-hdr { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:10px 16px; border-radius:10px; }
+.mod-hdr.m-trade { background:linear-gradient(135deg,#132b1e,#0a1a10); border:1px solid #2d6a4f; }
+.mod-hdr.m-ai { background:linear-gradient(135deg,#131e2b,#0a1020); border:1px solid #4a90d9; }
+.mod-hdr.m-event { background:linear-gradient(135deg,#2b2113,#1a140a); border:1px solid #e07c24; }
+.mod-hdr.m-push { background:linear-gradient(135deg,#2b1313,#1a0a0a); border:1px solid #c0392b; }
+.mod-hdr .ic { font-size:24px; } .mod-hdr .inf h2 { font-size:16px; color:#fff; } .mod-hdr .inf p { font-size:11px; color:#888; margin-top:2px; }
 
-/* Tree layout */
-.tree { position:relative; padding-left:30px; }
-.tree-node { position:relative; margin-bottom:16px; }
-.tree-node::before { content:''; position:absolute; left:-20px; top:20px; width:16px; height:2px; background:#444; }
-.tree-node:last-child::after { content:''; position:absolute; left:-24px; top:20px; bottom:0; width:4px; background:#1a1a2e; }
-.tree-branch { position:relative; padding-left:30px; margin-left:0; border-left:2px solid #444; }
-.tree-branch::before { display:none; }
-.tree-root { position:relative; }
-.tree-root > .tree-branch { margin-top:8px; }
+/* Flow containers */
+.flow-section { margin-bottom:12px; padding-left:8px; }
+.flow-label { font-size:11px; color:#666; font-weight:600; margin-bottom:8px; padding:3px 8px; background:#111; border-radius:4px; display:inline-block; }
+.flow-row { display:flex; align-items:flex-start; flex-wrap:wrap; gap:0; margin-bottom:6px; }
+.or-div { display:flex; align-items:center; padding:0 10px; color:#555; font-size:11px; font-style:italic; }
 
-/* States row (no tree lines) */
-.states-row { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:8px; }
-.state-label { font-size:10px; color:#666; padding:2px 8px; background:#1a2433; border-radius:4px; margin-bottom:4px; display:inline-block; }
-.or-divider { display:flex; align-items:center; padding:0 6px; color:#555; font-size:11px; font-style:italic; }
+/* Phone */
+.phone { width:240px; flex-shrink:0; background:#0e1621; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.3); border:2px solid #2a2a3e; transition:all .15s; position:relative; }
+.phone:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,.4); }
+.phone.shared { border-color:#e07c24 !important; }
+.phone .ph-hdr { background:#17212b; padding:5px 8px; display:flex; align-items:center; gap:5px; border-bottom:1px solid #222; }
+.phone .ph-hdr .av { width:20px; height:20px; border-radius:50%; background:#4a90d9; font-size:10px; display:flex; align-items:center; justify-content:center; }
+.phone .ph-hdr .nm { font-weight:600; font-size:11px; }
+.phone .ph-body { padding:5px 7px; }
+.phone .bub { background:#182533; border-radius:0 7px 7px 7px; padding:5px 7px; font-size:10px; line-height:1.35; white-space:pre-wrap; word-break:break-word; }
+.bub b { color:#fff; } .bub code { background:#0d1117; padding:1px 2px; border-radius:2px; font-size:9px; color:#7ee787; }
+.bub .d { color:#777; font-style:italic; font-size:9px; }
+.bg { display:flex; flex-wrap:wrap; gap:2px; margin-top:3px; }
+.tb { flex:1 1 45%; min-width:0; padding:4px 2px; border-radius:4px; text-align:center; font-size:9px; cursor:default; border:none; font-weight:500; }
+.tb.f { flex:1 1 100%; } .tb.t { flex:1 1 30%; } .tb.q { flex:1 1 22%; }
+.tb.bl { background:#2f6ea5; color:#fff; } .tb.gn { background:#2d6a4f; color:#fff; } .tb.rd { background:#8b2c2c; color:#fff; }
+.tb.gy { background:#2a3441; color:#aaa; } .tb.bk { background:#1e2a36; color:#6ba3d6; border:1px solid #2f4f6f; }
+.phone .ft { padding:3px 5px; font-size:7px; color:#445; border-top:1px solid #1a2433; line-height:1.2; }
+.phone .sid { position:absolute; top:30px; left:5px; font-size:7px; color:#333; font-family:monospace; }
+.phone .lvl { position:absolute; top:30px; right:5px; font-size:7px; padding:1px 4px; border-radius:3px; font-weight:600; color:#fff; }
+.lvl.l1 { background:#2d6a4f; } .lvl.l2 { background:#4a90d9; } .lvl.l3 { background:#e07c24; } .lvl.lp { background:#c0392b; }
+.phone .shared-badge { position:absolute; top:30px; right:28px; font-size:7px; padding:1px 4px; border-radius:3px; font-weight:600; color:#e07c24; background:#2b1a0a; border:1px solid #e07c24; }
 
-/* Phone cards */
-.phone { width:260px; flex-shrink:0; background:#0e1621; border-radius:12px; overflow:hidden; box-shadow:0 3px 12px rgba(0,0,0,.4); border:2px solid #333; transition:transform .15s; position:relative; display:inline-block; vertical-align:top; }
-.phone:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.5); }
-.phone-header { background:#17212b; padding:6px 10px; display:flex; align-items:center; gap:6px; border-bottom:1px solid #222; }
-.phone-header .avatar { width:24px; height:24px; border-radius:50%; background:#4a90d9; display:flex; align-items:center; justify-content:center; font-size:12px; }
-.phone-header .name { font-weight:600; font-size:12px; }
-.phone-body { padding:6px 8px; min-height:80px; }
-.msg-bubble { background:#182533; border-radius:0 8px 8px 8px; padding:6px 8px; margin-bottom:4px; font-size:11px; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
-.msg-bubble b { color:#fff; } .msg-bubble code { background:#0d1117; padding:1px 3px; border-radius:2px; font-size:10px; color:#7ee787; }
-.msg-bubble .dim { color:#888; font-style:italic; font-size:10px; }
-.btn-grid { display:flex; flex-wrap:wrap; gap:2px; margin-top:4px; }
-.tg-btn { flex:1 1 45%; min-width:0; padding:5px 2px; border-radius:5px; text-align:center; font-size:10px; cursor:default; border:none; font-weight:500; }
-.tg-btn.full { flex:1 1 100%; } .tg-btn.third { flex:1 1 30%; } .tg-btn.quarter { flex:1 1 22%; }
-.tg-btn.blue { background:#2f6ea5; color:#fff; } .tg-btn.green { background:#2d6a4f; color:#fff; } .tg-btn.red { background:#8b2c2c; color:#fff; }
-.tg-btn.gray { background:#2a3441; color:#aaa; } .tg-btn.back { background:#1e2a36; color:#6ba3d6; border:1px solid #2f4f6f; }
-.phone-footer { padding:4px 6px; font-size:8px; color:#556; border-top:1px solid #1a2433; line-height:1.3; }
-.phone .sid { position:absolute; top:36px; left:6px; font-size:7px; color:#444; font-family:monospace; }
-.phone .lvl-badge { position:absolute; top:36px; right:6px; font-size:8px; padding:1px 5px; border-radius:4px; font-weight:600; }
-.lvl-badge.l1 { background:#2d6a4f; color:#fff; } .lvl-badge.l2 { background:#4a90d9; color:#fff; } .lvl-badge.l3 { background:#e07c24; color:#fff; } .lvl-badge.push { background:#c0392b; color:#fff; }
+/* Tree connector */
+.tree-indent { padding-left:40px; border-left:2px solid #333; margin-left:14px; position:relative; }
+.tree-indent::before { display:none; }
+.tree-item { position:relative; padding:4px 0; }
+.tree-item::before { content:''; position:absolute; left:-40px; top:16px; width:36px; height:2px; background:#333; }
+.tree-item:last-child::after { content:''; position:absolute; left:-42px; top:16px; bottom:0; width:4px; background:#0f0f1a; }
 
-/* Seq flow for push layer */
-.seq-flow { display:flex; align-items:flex-start; gap:0; flex-wrap:wrap; margin-bottom:16px; }
-.seq-arrow { display:flex; align-items:center; padding:10px 4px 0; color:#c0392b; font-size:20px; font-weight:bold; }
-.seq-label { font-size:9px; color:#888; text-align:center; margin-top:4px; display:block; }
+/* Seq arrow */
+.seq-a { display:flex; align-items:center; padding:0 5px; flex-direction:column; }
+.seq-a .arr { color:#c0392b; font-size:18px; font-weight:bold; }
+.seq-a .albl { font-size:8px; color:#777; text-align:center; max-width:60px; }
 
-.phone.highlight { border-color:#4a90d9 !important; box-shadow:0 0 12px rgba(74,144,217,.4) !important; }
-.phone.dimmed { opacity:.2; }
+.phone.highlight { border-color:#4a90d9 !important; box-shadow:0 0 10px rgba(74,144,217,.4) !important; }
+.phone.dimmed { opacity:.15; }
 @media(max-width:700px) { .phone { width:100%; } }
 </style>
 </head>
 <body>
-<h1>edgeX Agent — Navigation Blueprint v4</h1>
-<p class="subtitle">3 modules: 📈 Trade on edgeX / 🤖 AI Agent / 📰 Event Trading</p>
+<h1>edgeX Agent — Navigation Blueprint v5</h1>
+<p class="subtitle">Complete click flow map — every arrow = one button click</p>
 
 <div class="stats">
 <div class="stat"><div class="stat-num">3</div><div class="stat-label">Modules</div></div>
 <div class="stat"><div class="stat-num">28</div><div class="stat-label">Screens</div></div>
 <div class="stat"><div class="stat-num">3</div><div class="stat-label">Max Depth</div></div>
+<div class="stat"><div class="stat-num">8</div><div class="stat-label">Shared Screens</div></div>
 </div>
 
-<div class="rule-box">
-<h3>How to read this map</h3>
-<ul>
-<li><b>Tree lines (├──)</b> = "click this button to go there" — real parent→child navigation</li>
-<li><b>"or"</b> between screens = same position, different state (e.g. connected vs not)</li>
-<li><b>Sequential arrows (→)</b> in Push Layer = message edits in sequence (Plan → Executing → Result)</li>
-<li>Every screen has 🔙 Back to its parent. Every L2 hub Back → Dashboard. Every L3 Back → its L2 hub.</li>
-</ul>
+<div class="legend">
+<div class="legend-item"><div class="legend-color" style="background:#2d6a4f"></div>L1 Dashboard</div>
+<div class="legend-item"><div class="legend-color" style="background:#4a90d9"></div>L2 Module Hub</div>
+<div class="legend-item"><div class="legend-color" style="background:#e07c24"></div>L3 Sub-screen</div>
+<div class="legend-item"><div class="legend-color" style="background:#c0392b"></div>Push (bot-initiated)</div>
+<div class="legend-item"><div class="legend-color" style="background:transparent;border:2px solid #e07c24"></div>Shared screen (multiple parents)</div>
+<div class="legend-item">├── tree = parent→child</div>
+<div class="legend-item"><span style="color:#555">or</span> = mutually exclusive states</div>
+<div class="legend-item"><span style="color:#c0392b">→</span> = edits same message</div>
 </div>
 
 <div class="search-bar"><input type="text" id="search" placeholder="Search screens..."></div>
@@ -98,116 +99,148 @@ h1 { text-align:center; padding:24px 0 8px; font-size:26px; color:#fff; }
 <div id="app"></div>
 
 <script>
-function P(id,t,b,btns,nav,lv) {
-  let h = "";
-  if (btns && btns.length) {
-    h = '<div class="btn-grid">';
-    for (const x of btns) { let c=`tg-btn ${x.s||"blue"}`; if(x.w==="third")c+=" third"; if(x.w==="quarter")c+=" quarter"; h+=`<button class="${c}">${x.t}</button>`; }
-    h += "</div>";
-  }
-  const lvCls = lv==="P"?"push":"l"+lv;
-  const lvTxt = lv==="P"?"Push":"L"+lv;
-  return `<div class="phone" data-search="${(t+" "+id+" "+(nav||"")).toLowerCase()}"><span class="sid">#${id}</span><span class="lvl-badge ${lvCls}">${lvTxt}</span><div class="phone-header"><div class="avatar">🤖</div><div class="name">edgeX Agent</div></div><div class="phone-body"><div class="msg-bubble">${b}</div>${h}</div><div class="phone-footer">${nav||""}</div></div>`;
+function P(id,t,b,btns,ft,lv,shared) {
+  let bg='';
+  if(btns&&btns.length){bg='<div class="bg">';for(const x of btns){let c=`tb ${x.c||'bl'}`;if(x.w)c+=' '+x.w;bg+=`<button class="${c}">${x.t}</button>`;}bg+='</div>';}
+  const lvMap={1:'l1',2:'l2',3:'l3','P':'lp'};
+  const lvT=lv==='P'?'Push':'L'+lv;
+  const sh=shared?`<span class="shared-badge">SHARED</span>`:'';
+  return `<div class="phone${shared?' shared':''}" data-search="${(t+' '+id+' '+(ft||'')).toLowerCase()}" data-id="${id}"><span class="sid">#${id}</span>${sh}<span class="lvl ${lvMap[lv]||'l2'}">${lvT}</span><div class="ph-hdr"><div class="av">🤖</div><div class="nm">edgeX Agent</div></div><div class="ph-body"><div class="bub">${b}</div>${bg}</div><div class="ft">${ft||''}</div></div>`;
 }
+function A(label){return `<div class="seq-a"><span class="arr">→</span><span class="albl">${label||''}</span></div>`;}
+function OR(){return `<div class="or-div">or</div>`;}
 
-const EX = `<span class="dim">"BTC's looking juicy, should I ape in?"</span>\n<span class="dim">"ソラナをロングしたい、少しだけ"</span>\n<span class="dim">"CRCL涨的离谱，怎么操作"</span>`;
-const DB = (s1,s2) => `🤖 <b>edgeX Agent — Your Own AI Trading Agent</b>\n\n${s1}\n${s2}\n\n👇 Tap a button or just talk to me:\n\n${EX}`;
+const EX=`<span class="d">"BTC's looking juicy, ape in?"</span>\n<span class="d">"ソラナをロング"</span>\n<span class="d">"CRCL涨的离谱"</span>`;
+const DB=(s1,s2)=>`🤖 <b>edgeX Agent</b>\n\n${s1}\n${s2}\n\n👇 Tap or talk:\n\n${EX}`;
+let html='';
 
-let html = "";
+// ═══════════ DASHBOARD ═══════════
+html+=`<div class="module"><div class="mod-hdr m-trade"><div class="ic">🤖</div><div class="inf"><h2>Dashboard (L1)</h2><p>/start → new message. 3 buttons always. All navigation edits this message.</p></div></div>`;
+html+=`<div class="flow-section"><div class="flow-label">3 Dashboard States (mutually exclusive)</div><div class="flow-row">`;
+html+=P('dash_new','Dashboard: New',DB('👤 edgeX: not connected','✨ AI: not activated'),[{t:'🔗 Connect edgeX',c:'bl f'},{t:'✨ Activate AI',c:'gn f'},{t:'📰 Event Trading',c:'bl f'}],'State 1: new user',1);
+html+=OR();
+html+=P('dash_conn','Dashboard: Connected',DB('👤 edgeX: <code>713030</code> ✅','✨ AI: not activated'),[{t:'📈 Trade on edgeX',c:'bl f'},{t:'✨ Activate AI',c:'gn f'},{t:'📰 Event Trading',c:'bl f'}],'State 2: connected, no AI',1);
+html+=OR();
+html+=P('dash_full','Dashboard: Full',DB('👤 edgeX: <code>713030</code> ✅','✨ AI: Active ✅'),[{t:'📈 Trade on edgeX',c:'bl f'},{t:'🤖 AI Agent',c:'bl f'},{t:'📰 Event Trading',c:'bl f'}],'State 3: all active',1);
+html+=`</div></div></div>`;
 
-// ═══ DASHBOARD ═══
-html += `<div class="module"><div class="module-header trade"><div class="icon">🤖</div><div class="info"><h2>Dashboard</h2><p>L1 root — /start creates new message. Always 3 buttons. Buttons edit this message.</p></div></div>`;
-html += `<div class="states-row">`;
-html += `<div><div class="state-label">State 1: New user</div>${P("dash_new","New User",DB("👤 edgeX: not connected","✨ AI: not activated"),[{t:"🔗 Connect edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],"",1)}</div>`;
-html += `<div class="or-divider">or</div>`;
-html += `<div><div class="state-label">State 2: Connected, no AI</div>${P("dash_mid","Connected",DB("👤 edgeX: <code>71303066</code> ✅","✨ AI: not activated"),[{t:"📈 Trade on edgeX",s:"blue full"},{t:"✨ Activate AI",s:"green full"},{t:"📰 Event Trading",s:"blue full"}],"",1)}</div>`;
-html += `<div class="or-divider">or</div>`;
-html += `<div><div class="state-label">State 3: Full</div>${P("dash_full","Full State",DB("👤 edgeX: <code>71303066</code> ✅","✨ AI: Active ✅"),[{t:"📈 Trade on edgeX",s:"blue full"},{t:"🤖 AI Agent",s:"blue full"},{t:"📰 Event Trading",s:"blue full"}],"",1)}</div>`;
-html += `</div></div>`;
+// ═══════════ MODULE 1: TRADE ON EDGEX ═══════════
+html+=`<div class="module"><div class="mod-hdr m-trade"><div class="ic">📈</div><div class="inf"><h2>Trade on edgeX</h2><p>Login required. Account overview, positions, orders, history, disconnect.</p></div></div>`;
 
-// ═══ MODULE 1: TRADE ON EDGEX ═══
-html += `<div class="module"><div class="module-header trade"><div class="icon">📈</div><div class="info"><h2>Trade on edgeX</h2><p>Account overview, positions with leverage + P&L, close, orders, history. Login required.</p></div></div>`;
-html += `<div class="tree-root">`;
-// L2 Hub
-html += `<div class="states-row" style="margin-bottom:12px">`;
-html += `<div><div class="state-label">Before login</div>${P("show_login","🔗 Connect edgeX",`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,[{t:"⚡ One-Click OAuth (soon)",s:"gray full"},{t:"🔑 API Key",s:"blue full"},{t:"👤 Aaron's Account (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],"Dashboard > Connect",2)}</div>`;
-html += `<div class="or-divider">or (after login)</div>`;
-html += `<div>${P("trade_hub","📈 Trade Hub",`📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234.56</code>\n└ Available: <code>$890.12</code>\n\n<b>Open Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) | PnL: <code>+$12.30</code>\n🔴 ETH SHORT <code>0.5</code> (3x) | PnL: <code>-$5.20</code>\n\nUnrealized P&L: 🟢 <code>+$7.10</code>`,[{t:"🔴 Close Position",s:"red"},{t:"📋 Orders",s:"blue"},{t:"📜 History",s:"blue"},{t:"🚪 Disconnect",s:"red"},{t:"🔙 Back",s:"back full"}],"Dashboard > Trade. Merged Status+P&L.",2)}</div>`;
-html += `</div>`;
-// L3 children of Trade Hub
-html += `<div class="tree-branch">`;
-html += `<div class="tree-node">${P("quick_close","🔴 Close Position",`🔴 <b>Close Position — edgeX Agent</b>\n\nSelect position:\n• BTC LONG | 0.01 | +$12.30\n• ETH SHORT | 0.5 | -$5.20`,[{t:"Close BTC LONG",s:"red full"},{t:"Close ETH SHORT",s:"red full"},{t:"🔙 Back",s:"back full"}],"Trade Hub > Close. Back → Trade Hub.",3)}</div>`;
-html += `<div class="tree-node">${P("quick_orders","📋 Open Orders",`📋 <b>Open Orders — edgeX Agent</b>\n\n2 order(s):\n• BTC BUY LIMIT | 100 | $70,000\n• ETH SELL LIMIT | 50 | $4,100`,[{t:"❌ Cancel BTC",s:"red"},{t:"❌ Cancel ETH",s:"red"},{t:"❌ Cancel All",s:"red full"},{t:"🔙 Back",s:"back full"}],"Trade Hub > Orders. Back → Trade Hub.",3)}</div>`;
-html += `<div class="tree-node">${P("quick_history","📜 Recent Trades",`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71,234 | +$2.34\n🔴 DOGE SELL 300 @ $0.096 | -$0.03`,[{t:"🔙 Back",s:"back full"}],"Trade Hub > History. Back → Trade Hub.",3)}</div>`;
-html += `<div class="tree-node">${P("logout_confirm","🚪 Disconnect",`🚪 <b>Disconnect — edgeX Agent</b>\n\nLog out your edgeX account?`,[{t:"✅ Yes, logout",s:"red"},{t:"❌ Cancel",s:"gray"}],"Trade Hub > Disconnect. Cancel → Dashboard.",3)}</div>`;
-html += `<div class="tree-node">${P("login_api","🔑 API Key Entry",`🔑 <b>API Key — edgeX Agent</b>\n\n1. Go to edgex.exchange → API\n2. Copy Account ID\n3. Send it to me:`,[],"Connect > API Key. User types credentials.",3)}</div>`;
-html += `</div></div></div>`;
+// State split: before/after login
+html+=`<div class="flow-section"><div class="flow-label">📈 Button: before vs after login</div><div class="flow-row">`;
+html+=P('show_login','🔗 Connect edgeX',`🔗 <b>Connect edgeX — edgeX Agent</b>\n\nChoose how to connect:`,[{t:'⚡ OAuth (soon)',c:'gy f'},{t:'🔑 API Key',c:'bl f'},{t:'👤 Aaron\'s (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],'Dashboard (new) → here. Back → Dashboard.',2,true);
+html+=OR();
+html+=P('trade_hub','📈 Trade Hub',`📈 <b>Trade on edgeX — edgeX Agent</b>\n\n├ Equity: <code>$1,234</code>\n└ Available: <code>$890</code>\n\n<b>Positions (2):</b>\n🟢 BTC LONG <code>0.01</code> (5x) +$12\n🔴 ETH SHORT <code>0.5</code> (3x) -$5\n\nP&L: 🟢 <code>+$7</code>`,[{t:'🔴 Close Position',c:'rd'},{t:'📋 Orders',c:'bl'},{t:'📜 History',c:'bl'},{t:'🚪 Disconnect',c:'rd'},{t:'🔙 Back',c:'bk f'}],'Dashboard (connected) → here. Merged Status+P&L.',2,true);
+html+=`</div>`;
 
-// ═══ MODULE 2: AI AGENT ═══
-html += `<div class="module"><div class="module-header ai"><div class="icon">🤖</div><div class="info"><h2>AI Agent</h2><p>Personality, AI provider, memory. Requires activation.</p></div></div>`;
-html += `<div class="tree-root">`;
-html += `<div class="states-row" style="margin-bottom:12px">`;
-html += `<div><div class="state-label">Before activation</div>${P("ai_activate","✨ Activate AI",`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,[{t:"💳 edgeX Balance (soon)",s:"gray full"},{t:"🔑 Own API Key",s:"blue full"},{t:"⚡ Aaron's API (temp)",s:"green full"},{t:"🔙 Back",s:"back full"}],"Dashboard > Activate AI",2)}</div>`;
-html += `<div class="or-divider">or (after activation)</div>`;
-html += `<div>${P("ai_hub","🤖 AI Agent Hub",`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs, <code>2</code> summaries`,[{t:"🎭 Personality",s:"blue"},{t:"🔑 AI Provider",s:"blue"},{t:"📝 Memory",s:"blue full"},{t:"🔙 Back",s:"back full"}],"Dashboard > AI Agent. Shows config.",2)}</div>`;
-html += `</div>`;
-html += `<div class="tree-branch">`;
-html += `<div class="tree-node">${P("change_persona","🎭 Personality",`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,[{t:"🔥 Degen",s:"blue"},{t:"🎯 Sensei",s:"blue"},{t:"🤖 Cold Blood",s:"blue"},{t:"👀 Shitposter",s:"blue"},{t:"📚 Professor",s:"blue"},{t:"🐺 Wolf",s:"blue"},{t:"🌸 Moe",s:"blue"},{t:"🔙 Back",s:"back full"}],"AI Hub > Personality. Pick → toast → AI Hub.",3)}</div>`;
-html += `<div class="tree-node">${P("ai_provider","🔑 AI Provider",`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,[{t:"OpenAI / DeepSeek",s:"blue full"},{t:"Anthropic (Claude)",s:"blue full"},{t:"Google Gemini",s:"blue full"},{t:"🔙 Back",s:"back full"}],"AI Hub > Provider. Starts /setai wizard.",3)}</div>`;
-html += `<div class="tree-node">${P("settings_memory","📝 Memory",`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,[{t:"🗑 Clear Memory",s:"red full"},{t:"🔙 Back",s:"back full"}],"AI Hub > Memory. Back → AI Hub.",3)}</div>`;
-html += `<div class="tree-node" style="margin-left:30px;border-left:2px solid #444;padding-left:30px;">${P("memory_clear","🗑 Clear Memory",`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll history will be deleted.`,[{t:"✅ Yes, clear",s:"red"},{t:"❌ Keep",s:"gray"}],"Memory > Clear. Keep → Memory.",3)}</div>`;
-html += `</div></div></div>`;
+// Trade Hub children (tree)
+html+=`<div class="flow-label" style="margin-top:10px">Trade Hub → sub-screens (tree)</div>`;
+html+=`<div class="tree-indent">`;
 
-// ═══ MODULE 3: EVENT TRADING ═══
-html += `<div class="module"><div class="module-header event"><div class="icon">📰</div><div class="info"><h2>Event Trading</h2><p>AI-analyzed news with one-tap trade. No login required.</p></div></div>`;
-html += `<div class="tree-root">`;
-html += `${P("news_hub","📰 Event Trading Hub",`📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with one-tap trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off`,[{t:"✅ BWEnews",s:"green",w:"third"},{t:"⏱ 5/hr",s:"gray",w:"third"},{t:"🗑",s:"gray",w:"quarter"},{t:"➕ Add Source",s:"blue full"},{t:"🔙 Back",s:"back full"}],"Dashboard > Event Trading. No login needed.",2)}`;
-html += `<div class="tree-branch">`;
-html += `<div class="tree-node">${P("news_freq","⏱ Push Frequency",`⏱ <b>Push Frequency — edgeX Agent</b>\n\nAlerts per hour?\nCurrent: <b>2/hr</b>`,[{t:"1/hr",s:"gray",w:"third"},{t:"> 2/hr",s:"blue",w:"third"},{t:"3/hr",s:"gray",w:"third"},{t:"5/hr",s:"gray",w:"third"},{t:"10/hr",s:"gray",w:"third"},{t:"🔙 Back",s:"back full"}],"News Hub > Freq. Select → News Hub.",3)}</div>`;
-html += `<div class="tree-node">${P("news_add","➕ Add Source",`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,[{t:"💰 Bitcoin",s:"blue full"},{t:"💠 Ethereum",s:"blue full"},{t:"🌍 DeFi",s:"blue full"},{t:"🔙 Back",s:"back full"}],"News Hub > Add. Select → News Hub.",3)}</div>`;
-html += `</div></div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('quick_close','🔴 Close Position',`🔴 <b>Close Position — edgeX Agent</b>\n\n• BTC LONG | 0.01 | +$12\n• ETH SHORT | 0.5 | -$5`,[{t:'Close BTC',c:'rd f'},{t:'Close ETH',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'Trade Hub → here. Back → Trade Hub.',3)}</div></div>`;
 
-// ═══ PUSH LAYER ═══
-html += `<div class="module"><div class="module-header push"><div class="icon">⚡</div><div class="info"><h2>Push Layer — Bot-Initiated Messages</h2><p>News alerts, AI chat, trade plans/results. Always new messages (separate from dashboard). Arrows show edit-in-place sequence.</p></div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('quick_orders','📋 Open Orders',`📋 <b>Open Orders — edgeX Agent</b>\n\n• BTC BUY LIMIT 100 @ $70k\n• ETH SELL LIMIT 50 @ $4.1k`,[{t:'❌ Cancel BTC',c:'rd'},{t:'❌ Cancel ETH',c:'rd'},{t:'❌ Cancel All',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'Trade Hub → here. Back → Trade Hub.',3)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('quick_history','📜 Recent Trades',`📜 <b>Recent Trades — edgeX Agent</b>\n\n🟢 BTC BUY 0.01 @ $71.2k +$2\n🔴 DOGE SELL 300 @ $0.096`,[{t:'🔙 Back',c:'bk f'}],'Trade Hub → here. Back → Trade Hub.',3,true)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('logout_confirm','🚪 Disconnect',`🚪 <b>Disconnect — edgeX Agent</b>\n\nLog out your edgeX account?`,[{t:'✅ Yes, logout',c:'rd'},{t:'❌ Cancel',c:'gy'}],'Trade Hub → here. Cancel → Dashboard.',3,true)}</div></div>`;
+
+html+=`</div>`; // close tree-indent
+
+// Connect edgeX children
+html+=`<div class="flow-label" style="margin-top:10px">Connect edgeX → sub-screens</div>`;
+html+=`<div class="tree-indent">`;
+html+=`<div class="tree-item"><div class="flow-row">${P('login_oauth','⚡ OAuth (soon)',`⚡ <b>One-Click Login — edgeX Agent</b>\n\nComing Soon!\nUse Connect with API Key.`,[{t:'🔙 Back',c:'bk f'}],'Connect → here. Back → Connect.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('login_api','🔑 API Key Entry',`🔑 <b>API Key — edgeX Agent</b>\n\n1. edgex.exchange → API\n2. Copy Account ID\n3. Send it here`,[],'/start → Connect → API Key. Text input.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('login_demo','👤 Aaron\'s Account',`🔄 Connecting...\n\n✅ Connected! → Dashboard`,[],'/start → Connect → Demo. Auto-connects.',3)}</div></div>`;
+html+=`</div>`;
+html+=`</div></div>`;
+
+// ═══════════ MODULE 2: AI AGENT ═══════════
+html+=`<div class="module"><div class="mod-hdr m-ai"><div class="ic">🤖</div><div class="inf"><h2>AI Agent</h2><p>Personality, provider, memory. Requires activation first.</p></div></div>`;
+
+html+=`<div class="flow-section"><div class="flow-label">🤖 Button: before vs after activation</div><div class="flow-row">`;
+html+=P('ai_activate','✨ Activate AI',`✨ <b>Activate AI — edgeX Agent</b>\n\nChoose how to power your Agent:`,[{t:'💳 edgeX Balance (soon)',c:'gy f'},{t:'🔑 Own API Key',c:'bl f'},{t:'⚡ Aaron\'s API (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],'Dashboard (no AI) → here. Also: AI Hub > Provider.',2,true);
+html+=OR();
+html+=P('ai_hub','🤖 AI Agent Hub',`🤖 <b>AI Agent — edgeX Agent</b>\n\n├ 🎭 Personality: <code>🔥 Degen</code>\n├ 🔑 Provider: <code>deepseek-chat</code>\n└ 📝 Memory: <code>26</code> msgs`,[{t:'🎭 Personality',c:'bl'},{t:'🔑 AI Provider',c:'bl'},{t:'📝 Memory',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'Dashboard (active) → here. Shows config.',2);
+html+=`</div>`;
+
+// Activate AI children
+html+=`<div class="flow-label" style="margin-top:10px">Activate AI → sub-screens</div>`;
+html+=`<div class="tree-indent">`;
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_credits','💳 edgeX Balance',`💳 <b>edgeX Balance — edgeX Agent</b>\n\nComing Soon.`,[{t:'🔙 Back',c:'bk f'}],'Activate → here. Back → Activate.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_own_key','🔑 AI Provider',`🔑 <b>AI Provider — edgeX Agent</b>\n\nChoose your provider:`,[{t:'OpenAI / DeepSeek',c:'bl f'},{t:'Anthropic (Claude)',c:'bl f'},{t:'Google Gemini',c:'bl f'}],'Activate → here. Clicking provider → /setai wizard.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_free','⚡ Aaron\'s API',`✅ <b>AI Activated — edgeX Agent</b>\n\nChoose personality → AI Hub`,[{t:'🔥 Degen',c:'bl'},{t:'🎯 Sensei',c:'bl'},{t:'🤖 Cold',c:'bl'},{t:'👀 Shit',c:'bl'},{t:'📚 Prof',c:'bl'},{t:'🐺 Wolf',c:'bl'},{t:'🌸 Moe',c:'bl'}],'Activate → free → persona picker → AI Hub.',3)}</div></div>`;
+html+=`</div>`;
+
+// AI Hub children
+html+=`<div class="flow-label" style="margin-top:10px">AI Agent Hub → sub-screens</div>`;
+html+=`<div class="tree-indent">`;
+html+=`<div class="tree-item"><div class="flow-row">${P('persona','🎭 Personality',`🎭 <b>Personality — edgeX Agent</b>\n\nChoose your Agent's vibe:`,[{t:'🔥 Degen',c:'bl'},{t:'🎯 Sensei',c:'bl'},{t:'🤖 Cold Blood',c:'bl'},{t:'👀 Shitposter',c:'bl'},{t:'📚 Professor',c:'bl'},{t:'🐺 Wolf',c:'bl'},{t:'🌸 Moe',c:'bl'},{t:'🔙 Back',c:'bk f'}],'AI Hub → here. Pick → toast → back to AI Hub.',3,true)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('ai_provider_hub','🔑 AI Provider',`→ Same as ✨ Activate AI screen`,[{t:'💳 edgeX Balance (soon)',c:'gy f'},{t:'🔑 Own API Key',c:'bl f'},{t:'⚡ Aaron\'s API (temp)',c:'gn f'},{t:'🔙 Back',c:'bk f'}],'AI Hub → Provider = same screen as Activate AI. SHARED.',2,true)}</div></div>`;
+
+html+=`<div class="tree-item"><div class="flow-row">${P('memory','📝 Memory',`📝 <b>Memory — edgeX Agent</b>\n\n├ Messages: <code>26</code>\n├ Summaries: <code>2</code>\n└ Preferences: yes`,[{t:'🗑 Clear Memory',c:'rd f'},{t:'🔙 Back',c:'bk f'}],'AI Hub → here. Back → AI Hub.',3)}</div></div>`;
+
+html+=`<div class="tree-item" style="margin-left:40px;padding-left:40px;border-left:2px solid #333;"><div class="flow-row">${P('memory_clear','🗑 Clear Memory',`🗑 <b>Clear Memory — edgeX Agent</b>\n\nAll history will be deleted.`,[{t:'✅ Yes, clear',c:'rd'},{t:'❌ Keep',c:'gy'}],'Memory → here. Keep → Memory. Yes → cleared.',3)}</div></div>`;
+
+html+=`</div>`;
+html+=`</div></div>`;
+
+// ═══════════ MODULE 3: EVENT TRADING ═══════════
+html+=`<div class="module"><div class="mod-hdr m-event"><div class="ic">📰</div><div class="inf"><h2>Event Trading</h2><p>AI-analyzed news, one-tap trade buttons. No login required.</p></div></div>`;
+
+html+=`<div class="flow-section"><div class="flow-label">📰 Event Trading Hub (same for all users)</div><div class="flow-row">`;
+html+=P('news_hub','📰 Event Trading Hub',`📰 <b>Event Trading — edgeX Agent</b>\n\nAI-analyzed news with trade buttons.\n\n✅ BWEnews — 5/hr\n❌ Crypto News — off`,[{t:'✅ BWEnews',c:'gn',w:'t'},{t:'⏱ 5/hr',c:'gy',w:'t'},{t:'🗑',c:'gy',w:'q'},{t:'➕ Add Source',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'Dashboard → here. No login needed.',2);
+html+=`</div>`;
+
+html+=`<div class="flow-label" style="margin-top:10px">Event Trading Hub → sub-screens</div>`;
+html+=`<div class="tree-indent">`;
+html+=`<div class="tree-item"><div class="flow-row">${P('news_freq','⏱ Push Frequency',`⏱ <b>Push Frequency — edgeX Agent</b>\n\nAlerts per hour?\nCurrent: <b>2/hr</b>`,[{t:'1/hr',c:'gy',w:'t'},{t:'> 2/hr',c:'bl',w:'t'},{t:'3/hr',c:'gy',w:'t'},{t:'5/hr',c:'gy',w:'t'},{t:'10/hr',c:'gy',w:'t'},{t:'🔙 Back',c:'bk f'}],'News Hub > ⏱ → here. Select → News Hub.',3)}</div></div>`;
+html+=`<div class="tree-item"><div class="flow-row">${P('news_add','➕ Add Source',`➕ <b>Add News Source — edgeX Agent</b>\n\nChoose a topic:`,[{t:'💰 Bitcoin',c:'bl f'},{t:'💠 Ethereum',c:'bl f'},{t:'🌍 DeFi',c:'bl f'},{t:'🔙 Back',c:'bk f'}],'News Hub → here. Select → News Hub.',3)}</div></div>`;
+html+=`</div>`;
+html+=`</div></div>`;
+
+// ═══════════ PUSH LAYER ═══════════
+html+=`<div class="module"><div class="mod-hdr m-push"><div class="ic">⚡</div><div class="inf"><h2>Push Layer — Bot-Initiated Messages</h2><p>These are NEW messages (not editing the Dashboard). Arrows (→) = edits the same message in sequence.</p></div></div>`;
 
 // News push flow
-html += `<div style="color:#888;font-size:12px;font-weight:600;margin-bottom:8px;">📰 News Push Flow</div>`;
-html += `<div class="seq-flow">`;
-html += P("news_alert","📰 News Alert",`<b>BWEnews: SEC approves Solana ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH\n\n────────────────\n2026-03-05 08:00 UTC`,[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"},{t:"🔗 Source",s:"gray",w:"third"},{t:"🔕 Mute",s:"gray",w:"third"},{t:"❌ Dismiss",s:"gray",w:"third"}],"Pushed to user. Trade → Plan below.",`P`);
-html += `<div class="seq-arrow"><div>→<br><span class="seq-label">🇨🇳 flag</span></div></div>`;
-html += P("news_tl","🇨🇳 Translated",`<b>BWEnews: SEC批准Solana ETF</b>\n\n🟢 SOL | 看涨 | ███ 高\n\n────────────────\n2026-03-05 08:00 UTC`,[{t:"📈 LONG $50",s:"green"},{t:"📈 LONG $150",s:"green"},{t:"🇨🇳",s:"gray",w:"quarter"},{t:"🇯🇵",s:"gray",w:"quarter"},{t:"🇰🇷",s:"gray",w:"quarter"},{t:"🇷🇺",s:"gray",w:"quarter"}],"New msg. Same trade buttons.",`P`);
-html += `</div>`;
+html+=`<div class="flow-section"><div class="flow-label">📰 News Alert → Translate / Trade</div><div class="flow-row">`;
+html+=P('news_alert','📰 News Alert',`<b>BWEnews: SEC approves SOL ETF</b>\n\n🟢 SOL | BULLISH | ███ HIGH`,[{t:'📈 LONG $50',c:'gn'},{t:'📈 LONG $150',c:'gn'},{t:'🇨🇳',c:'gy',w:'q'},{t:'🇯🇵',c:'gy',w:'q'},{t:'🇰🇷',c:'gy',w:'q'},{t:'🇷🇺',c:'gy',w:'q'},{t:'🔗 Source',c:'gy',w:'t'},{t:'🔕 Mute',c:'gy',w:'t'},{t:'❌ Dismiss',c:'gy',w:'t'}],'Pushed to user. LONG → Trade Plan.',`P`);
+html+=A('🇨🇳 flag');
+html+=P('news_tl','🇨🇳 Translation',`<b>BWEnews: SEC批准SOL ETF</b>\n\n🟢 SOL | 看涨 | ███ 高`,[{t:'📈 LONG $50',c:'gn'},{t:'📈 LONG $150',c:'gn'}],'New msg with same buttons.',`P`);
+html+=`</div></div>`;
 
-// AI Chat + Trade flow
-html += `<div style="color:#888;font-size:12px;font-weight:600;margin:16px 0 8px;">💬 AI Chat → Trade Execution (edits same message)</div>`;
-html += `<div class="seq-flow">`;
-html += P("ai_chat","💬 AI Chat",`✨ BTC at $71.9k, up 3.6%. Bullish.\n\nLONG $50 at 3x?`,[{t:"🏠 Main Menu",s:"back full"}],"User typed → AI replied.",`P`);
-html += `<div class="seq-arrow"><div>→<br><span class="seq-label">trade request</span></div></div>`;
-html += P("trade_plan","📋 Trade Plan",`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>\n\nConfidence: █████ HIGH`,[{t:"✅ Confirm",s:"green"},{t:"❌ Cancel",s:"red"}],"From AI chat or News trade.",`P`);
-html += `<div class="seq-arrow"><div>→<br><span class="seq-label">✅ confirm</span></div></div>`;
-html += P("trade_exec","🔄 Executing",`🔄 <b>Executing LONG BTC — edgeX Agent</b>\n\nPlacing order on edgeX...`,[],"Edits Plan msg. Temporary.",`P`);
-html += `<div class="seq-arrow"><div>→<br><span class="seq-label">success</span></div></div>`;
-html += P("trade_ok","✅ Result",`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)\n└ ID: <code>abc123</code>`,[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🔴 Close BTC",s:"red full"},{t:"🏠 Menu",s:"back full"}],"Edits Executing msg.",`P`);
-html += `</div>`;
+// AI Chat → Trade flow (sequential edits)
+html+=`<div class="flow-section"><div class="flow-label">💬 AI Chat → Trade Plan → Executing → Result (edits same message)</div><div class="flow-row">`;
+html+=P('ai_chat','💬 AI Response',`✨ BTC at $71.9k. Bullish.\nLONG $50 at 3x?`,[{t:'🏠 Menu',c:'bk f'}],'User typed → AI replied (new msg).',`P`);
+html+=A('trade detected');
+html+=P('trade_plan','📋 Trade Plan',`🟢 <b>Trade Plan — edgeX Agent</b>\n\nBUY BTC (5x)\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code>\n├ TP: <code>$75,000</code>\n└ SL: <code>$70,000</code>`,[{t:'✅ Confirm',c:'gn'},{t:'❌ Cancel',c:'rd'}],'From AI or news. SHARED trigger.',`P`,true);
+html+=A('✅ confirm');
+html+=P('trade_exec','🔄 Executing',`🔄 <b>Executing LONG BTC…</b>\n\nPlacing order...`,[],'Edits Plan msg. Temporary.',`P`);
+html+=A('success');
+html+=P('trade_ok','✅ Result',`🟢 <b>LONG BTC — edgeX Agent</b>\n\n✅ Order Placed!\n├ Entry: <code>$71,890</code>\n├ Size: <code>0.014</code> (5x)`,[{t:'📈 Trade',c:'bl'},{t:'📜 History',c:'bl'},{t:'🔴 Close BTC',c:'rd f'},{t:'🏠 Menu',c:'bk f'}],'Edits Executing msg.',`P`);
+html+=`</div></div>`;
 
-// Branch: cancel / error
-html += `<div style="color:#888;font-size:12px;font-weight:600;margin:16px 0 8px;">❌ Cancel / Error / Disconnect (edits the confirm or executing msg)</div>`;
-html += `<div class="seq-flow">`;
-html += P("trade_cancel","❌ Cancelled",`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,[{t:"📈 Trade",s:"blue"},{t:"🏠 Menu",s:"back full"}],"Edits Plan msg (from ❌ Cancel).",`P`);
-html += `<div style="width:20px"></div>`;
-html += P("trade_err","❌ Trade Error",`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance ($12.34)`,[{t:"🔴 Close Position",s:"red"},{t:"📋 Cancel Orders",s:"red"},{t:"💰 Deposit",s:"blue full"},{t:"🏠 Menu",s:"back full"}],"Edits Executing msg. Smart buttons.",`P`);
-html += `<div style="width:20px"></div>`;
-html += P("close_ok","✅ Position Closed",`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG closed\n├ P&L: <code>+$12.30</code>\n└ Balance: <code>$1,246.86</code>`,[{t:"📈 Trade",s:"blue"},{t:"📜 History",s:"blue"},{t:"🏠 Menu",s:"back full"}],"New msg after close.",`P`);
-html += `<div style="width:20px"></div>`;
-html += P("logout_done","🚪 Logged Out",`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out. /start to reconnect.`,[{t:"🔗 Reconnect",s:"blue full"}],"Edits disconnect confirm.",`P`);
-html += `</div>`;
-html += `</div>`;
+// Cancel / Error / Close
+html+=`<div class="flow-section"><div class="flow-label">❌ Alternate outcomes (edit the Plan or Executing msg)</div><div class="flow-row">`;
+html+=P('trade_cancel','❌ Cancelled',`❌ <b>Trade Cancelled — edgeX Agent</b>\n\nNo order was placed.`,[{t:'📈 Trade',c:'bl'},{t:'🏠 Menu',c:'bk f'}],'From ❌ Cancel on Plan. Edits Plan msg.',`P`);
+html+=`<div style="width:16px"></div>`;
+html+=P('trade_err','❌ Error',`❌ <b>Trade Blocked — edgeX Agent</b>\n\nInsufficient balance ($12)`,[{t:'🔴 Close',c:'rd'},{t:'📋 Cancel Orders',c:'rd'},{t:'💰 Deposit',c:'bl f'},{t:'🏠 Menu',c:'bk f'}],'Edits Executing msg. Smart action buttons.',`P`);
+html+=`<div style="width:16px"></div>`;
+html+=P('close_ok','✅ Closed',`🟢 <b>Close BTC — edgeX Agent</b>\n\n✅ LONG closed\n├ P&L: <code>+$12.30</code>\n└ Balance: <code>$1,246</code>`,[{t:'📈 Trade',c:'bl'},{t:'📜 History',c:'bl'},{t:'🏠 Menu',c:'bk f'}],'New msg after close.',`P`);
+html+=`<div style="width:16px"></div>`;
+html+=P('logout_done','🚪 Logged Out',`🚪 <b>Disconnect — edgeX Agent</b>\n\n✅ Logged out.`,[{t:'🔗 Reconnect',c:'bl f'}],'Edits disconnect confirm.',`P`);
+html+=`</div></div>`;
+
+html+=`</div>`;
 
 document.getElementById("app").innerHTML = html;
 
 document.getElementById("search").addEventListener("input", e => {
-  const q = e.target.value.toLowerCase();
-  document.querySelectorAll(".phone").forEach(p => {
+  const q=e.target.value.toLowerCase();
+  document.querySelectorAll(".phone").forEach(p=>{
     if(!q){p.classList.remove("dimmed","highlight");return;}
     if(p.dataset.search.includes(q)){p.classList.add("highlight");p.classList.remove("dimmed");}
     else{p.classList.add("dimmed");p.classList.remove("highlight");}

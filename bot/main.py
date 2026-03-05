@@ -1029,8 +1029,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
-        # ── Trade Hub (L2) ──
-        if query.data == "trade_hub":
+        # ── Trade Hub (L2) — also handles quick_status/quick_pnl redirects ──
+        if query.data in ("trade_hub", "quick_status", "quick_pnl"):
             await query.answer()
             user = db.get_user(user_id)
             if not user or not _has_edgex(user):
@@ -1128,18 +1128,6 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 reply_markup=InlineKeyboardMarkup(buttons))
             return
 
-        # ── Redirect legacy quick_status/quick_pnl to trade_hub ──
-        if query.data in ("quick_status", "quick_pnl"):
-            user = db.get_user(user_id)
-            if user and _has_edgex(user):
-                # Re-trigger trade_hub by sending the callback manually
-                await query.answer()
-                user_ai = ai_trader.get_user_ai_config(user_id) if ai_trader else None
-                has_edgex = _has_edgex(user)
-                await safe_edit(query, _dashboard_text(user, user_ai),
-                    parse_mode="Markdown",
-                    reply_markup=_dashboard_keyboard(has_edgex, bool(user_ai)))
-            return
 
         if query.data == "quick_history":
             await query.answer()
@@ -1315,6 +1303,44 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
+        # ── Login callbacks (also handled here for when ConversationHandler is not active) ──
+        if query.data == "login_oauth":
+            await safe_edit(query,
+                "\u26a1 **One-Click Login \u2014 edgeX Agent**\n\nComing Soon!\nFor now, use **Connect with API Key**.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
+            return
+
+        if query.data == "login_demo":
+            if not config.DEMO_ACCOUNT_ID or not config.DEMO_STARK_KEY:
+                await query.answer("\u274c Demo account not available.", show_alert=True)
+                return
+            await safe_edit(query, "\U0001f504 Connecting to Aaron's edgeX account...")
+            result = await edgex_client.validate_credentials(config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
+            if not result["valid"]:
+                await safe_edit(query, "\u274c Connection failed.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
+                return
+            db.save_user(user_id, config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
+            user_ai = ai_trader.get_user_ai_config(user_id)
+            if not user_ai:
+                ai_trader.save_user_ai_config(user_id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
+            user = db.get_user(user_id)
+            user_ai = ai_trader.get_user_ai_config(user_id)
+            await safe_edit(query, _dashboard_text(user, user_ai),
+                parse_mode="Markdown",
+                reply_markup=_dashboard_keyboard(True, has_ai=True))
+            return
+
+        if query.data == "login_api":
+            await safe_edit(query,
+                "\U0001f511 **Connect with API Key \u2014 edgeX Agent**\n\n"
+                "Please use the /start command, then choose **Connect with API Key**.\n"
+                "The API key setup requires a conversation flow.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="show_login")]]))
+            return
+
         if query.data == "ai_edgex_credits":
             await safe_edit(query,
                 "\U0001f4b3 **edgeX Balance \u2014 edgeX Agent**\n\nComing Soon.\nUse /setai to add your own API key.",
@@ -1323,9 +1349,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data == "ai_own_key":
+            # Redirect to provider selection (same as ai_own_key_setup)
             await safe_edit(query,
-                "\U0001f511 **Own API Key \u2014 edgeX Agent**\n\nUse /setai to add your key.\nSupports: OpenAI, DeepSeek, Anthropic, Gemini, Groq",
-                reply_markup=_back_button())
+                "\U0001f511 **AI Provider \u2014 edgeX Agent**\n\nChoose your provider:",
+                parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
 
         if query.data in ("back_to_start", "back_to_dashboard"):
@@ -1683,6 +1710,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
 
+        # ── setai_* from ai_own_key_setup (outside ConversationHandler) ──
+        if query.data.startswith("setai_"):
+            provider_names = {"setai_openai": "OpenAI / DeepSeek", "setai_anthropic": "Anthropic (Claude)", "setai_gemini": "Google Gemini"}
+            name = provider_names.get(query.data, "your provider")
+            await safe_edit(query,
+                f"\U0001f511 **{name} — edgeX Agent**\n\n"
+                f"To set up {name}, use the /setai command.\n"
+                f"It will walk you through entering your API key.",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f519 Back", callback_data="ai_own_key_setup")]
+                ]))
+            return
+
         if query.data.startswith("persona_"):
             persona = query.data.replace("persona_", "")
             conn = db.get_conn()
@@ -1755,9 +1796,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 "\u274c **Trade Cancelled \u2014 edgeX Agent**\n\nNo order was placed.",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                     InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl")],
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    [InlineKeyboardButton("\U0001f4c8 Trade on edgeX", callback_data="trade_hub"),
+                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
                 ]))
             return
 
@@ -2125,7 +2165,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 f"\u274c Cancel All {symbol} Orders",
                 callback_data=f"cancelorders_{contract_id}"
             )])
-            buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
+            buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub"),
+                           InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
 
             await safe_send(context, chat_id,
                 "\n".join(lines), parse_mode="Markdown",
