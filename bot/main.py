@@ -249,7 +249,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         ])
         chat_id = update.effective_chat.id
         await safe_send(context, chat_id,
-            "\U0001f6aa **Disconnect**\n\nAre you sure?",
+            "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\nThis will remove your API key. Are you sure?",
             parse_mode="Markdown", reply_markup=keyboard)
         return WAITING_LOGIN_CHOICE
 
@@ -292,7 +292,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
             db.save_user(update.effective_user.id, "", "")
         chat_id = update.effective_chat.id
         await safe_send(context, chat_id,
-            "\u2728 **Activate AI Agent**\n\nChoose how to power your Agent:",
+            "\u2728 **Activate AI \u2014 edgeX Agent**\n\nChoose how to power your Agent:",
             parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
         return ConversationHandler.END
 
@@ -306,7 +306,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start")])
         chat_id = update.effective_chat.id
         await safe_send(context, chat_id,
-            "\U0001f517 **Connect edgeX Account**\n\nChoose how to connect:",
+            "\U0001f517 **Connect edgeX \u2014 edgeX Agent**\n\nChoose how to connect:",
             parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
         return WAITING_LOGIN_CHOICE
 
@@ -555,11 +555,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id)
         if not user_ai:
             await update.message.reply_text(
-                "\u2728 **Activate AI Agent**\n\n"
+                "\u2728 **Activate AI \u2014 edgeX Agent**\n\n"
                 "Choose how to power your Agent:\n\n"
-                "\U0001f4b3 **edgeX Account Balance** \u2014 deduct from your edgeX account (coming soon)\n\n"
-                "\U0001f511 **Own API Key** \u2014 unlimited, use OpenAI / DeepSeek / Anthropic / Gemini\n\n"
-                "\u26a1 **Aaron's API** \u2014 temporary for beta testing, may be removed anytime",
+                "\U0001f4b3 **edgeX Balance** \u2014 from your edgeX account (coming soon)\n\n"
+                "\U0001f511 **Own API Key** \u2014 unlimited, OpenAI / DeepSeek / Anthropic / Gemini\n\n"
+                "\u26a1 **Aaron's API** \u2014 temporary for beta testing",
                 parse_mode="Markdown",
                 reply_markup=_ai_activate_keyboard(),
             )
@@ -584,7 +584,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if plan.get("action") == "NEED_API_KEY":
             await update.message.reply_text(
-                "\u2728 **Activate AI Agent**\n\n"
+                "\u2728 **Activate AI \u2014 edgeX Agent**\n\n"
                 "Choose how to power your Agent:",
                 parse_mode="Markdown",
                 reply_markup=_ai_activate_keyboard(),
@@ -719,7 +719,7 @@ async def cmd_setai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     await update.message.reply_text(
-        f"\u2699\ufe0f **AI Configuration**\n"
+        f"\u2699\ufe0f **AI Configuration \u2014 edgeX Agent**\n"
         f"{status}\n"
         f"Choose how to power your Agent:\n\n"
         f"\U0001f4b3 **edgeX Account Balance** \u2014 deduct from your edgeX account (coming soon)\n\n"
@@ -1070,7 +1070,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 open_pos = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
 
                 msg = (
-                    f"\U0001f4ca **Account Status**\n\n"
+                    f"\U0001f4ca **Account Status \u2014 edgeX Agent**\n\n"
                     f"\u251c Equity: `${total_equity}`\n"
                     f"\u2514 Available: `${available}`\n"
                 )
@@ -1134,7 +1134,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 total_emoji = "\U0001f7e2" if total_upnl >= 0 else "\U0001f534"
                 total_str = f"+${total_upnl:.2f}" if total_upnl >= 0 else f"-${abs(total_upnl):.2f}"
 
-                msg = f"\U0001f4c8 **P&L Report**\n\n"
+                msg = f"\U0001f4c8 **P&L Report \u2014 edgeX Agent**\n\n"
                 msg += f"Equity: `{equity_str}`\n"
                 msg += f"Unrealized P&L: {total_emoji} `{total_str}`\n"
 
@@ -1161,10 +1161,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 orders = await edgex_client.get_order_history(client, limit=5)
                 if not orders:
-                    await safe_edit(query, "\U0001f4dc No recent trades.",
-                        reply_markup=_back_button())
+                    await safe_edit(query, "\U0001f4dc **Recent Trades \u2014 edgeX Agent**\n\nNo recent trades.",
+                        parse_mode="Markdown", reply_markup=_back_button())
                     return
-                msg = "\U0001f4dc **Recent Trades**\n\n"
+                msg = "\U0001f4dc **Recent Trades \u2014 edgeX Agent**\n\n"
                 for o in orders[:5]:
                     sym = edgex_client.resolve_symbol(o.get("contractId", ""))
                     side = o.get("orderSide", o.get("side", "?"))
@@ -1210,11 +1210,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 positions = summary.get("positions", [])
                 open_positions = [p for p in positions if isinstance(p, dict) and float(p.get("size", "0")) != 0]
                 if not open_positions:
-                    await safe_edit(query, "No open positions to close.",
-                        reply_markup=_back_button())
+                    await safe_edit(query, "\U0001f534 **Close Position \u2014 edgeX Agent**\n\nNo open positions to close.",
+                        parse_mode="Markdown", reply_markup=_back_button())
                     return
                 buttons = []
-                msg = "\U0001f534 **Select position to close:**\n"
+                msg = "\U0001f534 **Close Position \u2014 edgeX Agent**\n\nSelect a position to close:\n"
                 for p in open_positions:
                     cid = p.get("contractId", "")
                     symbol = edgex_client.resolve_symbol(cid)
@@ -1247,10 +1247,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 orders = await edgex_client.get_open_orders(client)
                 if not orders:
-                    await safe_edit(query, "\u2705 No open orders.",
-                        reply_markup=_back_button())
+                    await safe_edit(query, "\U0001f4cb **Open Orders \u2014 edgeX Agent**\n\nNo open orders.",
+                        parse_mode="Markdown", reply_markup=_back_button())
                     return
-                lines = [f"\U0001f4cb **Open Orders** ({len(orders)}):\n"]
+                lines = [f"\U0001f4cb **Open Orders \u2014 edgeX Agent**\n\n{len(orders)} order(s):\n"]
                 buttons = []
                 for o in orders:
                     sym = o.get("symbol", edgex_client.resolve_symbol(o.get("contractId", "")))
@@ -1283,7 +1283,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ]
             ])
             await safe_edit(query,
-                "\U0001f6aa **Disconnect**\n\nThis will remove your API key. Are you sure?",
+                "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\nThis will remove your API key. Are you sure?",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
@@ -1294,7 +1294,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.commit()
             conn.close()
             await safe_edit(query,
-                "\u2705 Disconnected. Use /start to reconnect.",
+                "\U0001f6aa **Disconnect \u2014 edgeX Agent**\n\n\u2705 Disconnected. Use /start to reconnect.",
+                parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
             return
 
@@ -1316,22 +1317,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 rows.append([InlineKeyboardButton("\U0001f464 Use Aaron's Account (temp)", callback_data="login_demo")])
             rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
             await safe_edit(query,
-                "\U0001f517 **Connect edgeX Account**\n\nChoose how to connect:",
+                "\U0001f517 **Connect edgeX \u2014 edgeX Agent**\n\nChoose how to connect:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
         if query.data == "ai_edgex_credits":
             await safe_edit(query,
-                "\U0001f4b3 **edgeX Account Balance** (Coming Soon)\n\n"
-                "For now, use /setai to add your own API key.",
+                "\U0001f4b3 **edgeX Balance \u2014 edgeX Agent**\n\nComing Soon.\nUse /setai to add your own API key.",
                 parse_mode="Markdown",
                 reply_markup=_back_button("\U0001f519 Back", "ai_activate_prompt"))
             return
 
         if query.data == "ai_own_key":
             await safe_edit(query,
-                "\U0001f511 Use /setai to add your own API key.\n\n"
-                "Supports: OpenAI, DeepSeek, Anthropic, Google Gemini, Groq",
+                "\U0001f511 **Own API Key \u2014 edgeX Agent**\n\nUse /setai to add your key.\nSupports: OpenAI, DeepSeek, Anthropic, Gemini, Groq",
                 reply_markup=_back_button())
             return
 
@@ -1376,7 +1375,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 buttons.append(row)
             buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")])
             await safe_edit(query,
-                f"\u23f1 *Push Frequency*\n\nHow many alerts per hour?\nCurrent: *{current}/hr*",
+                f"\u23f1 *Push Frequency \u2014 edgeX Agent*\n\nHow many alerts per hour?\nCurrent: *{current}/hr*",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
@@ -1410,7 +1409,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
             ]
             await safe_edit(query,
-                "\u2795 *Add News Source*\n\nChoose a topic:",
+                "\u2795 *Add News Source \u2014 edgeX Agent*\n\nChoose a topic:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             return
 
@@ -1629,7 +1628,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             rows.append([InlineKeyboardButton("\U0001f6aa Disconnect", callback_data="logout_confirm")])
             rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
             await safe_edit(query,
-                "\u2699\ufe0f **Settings**",
+                "\u2699\ufe0f **Settings \u2014 edgeX Agent**",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
@@ -1641,17 +1640,16 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="settings_menu")],
             ])
             await safe_edit(query,
-                f"\U0001f4dd **Memory**\n\n"
+                f"\U0001f4dd **Memory \u2014 edgeX Agent**\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
                 f"\u251c Summaries: `{stats['summaries']}`\n"
-                f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}\n\n"
-                f"Use /memory for full details.",
+                f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data in ("change_persona", "settings_persona"):
             await safe_edit(query,
-                "\U0001f3ad **Choose Agent Personality:**",
+                "\U0001f3ad **Personality \u2014 edgeX Agent**\n\nChoose your Agent's vibe:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
@@ -1660,7 +1658,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not existing:
                 db.save_user(user_id, "", "")
             await safe_edit(query,
-                "\u2728 **Activate AI Agent**\n\nChoose how to power your Agent:",
+                "\u2728 **Activate AI \u2014 edgeX Agent**\n\nChoose how to power your Agent:",
                 parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
             return
 
@@ -1670,13 +1668,13 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 db.save_user(user_id, "", "")
             ai_trader.save_user_ai_config(user_id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
             await safe_edit(query,
-                "\u2705 **AI Activated!**\n\n\U0001f3ad **Choose your Agent's personality:**",
+                "\u2705 **AI Activated \u2014 edgeX Agent**\n\nChoose your Agent's personality:",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
         if query.data == "ai_own_key_setup":
             await safe_edit(query,
-                "\U0001f511 **Choose your AI provider:**",
+                "\U0001f511 **AI Provider \u2014 edgeX Agent**\n\nChoose your provider:",
                 parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
 
@@ -1688,7 +1686,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.close()
             name = PERSONA_NAMES.get(persona, persona)
             await safe_edit(query,
-                f"\U0001f525 Personality set: **{name}**\n\nJust talk to me!",
+                f"\U0001f3ad **Personality \u2014 edgeX Agent**\n\nSet to {name}. Just talk to me!",
                 parse_mode="Markdown",
                 reply_markup=_back_button())
             return
@@ -1701,14 +1699,16 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ]
             ])
             await safe_edit(query,
-                "\u26a0\ufe0f **Clear Memory?**\n\nAll conversation history and preferences will be deleted.",
+                "\U0001f5d1 **Clear Memory \u2014 edgeX Agent**\n\nAll conversation history and preferences will be deleted.",
                 parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data == "memory_clear_yes":
             user_memory = mem.get_user_memory(user_id)
             user_memory.clear()
-            await safe_edit(query, "\u2705 Memory cleared.",
+            await safe_edit(query,
+                "\U0001f4dd **Memory \u2014 edgeX Agent**\n\n\u2705 Memory cleared.",
+                parse_mode="Markdown",
                 reply_markup=_back_button("\U0001f519 Back", "settings_menu"))
             return
 
@@ -1720,7 +1720,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 [InlineKeyboardButton("\U0001f519 Back", callback_data="settings_menu")],
             ])
             await safe_edit(query,
-                f"\U0001f4dd **Memory**\n\n"
+                f"\U0001f4dd **Memory \u2014 edgeX Agent**\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
                 f"\u251c Summaries: `{stats['summaries']}`\n"
                 f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}",
@@ -2527,7 +2527,7 @@ def _news_main_menu(user_id: int) -> tuple:
     subs = db.get_user_subscriptions(user_id)
     freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr", 99: "unlimited"}
 
-    msg = "\U0001f4f0 **News Alerts**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
+    msg = "\U0001f4f0 **News Alerts \u2014 edgeX Agent**\n\nAI-analyzed news with one-tap trade buttons.\n\n"
     if not subs:
         msg += "_No news sources configured yet._\n"
     for s in subs:
