@@ -1472,9 +1472,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
                     await query.edit_message_text(f"\U0001f504 Generating trade plan: {action_word.upper()} {asset} (~${notional:.0f}, {leverage}x)...")
 
-                    plan = await ai_trader.generate_trade_plan(
-                        prompt, market_prices=None, tg_user_id=user_id
-                    )
+                    # Keep typing indicator alive while AI generates the plan
+                    stop_typing = asyncio.Event()
+                    typing_task = asyncio.create_task(_keep_typing(context.bot, chat_id, stop_typing))
+                    try:
+                        plan = await ai_trader.generate_trade_plan(
+                            prompt, market_prices=None, tg_user_id=user_id
+                        )
+                    finally:
+                        stop_typing.set()
+                        typing_task.cancel()
+                        try:
+                            await typing_task
+                        except (asyncio.CancelledError, Exception):
+                            pass
 
                     if plan.get("action") == "TRADE":
                         error = ai_trader.validate_plan(plan)
