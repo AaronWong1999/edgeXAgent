@@ -248,11 +248,10 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
                 InlineKeyboardButton("\u274c Cancel", callback_data="logout_no"),
             ]
         ])
-        await query.edit_message_text(
-            "\U0001f6aa **Disconnect**\n\nThis will disconnect your account and reset the bot. Are you sure?",
-            parse_mode="Markdown",
-            reply_markup=keyboard,
-        )
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
+            "\U0001f6aa **Disconnect**\n\nAre you sure?",
+            parse_mode="Markdown", reply_markup=keyboard)
         return WAITING_LOGIN_CHOICE
 
     if query.data == "logout_yes":
@@ -261,47 +260,43 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         conn.execute("DELETE FROM ai_usage WHERE tg_user_id = ?", (update.effective_user.id,))
         conn.commit()
         conn.close()
-        await query.edit_message_text(
-            "\u2705 Disconnected successfully.\n\nUse /start to start fresh."
-        )
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
+            "\u2705 Disconnected. Use /start to reconnect.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
         return ConversationHandler.END
 
     if query.data == "logout_no":
-        await query.edit_message_text("\u2705 Cancelled. You're still connected.")
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id, "\u2705 Cancelled.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
         return ConversationHandler.END
 
     if query.data == "back_to_start":
-        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]])
-        await query.edit_message_text("Use /start or tap below:", reply_markup=keyboard)
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id, "Use /start or tap below:",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
         return ConversationHandler.END
 
     if query.data == "back_to_dashboard":
         user = db.get_user(update.effective_user.id)
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id) if user else None
         has_edgex = _has_edgex(user)
-        acct = user["account_id"] if has_edgex else ""
-        edgex_line = f"\U0001f464 edgeX: `{acct[:4]}...{acct[-4:]}` \u2705" if has_edgex else "\U0001f464 edgeX: not connected"
-        ai_line = "\u2728 AI: active \u2705" if user_ai else "\u2728 AI: not activated"
-        await query.edit_message_text(
-            f"\U0001f916 **edgeX Agent**\n\n{edgex_line}\n{ai_line}\n\n\U0001f447 Tap a button or just type:",
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
+            "\U0001f916 **edgeX Agent**\n\n\U0001f447 Tap a button or type:",
             parse_mode="Markdown",
-            reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)),
-        )
+            reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
         return
 
     if query.data == "ai_activate_prompt":
         existing = db.get_user(update.effective_user.id)
         if not existing:
             db.save_user(update.effective_user.id, "", "")
-        await query.edit_message_text(
-            "\u2728 **Activate AI Agent**\n\n"
-            "Choose how to power your Agent:\n\n"
-            "\U0001f4b3 **edgeX Account Balance** \u2014 deduct from your edgeX account (coming soon)\n\n"
-            "\U0001f511 **Own API Key** \u2014 unlimited, use OpenAI / DeepSeek / Anthropic / Gemini\n\n"
-            "\u26a1 **Aaron's API** \u2014 temporary for beta testing, may be removed anytime",
-            parse_mode="Markdown",
-            reply_markup=_ai_activate_keyboard(),
-        )
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
+            "\u2728 **Activate AI Agent**\n\nChoose how to power your Agent:",
+            parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
         return ConversationHandler.END
 
     if query.data == "show_login":
@@ -312,47 +307,30 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         if config.DEMO_ACCOUNT_ID and config.DEMO_STARK_KEY:
             rows.append([InlineKeyboardButton("\U0001f464 Use Aaron's edgeX Account (temp)", callback_data="login_demo")])
         rows.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start")])
-        keyboard = InlineKeyboardMarkup(rows)
-        await query.edit_message_text(
-            "\U0001f517 **Connect edgeX Account**\n\n"
-            "Connecting your account unlocks live trading:\n"
-            "\u2022 Execute trades with one tap\n"
-            "\u2022 Check balances & positions\n"
-            "\u2022 Track P&L\n\n"
-            "Choose how to connect:",
-            parse_mode="Markdown",
-            reply_markup=keyboard,
-        )
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
+            "\U0001f517 **Connect edgeX Account**\n\nChoose how to connect:",
+            parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
         return WAITING_LOGIN_CHOICE
 
     if query.data == "login_oauth":
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start")],
-        ])
-        await query.edit_message_text(
-            "\u26a1 **One-Click Login with edgeX**\n\n"
-            "This feature is coming soon! We're working with the edgeX team "
-            "to enable one-click authorization.\n\n"
-            "For now, please use **Connect with API Key** \u2014 "
-            "it takes less than 2 minutes:\n\n"
-            "1\ufe0f\u20e3 Go to [edgex.exchange](https://pro.edgex.exchange) \u2192 API Management\n"
-            "2\ufe0f\u20e3 Copy your Account ID + L2 privateKey\n"
-            "3\ufe0f\u20e3 Paste them here\n\n"
-            "Your keys are stored locally and never shared.\n\n"
-            "Use /start to go back and choose **Connect with API Key**.",
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
+            "\u26a1 **One-Click Login** \u2014 Coming Soon!\n\n"
+            "For now, use **Connect with API Key**.",
             parse_mode="Markdown",
-            reply_markup=keyboard,
-        )
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_start")]]))
         return ConversationHandler.END
 
     if query.data == "login_demo":
+        chat_id = update.effective_chat.id
         if not config.DEMO_ACCOUNT_ID or not config.DEMO_STARK_KEY:
-            await query.edit_message_text("\u274c Demo account not available. Use /start to try another method.")
+            await safe_send(context, chat_id, "\u274c Demo account not available. Use /start.")
             return ConversationHandler.END
-        await query.edit_message_text("\U0001f504 Connecting to Aaron's edgeX account...")
+        await safe_send(context, chat_id, "\U0001f504 Connecting to Aaron's edgeX account...")
         result = await edgex_client.validate_credentials(config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
         if not result["valid"]:
-            await query.edit_message_text("\u274c edgeX account connection failed. Use /start to try another method.")
+            await safe_send(context, chat_id, "\u274c Connection failed. Use /start.")
             return ConversationHandler.END
         db.save_user(update.effective_user.id, config.DEMO_ACCOUNT_ID, config.DEMO_STARK_KEY)
         masked = config.DEMO_ACCOUNT_ID[:4] + "..." + config.DEMO_ACCOUNT_ID[-4:]
@@ -360,29 +338,21 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         if not user_ai:
             ai_trader.save_user_ai_config(update.effective_user.id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
         keyboard = _dashboard_keyboard(True, has_ai=True)
-        await query.edit_message_text(
-            f"\u2705 **edgeX Connected!** (Aaron's edgeX)\n\n"
+        await safe_send(context, chat_id,
+            f"\u2705 **edgeX Connected!**\n\n"
             f"\U0001f464 Account: `{masked}`\n"
             f"\u2728 AI: active \u2705\n\n"
-            f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
-            f"_\"BTC's looking juicy, should I ape in?\"_\n"
-            f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
-            f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
-            f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_",
-            parse_mode="Markdown",
-            reply_markup=keyboard)
+            f"Just talk to me, or tap a button:",
+            parse_mode="Markdown", reply_markup=keyboard)
         return ConversationHandler.END
 
     if query.data == "login_api":
-        await query.edit_message_text(
+        chat_id = update.effective_chat.id
+        await safe_send(context, chat_id,
             "\U0001f511 **Connect with API Key**\n\n"
-            "\U0001f449 **Step 1:** Go to edgex.exchange \u2192 **API Management**\n"
-            "\U0001f449 **Step 2:** Copy your **Account ID** (number next to your account)\n\n"
-            "\u26a0\ufe0f Make sure your Account ID has API whitelist enabled.\n"
-            "If not, go to API Management \u2192 click your account \u2192 enable API access.\n\n"
-            "Send me your **Account ID** now:",
-            parse_mode="Markdown",
-        )
+            "Go to edgex.exchange \u2192 **API Management**\n"
+            "Copy your **Account ID** and send it to me:",
+            parse_mode="Markdown")
         return WAITING_ACCOUNT_ID
 
     # Delegate any other callbacks (dashboard buttons, etc.) to the main handler
@@ -1318,11 +1288,9 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     InlineKeyboardButton("\u274c Cancel", callback_data="logout_no"),
                 ]
             ])
-            await query.edit_message_text(
-                "\U0001f6aa **Logout**\n\nThis will disconnect your edgeX account from the bot. Are you sure?",
-                parse_mode="Markdown",
-                reply_markup=keyboard,
-            )
+            await safe_send(context, chat_id,
+                "\U0001f6aa **Logout**\n\nThis will disconnect your account. Are you sure?",
+                parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data == "logout_yes":
@@ -1331,18 +1299,14 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.execute("DELETE FROM ai_usage WHERE tg_user_id = ?", (user_id,))
             conn.commit()
             conn.close()
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")],
-            ])
-            await query.edit_message_text(
-                "\u2705 Disconnected successfully.\n\nUse /start to reconnect.",
-                reply_markup=keyboard,
-            )
+            await safe_send(context, chat_id,
+                "\u2705 Disconnected. Use /start to reconnect.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f517 Reconnect", callback_data="show_login")]]))
             return
 
         if query.data == "logout_no":
-            keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]])
-            await query.edit_message_text("\u2705 Cancelled. Still connected.", reply_markup=keyboard)
+            await safe_send(context, chat_id, "\u2705 Cancelled.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data == "show_login":
@@ -1353,57 +1317,41 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if config.DEMO_ACCOUNT_ID and config.DEMO_STARK_KEY:
                 rows.append([InlineKeyboardButton("\U0001f464 Use Aaron's edgeX Account (temp)", callback_data="login_demo")])
             rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\U0001f517 **Connect edgeX Account**\n\n"
-                "Connecting your account unlocks live trading:\n"
-                "\u2022 Execute trades with one tap\n"
-                "\u2022 Check balances & positions\n"
-                "\u2022 Track P&L\n\n"
                 "Choose how to connect:",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(rows),
-            )
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
         if query.data == "ai_edgex_credits":
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\U0001f4b3 **edgeX Account Balance** (Coming Soon)\n\n"
-                "This feature is under development with the edgeX team.\n\n"
-                "When ready, AI calls will be deducted directly from your edgeX account balance \u2014 "
-                "no separate API key needed.\n\n"
-                "For now, use **Own API Key** or **Aaron's API** to get started.\n\n"
-                "Use /start to go back.",
+                "For now, use /setai to add your own API key or Aaron's API.",
                 parse_mode="Markdown",
-            )
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data == "ai_own_key":
-            keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]])
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\U0001f511 Use /setai to add your own API key.\n\n"
-                "Supports:\n"
-                "\u2022 OpenAI / DeepSeek / Groq\n"
-                "\u2022 Anthropic (Claude)\n"
-                "\u2022 Google Gemini",
-                reply_markup=keyboard,
-            )
+                "Supports: OpenAI, DeepSeek, Anthropic, Google Gemini, Groq",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data in ("back_to_start", "back_to_dashboard"):
             user = db.get_user(user_id)
             user_ai = ai_trader.get_user_ai_config(user_id) if user else None
             has_edgex = _has_edgex(user)
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\U0001f916 **edgeX Agent**\n\n\U0001f447 Tap a button or type:",
                 parse_mode="Markdown",
-                reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)),
-            )
+                reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
             return
 
         # ── News alert callbacks ──
         if query.data == "news_settings":
             msg, keyboard = _news_main_menu(user_id)
-            await query.edit_message_text(msg, parse_mode="Markdown", reply_markup=keyboard)
+            await safe_send(context, chat_id, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_toggle_"):
@@ -1503,10 +1451,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if query.data.startswith("news_mute_"):
             source_id = query.data[len("news_mute_"):]
             db.set_user_subscription(user_id, source_id, False)
-            await query.edit_message_text(
-                "\U0001f515 News source muted. Use /news to manage.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings"), InlineKeyboardButton("\U0001f3e0 Menu", callback_data="back_to_dashboard")]]),
-            )
+            await safe_send(context, chat_id,
+                "\U0001f515 News source muted.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f4f0 News", callback_data="news_settings"),
+                     InlineKeyboardButton("\U0001f3e0 Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data == "news_dismiss":
@@ -1615,79 +1564,57 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
             rows.append([InlineKeyboardButton("\U0001f6aa Disconnect", callback_data="logout_confirm")])
             rows.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\u2699\ufe0f **Settings**",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(rows),
-            )
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(rows))
             return
 
         if query.data == "settings_memory":
             user_memory = mem.get_user_memory(user_id)
             stats = user_memory.get_stats()
             keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("\U0001f5d1 Clear Memory", callback_data="memory_clear_confirm"),
-                    InlineKeyboardButton("\U0001f519 Back", callback_data="settings_menu"),
-                ]
+                [InlineKeyboardButton("\U0001f5d1 Clear Memory", callback_data="memory_clear_confirm")],
+                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
             ])
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 f"\U0001f4dd **Memory**\n\n"
                 f"\u251c Messages: `{stats['conversations']}`\n"
                 f"\u251c Summaries: `{stats['summaries']}`\n"
                 f"\u2514 Preferences: {'yes' if stats['has_preferences'] else 'not yet'}\n\n"
                 f"Use /memory for full details.",
-                parse_mode="Markdown",
-                reply_markup=keyboard,
-            )
+                parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data in ("change_persona", "settings_persona"):
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\U0001f3ad **Choose Agent Personality:**",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS),
-            )
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
         if query.data == "ai_activate_prompt":
             existing = db.get_user(user_id)
             if not existing:
                 db.save_user(user_id, "", "")
-            await query.edit_message_text(
+            await safe_send(context, chat_id,
                 "\u2728 **Activate AI Agent**\n\n"
-                "Choose how to power your Agent:\n\n"
-                "\U0001f4b3 **edgeX Account Balance** \u2014 deduct from your edgeX account (coming soon)\n\n"
-                "\U0001f511 **Own API Key** \u2014 unlimited, use OpenAI / DeepSeek / Anthropic / Gemini\n\n"
-                "\u26a1 **Aaron's API** \u2014 temporary for beta testing, may be removed anytime",
-                parse_mode="Markdown",
-                reply_markup=_ai_activate_keyboard(),
-            )
+                "Choose how to power your Agent:",
+                parse_mode="Markdown", reply_markup=_ai_activate_keyboard())
             return
 
         if query.data == "ai_use_free":
-            # Activate with Aaron's API (临时 beta testing)
             existing = db.get_user(user_id)
             if not existing:
                 db.save_user(user_id, "", "")
             ai_trader.save_user_ai_config(user_id, "__FREE__", "https://factory.ai", "claude-sonnet-4.5")
-            await query.edit_message_text(
-                "\u2705 **AI Activated!** (Aaron's API \u2014 temp)\n\n"
-                "This is a temporary beta API for testing. "
-                "It may be removed anytime. Use /setai to switch to your own key.\n\n"
-                "\U0001f3ad **Choose your Agent's personality:**",
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS),
-            )
+            await safe_send(context, chat_id,
+                "\u2705 **AI Activated!**\n\n\U0001f3ad **Choose your Agent's personality:**",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(PERSONA_BUTTONS))
             return
 
         if query.data == "ai_own_key_setup":
-            await query.edit_message_text(
-                "\U0001f511 **Choose your AI provider:**\n\n"
-                "\u26a0\ufe0f All AI analysis comes from your chosen model, not from edgeX.",
-                parse_mode="Markdown",
-                reply_markup=_setai_provider_keyboard(),
-            )
+            await safe_send(context, chat_id,
+                "\U0001f511 **Choose your AI provider:**",
+                parse_mode="Markdown", reply_markup=_setai_provider_keyboard())
             return
 
         if query.data.startswith("persona_"):
@@ -1696,31 +1623,11 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             conn.execute("UPDATE users SET personality = ? WHERE tg_user_id = ?", (persona, user_id))
             conn.commit()
             conn.close()
-
             name = PERSONA_NAMES.get(persona, persona)
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                    InlineKeyboardButton("\U0001f4c8 P&L", callback_data="quick_pnl"),
-                ],
-                [
-                    InlineKeyboardButton("\U0001f4dc History", callback_data="quick_history"),
-                    InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
-                ],
-                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-            ])
-            await query.edit_message_text(
-                f"\U0001f525 **Agent unlocked and loaded!**\n\n"
-                f"Personality: {name}\n\n"
-                f"Just talk to me, or use the buttons:\n\n"
-                f"_\"BTC's pumping, should I ape in?\"_\n"
-                f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\"_\n"
-                f"_\"\uc9c0\uae08 \ubb34\uc5c7\uc774 \uc88b\uc544?\"_\n"
-                f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_\n"
-                f"_\"\u041a\u0430\u043a SILVER \u0441\u0435\u0433\u043e\u0434\u043d\u044f?\"_",
+            await safe_send(context, chat_id,
+                f"\U0001f525 Personality set: **{name}**\n\nJust talk to me!",
                 parse_mode="Markdown",
-                reply_markup=keyboard,
-            )
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data == "memory_clear_confirm":
@@ -1730,23 +1637,21 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     InlineKeyboardButton("\u274c Cancel", callback_data="memory_clear_no"),
                 ]
             ])
-            await query.edit_message_text(
-                "\u26a0\ufe0f **Clear Memory?**\n\n"
-                "This will delete all conversation history, summaries, and learned preferences.\n"
-                "Your Agent will start fresh with no memory of past interactions.",
-                parse_mode="Markdown",
-                reply_markup=keyboard,
-            )
+            await safe_send(context, chat_id,
+                "\u26a0\ufe0f **Clear Memory?**\n\nAll conversation history and preferences will be deleted.",
+                parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data == "memory_clear_yes":
             user_memory = mem.get_user_memory(user_id)
             user_memory.clear()
-            await query.edit_message_text("\u2705 Memory cleared. Your Agent starts fresh.")
+            await safe_send(context, chat_id, "\u2705 Memory cleared.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data == "memory_clear_no":
-            await query.edit_message_text("\u2705 Memory kept. Your Agent still remembers you.")
+            await safe_send(context, chat_id, "\u2705 Memory kept.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
             return
 
         if query.data == "cancel_trade":
