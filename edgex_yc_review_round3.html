@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>edgeX Agent Round 3 Stress Report</title>
+<style>
+:root{--bg:#08101f;--card:#121d36;--line:#2d3c67;--text:#eef2ff;--muted:#a1afd2;--good:#22c55e;--warn:#f59e0b;--bad:#ef4444;--blue:#60a5fa}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#08101f,#101a33);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.65}.wrap{max-width:1200px;margin:0 auto;padding:32px 20px 80px}.hero h1{margin:0 0 10px;font-size:34px}.hero p{margin:0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:24px 0}.card,.section{background:rgba(18,29,54,.92);border:1px solid var(--line);border-radius:18px}.card{padding:18px}.metric{font-size:30px;font-weight:800}.muted{color:var(--muted)}.section{padding:20px;margin-top:18px}h2{margin:34px 0 12px;font-size:24px}h3{margin:18px 0 10px;font-size:18px;color:#dbe6ff}.pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin-right:8px}.good{background:rgba(34,197,94,.14);color:#86efac}.warn{background:rgba(245,158,11,.14);color:#fcd34d}.bad{background:rgba(239,68,68,.14);color:#fca5a5}.blue{background:rgba(96,165,250,.14);color:#bfdbfe}.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid var(--line);padding:10px 12px;vertical-align:top}.table th{background:#17264a;text-align:left}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a1227;border:1px solid var(--line);border-radius:12px;padding:12px;white-space:pre-wrap;word-break:break-word;font-size:13px}.list{margin:8px 0 0 18px}.list li{margin:6px 0}.footer{margin-top:32px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>edgeX Agent 第三轮高压复测报告</h1>
+    <p>本轮专门验证 Opus 声称修复的 5 件事：reply_to_message_id 绑定、旧请求取消、并发 update、静默新闻推送、字段加密与部署同步。我没有沿用之前的方式，而是换成了“消息绑定 + 并发压力 + 命令隔离 + 推送观察”的新测试方法。</p>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="muted">总判断</div><div class="metric">部分修好</div><div class="muted">但关键口径有夸大</div></div>
+    <div class="card"><div class="muted">回复绑定</div><div class="metric">只修 AI</div><div class="muted">命令回复仍未绑定</div></div>
+    <div class="card"><div class="muted">并发稳健性</div><div class="metric">有提升</div><div class="muted">但还没完全证伪所有串线</div></div>
+    <div class="card"><div class="muted">加密修复</div><div class="metric">代码有</div><div class="muted">数据迁移没完成</div></div>
+  </div>
+
+  <h2>## 一、这轮我换了什么测试方式</h2>
+  <div class="section">
+    <ul class="list">
+      <li>不再只看“最新一条 bot 消息”，而是检查 <code>reply_to_message_id</code> 是否真的绑定到用户原消息。</li>
+      <li>对每一条用户输入，分别验证“有没有绑定回复”“回复内容是否合理”“是否被新闻推送干扰”。</li>
+      <li>增加并发场景：连续两条 AI 请求，检查旧请求是否真的被丢弃，只保留最新请求。</li>
+      <li>增加 burst commands 场景：<code>/status /pnl /history /news</code> 快速连发，检查每条命令是否有各自绑定回复。</li>
+      <li>额外直接读取 SQLite 前缀，验证所谓“已加密全部用户密钥”是否真实落库。</li>
+    </ul>
+  </div>
+
+  <h2>## 二、Opus 这次说的 5 个修复，逐条验收</h2>
+  <div class="section">
+    <table class="table">
+      <tr><th>宣称</th><th>验收结果</th><th>我的结论</th></tr>
+      <tr><td>1. 所有 AI 回复都 reply_to_message_id 绑定</td><td>代码里确实给 AI 的 <code>_reply()</code> 设置了 <code>reply_to_message_id</code>；实际测试里 memory write / memory recall 的 AI 回复也确实绑定成功。</td><td><span class="pill good">基本成立，但只覆盖 AI 聊天</span></td></tr>
+      <tr><td>2. 旧 AI 请求会被 cancel，只回复最新一条</td><td>代码里有 <code>_pending_ai_tasks</code> + <code>cancel_event</code>；高并发测试里第一条长请求没有回，第二条短请求有绑定回复。</td><td><span class="pill good">大体成立</span></td></tr>
+      <tr><td>3. concurrent_updates=True 解决排队堵塞</td><td>代码中确实开启；体验上 AI 串线比上轮少了，但命令与推送、命令之间的绑定问题仍在。</td><td><span class="pill warn">有帮助，但不是彻底修复</span></td></tr>
+      <tr><td>4. 新闻推送静默到达，不打断对话</td><td><code>news_push.py</code> 中确实有 <code>disable_notification=True</code>；但静默不等于隔离，推送仍然插入同一线程。</td><td><span class="pill warn">提醒层面修了，语义层面没修</span></td></tr>
+      <tr><td>5. 所有用户私钥已加密</td><td><code>db.py</code> 里确实新增 Fernet 字段加密；但我直接查 SQLite，当前用户的 <code>stark_private_key</code> 仍然是明文十六进制前缀，没看到 <code>enc:</code>。</td><td><span class="pill bad">代码有，迁移未完成，口径不实</span></td></tr>
+    </table>
+  </div>
+
+  <h2>## 三、本轮最关键的新发现</h2>
+  <div class="section">
+    <h3>1. AI 绑定修复是真的，但命令绑定没做</h3>
+    <div class="code">测试结果：
+- memory write -> 绑定成功（reply_to 用户原消息）
+- memory recall -> 绑定成功
+- buy NVDA 0.1 with 2x -> 有绑定成功回复
+- /status -> 返回了正确内容，但 reply_to=None
+- /pnl -> 返回了正确内容，但 reply_to=None
+- /history -> 返回了正确内容，但 reply_to=None
+- /news -> 返回了正确内容，但 reply_to=None</div>
+    <p>所以 Opus 的说法“每条 AI 回复都强绑定到用户原始消息”严格来说只覆盖了 AI 路径，不覆盖命令路径。对外说成“永远不会搞混”是过度表述。</p>
+
+    <h3>2. 命令串线风险仍然存在，只是更隐蔽了</h3>
+    <p>因为命令回复没有 <code>reply_to_message_id</code>，在 burst 场景下我测到：</p>
+    <div class="code">/status BOUND_COUNT 0
+/pnl BOUND_COUNT 0
+/history BOUND_COUNT 0
+/news BOUND_COUNT 0</div>
+    <p>它们内容可能看起来对，但系统并没有“证明这条回复一定属于那条命令”。对一个有实时 news push 的交易 bot，这仍然是结构性隐患。</p>
+
+    <h3>3. 新闻“静默推送”不是“不会打断对话”</h3>
+    <p><code>disable_notification=True</code> 只是不响铃，不代表不会把消息插进会话流。用户仍然会在聊天线程里看到它突然出现。如果产品目标是对话式交易，这仍然会制造认知抢占。</p>
+
+    <h3>4. 私钥加密迁移没有落地</h3>
+    <div class="code">SQLite 直接读取结果：
+(2030090789, '713029548781863066', '04987fb51c0ebe9014e8', None)</div>
+    <p>如果真已迁移完成，<code>stark_private_key</code> 应该以 <code>enc:</code> 开头，而不是直接露出十六进制明文前缀。也就是说：<b>代码做了透明加解密，但历史数据并没有完成重写迁移。</b></p>
+  </div>
+
+  <h2>## 四、本轮高压测试结果</h2>
+  <div class="section">
+    <table class="table">
+      <tr><th>测试项</th><th>结果</th><th>结论</th></tr>
+      <tr><td>顺序 AI 测试：memory write / recall</td><td>两条都能绑定回复，内容合理</td><td><span class="pill good">通过</span></td></tr>
+      <tr><td>顺序 AI 测试：buy NVDA 0.1 with 2x</td><td>生成了绑定回复，包含 NVDA、2x、TP/SL、所需保证金</td><td><span class="pill good">通过</span></td></tr>
+      <tr><td>顺序 AI 测试：白银一句话判断</td><td>本轮未拿到绑定回复；仍受时序影响</td><td><span class="pill warn">不稳定</span></td></tr>
+      <tr><td>命令顺序测试：/status /pnl /history /news</td><td>内容都能出来，但都没有 reply_to 绑定</td><td><span class="pill warn">内容正确，不等于路由严格正确</span></td></tr>
+      <tr><td>双消息并发取消测试</td><td>第一条长分析被丢弃，第二条短问答返回并绑定</td><td><span class="pill good">修复有效</span></td></tr>
+      <tr><td>burst command test</td><td>4 条命令都无绑定回复</td><td><span class="pill bad">命令侧架构仍不够严谨</span></td></tr>
+      <tr><td>news push interruption observation</td><td>推送静默但仍插入线程，且 reply_to=None</td><td><span class="pill warn">不再响铃，但仍会占据聊天上下文</span></td></tr>
+    </table>
+  </div>
+
+  <h2>## 五、这说明什么</h2>
+  <div class="section">
+    <p><span class="pill blue">核心判断</span> Opus 这次不是在瞎说，它确实修掉了一部分我上一轮抓到的问题，尤其是 AI 回复错位的问题；但它把“部分修好”说成了“全部解决”，这不准确。</p>
+    <ul class="list">
+      <li><b>AI 路径：</b>明显改善，特别是 stale cancel 和 reply binding。</li>
+      <li><b>命令路径：</b>仍然没有达到“绝不会搞混”的标准。</li>
+      <li><b>推送路径：</b>静默只是 UX 修补，不是线程隔离。</li>
+      <li><b>密钥问题：</b>实现了加密逻辑，但没有证据表明旧数据迁移真的完成。</li>
+    </ul>
+  </div>
+
+  <h2>## 六、如果我是 YC partner，我现在怎么评价这次修复</h2>
+  <div class="section">
+    <p>这次我会给比上一轮更公平的评价：</p>
+    <ul class="list">
+      <li>他们不是只会堆功能，也会根据批评做系统层修补；这一点是加分。</li>
+      <li>但他们仍然有典型 founder 问题：<b>修到 70 分就开始按 100 分宣传。</b></li>
+      <li>对于交易产品，最危险的不是 bug 本身，而是对 bug 已经彻底解决这件事过度自信。</li>
+    </ul>
+  </div>
+
+  <h2>## 七、我对这场“模型 PK”的裁决更新</h2>
+  <div class="section">
+    <p><span class="pill good">更新后的裁决</span> 这次 Opus 比上一轮更接近正确答案了。</p>
+    <ul class="list">
+      <li>如果按“有没有真的修东西”来打分：<b>有，且有一些关键修复是有效的。</b></li>
+      <li>如果按“它说的每件事是否都成立”来打分：<b>不完全成立，尤其是加密迁移和‘永远不会搞混’这两句。</b></li>
+      <li>如果按工程严谨度来打分：<b>还需要继续压测，尤其是命令回复绑定与 push 隔离。</b></li>
+    </ul>
+  </div>
+
+  <h2>## 八、下一步最该补的两刀</h2>
+  <div class="section">
+    <ol class="list">
+      <li>给所有命令回复也加 <code>reply_to_message_id</code>，不要只修 AI 路径。</li>
+      <li>做真实的数据迁移脚本，把库里 legacy 明文 <code>stark_private_key</code> / <code>ai_api_key</code> 重写成 <code>enc:</code> 版本，并可验证完成率。</li>
+    </ol>
+  </div>
+
+  
+  <h2>## 九、第四轮执行链路补测（本次新增）</h2>
+  <div class="section">
+    <p>你要求我继续完善，我这轮专门把测试重心转向 <b>执行链路</b> 与 <b>按钮级交互</b>，重点看：trade intent 是否稳定出计划、余额失败是否合理、Trade Hub 子页面是否稳定、以及 callback 是否存在失效点。</p>
+
+    <h3>新增观察 1：trade intent 的稳定性仍然不够</h3>
+    <table class="table">
+      <tr><th>输入</th><th>结果</th><th>判断</th></tr>
+      <tr><td><code>buy NVDA 0.1 with 2x</code></td><td>多次复测里可以稳定得到绑定回复，内容包含价格、保证金、TP/SL，且与你的记忆偏好一致。</td><td><span class="pill good">这条链路比以前明显更稳</span></td></tr>
+      <tr><td><code>short BTC $100 now with clear risk</code></td><td>得到绑定回复，明确指出余额不足、BTC 最小仓位要求、缺口金额，并给出 <code>Close Position / Deposit</code> 按钮。</td><td><span class="pill good">失败路径设计是对的</span></td></tr>
+      <tr><td><code>long DOGE $50 with tp 8 and sl 4</code></td><td>这一条在本轮补测里仍然没有稳定拿到绑定回复。</td><td><span class="pill warn">说明 trade intent 仍有不一致性</span></td></tr>
+    </table>
+
+    <h3>新增观察 2：Trade Hub 主路径可用，但部分 callback 存在脆弱点</h3>
+    <div class="code">本轮我重新从 /start 进入已连接 dashboard -> Trade on edgeX -> Share PnL。
+结果：
+- Trade Hub 正常显示 Equity / Available / No open positions
+- Share PnL 正常显示 CLOSED 交易列表与分页按钮
+- 但当我继续点某些 inline callback（例如从该页进一步点按钮）时，Telethon 返回 DataInvalidError</div>
+    <p>这里要谨慎解读：这不一定 100% 说明 bot 代码错，也可能与 Telethon 对已变更 callback payload 的点击时机有关；但对我来说，它至少说明 <b>按钮级自动化/可重复性交互还不够稳</b>。</p>
+
+    <h3>新增观察 3：命令回复仍未做严格绑定</h3>
+    <ul class="list">
+      <li><code>/start</code> 仍是 unbound；</li>
+      <li><code>/status /pnl /history /news /memory</code> 在本轮仍然主要是 unbound；</li>
+      <li>也就是说，即使现在内容大多数时候是对的，系统仍没有从协议层证明“这条命令回复只属于那条命令”。</li>
+    </ul>
+
+    <h3>新增观察 4：原型更新说明他们在调优产品排序，但不是本质修复</h3>
+    <div class="code">最新版原型把 dashboard 主按钮顺序改成：
+Event Trading -> AI Agent -> Trade on edgeX
+并强调“Order: Event Trading → AI → edgeX (always)”</div>
+    <p>这说明他们开始押注“事件驱动”作为主入口，这是合理的产品方向；但这属于信息架构优化，不是可靠性问题的根治。</p>
+  </div>
+
+  <h2>## 十、建议修复方式（这次新增，可直接给工程团队）</h2>
+  <div class="section">
+    <h3>修复建议 A：把所有命令回复也统一走 reply helper</h3>
+    <p>现在 AI 路径已经有：</p>
+    <div class="code">async def _reply(text, **kwargs):
+    kwargs.setdefault("reply_to_message_id", orig_msg_id)
+    return await context.bot.send_message(...)</div>
+    <p>但命令如 <code>/status</code>、<code>/pnl</code>、<code>/history</code>、<code>/news</code> 仍然大量直接 <code>update.message.reply_text()</code> 或 <code>safe_send()</code>。建议：</p>
+    <ul class="list">
+      <li>抽一个统一的 <code>reply_to_update(update, context, text, **kwargs)</code></li>
+      <li>内部统一设置 <code>reply_to_message_id=update.message.message_id</code></li>
+      <li>所有 command handler 一律走这个 helper</li>
+    </ul>
+
+    <h3>修复建议 B：给 trade intent 做 request fingerprint，避免“部分意图有回复、部分没有”</h3>
+    <p>现在 cancel stale 的逻辑主要是“用户新消息来了就废弃旧请求”，但不保证每一种 trade intent 都稳定产出。建议：</p>
+    <ul class="list">
+      <li>对每条用户消息生成 <code>request_id</code></li>
+      <li>AI 返回后，把 <code>request_id</code> 与 outgoing message 一起落日志</li>
+      <li>如果某条消息 20-30 秒内没有生成 outgoing，记录为 dropped request</li>
+      <li>做一个最小可视化统计：成功回复率 / 绑定回复率 / dropped rate</li>
+    </ul>
+
+    <h3>修复建议 C：新闻推送与用户 request 做逻辑隔离</h3>
+    <p>现在只是 <code>disable_notification=True</code>，这只是“静音”，不是“隔离”。更强方案：</p>
+    <ul class="list">
+      <li>方案 1：新闻推送固定使用 topic/thread（如果产品形态允许）</li>
+      <li>方案 2：用户发送消息后，短时间窗口内暂缓 push（例如 20-30s quiet window）</li>
+      <li>方案 3：给每类 bot 消息显式标注类型，并在客户端日志里区分 <code>command_response / ai_chat / push_news / modal_result</code></li>
+    </ul>
+
+    <h3>修复建议 D：完成真实的密钥迁移，而不是只有透明兼容</h3>
+    <p>目前更像“读的时候兼容 legacy 明文”，而不是“已经完成迁移”。建议加一个一次性 migration：</p>
+    <div class="code">SELECT tg_user_id, stark_private_key, ai_api_key FROM users;
+if field and not field.startswith('enc:'):
+    UPDATE users SET field = _encrypt(field)</div>
+    <p>然后跑完后输出迁移统计：</p>
+    <ul class="list">
+      <li>总用户数</li>
+      <li>legacy 明文条数</li>
+      <li>迁移成功条数</li>
+      <li>剩余未迁移条数</li>
+    </ul>
+
+    <h3>修复建议 E：给按钮级 callback 做稳定性回归测试</h3>
+    <p>我这轮在 Share PnL 深入点按时遇到 callback 自动化脆弱点。建议团队自己加一层“按钮级 contract test”：</p>
+    <ul class="list">
+      <li>固定抓取最新消息及 callback_data</li>
+      <li>对 <code>Trade Hub / Share PnL / Position / Orders / News translation / Dismiss / Mute</code> 各点一次</li>
+      <li>验证返回是否是 edit in place、new msg、还是 alert</li>
+      <li>把 callback_data 长度、签名、过期条件都打日志</li>
+    </ul>
+  </div>
+
+  <h2>## 十一、这次更新后的最终判断</h2>
+  <div class="section">
+    <p><span class="pill blue">最终判断</span> edgeX Agent 现在已经明显从“会串线的 demo”往“有一定可靠性的真实产品”迈进了一步，尤其是 AI 路径；但它还没到我愿意说“系统层面已经彻底稳了”的程度。</p>
+    <ul class="list">
+      <li><b>产品上：</b>主打 Event Trading 的方向是对的。</li>
+      <li><b>智能上：</b>memory + symbol resolution + trade reasoning 已经开始有真实可用性。</li>
+      <li><b>工程上：</b>AI path 修复有效，但 command path、push 隔离、数据迁移还需要继续补。</li>
+    </ul>
+  </div>
+
+<div class="footer">
+    保存路径：/Users/aaron/Desktop/aaron/edgeXAgent/edgex_yc_review_round3.html<br>
+    生成时间：2026-03-06
+  </div>
+</div>
+</body>
+</html>

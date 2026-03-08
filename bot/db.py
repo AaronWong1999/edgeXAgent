@@ -4,8 +4,34 @@ import json
 import os
 import time
 import hashlib
+import base64
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "edgex_agent.db")
+
+# Field-level encryption for sensitive data (stark_private_key, ai_api_key)
+_fernet = None
+def _get_fernet():
+    global _fernet
+    if _fernet is None:
+        from cryptography.fernet import Fernet
+        # Derive a stable Fernet key from TELEGRAM_BOT_TOKEN (always available, already a secret)
+        token = os.getenv("TELEGRAM_BOT_TOKEN", "fallback-dev-key")
+        key_bytes = hashlib.sha256(token.encode()).digest()
+        _fernet = Fernet(base64.urlsafe_b64encode(key_bytes))
+    return _fernet
+
+def _encrypt(plaintext: str) -> str:
+    if not plaintext or plaintext.startswith("enc:"):
+        return plaintext
+    return "enc:" + _get_fernet().encrypt(plaintext.encode()).decode()
+
+def _decrypt(ciphertext: str) -> str:
+    if not ciphertext or not ciphertext.startswith("enc:"):
+        return ciphertext  # legacy plaintext — still readable
+    try:
+        return _get_fernet().decrypt(ciphertext[4:].encode()).decode()
+    except Exception:
+        return ciphertext  # corrupted — return as-is
 
 
 def get_conn():
@@ -287,7 +313,8 @@ def get_subscribed_users(source_id: str) -> list:
     # Check if default source — all users with accounts are implicitly subscribed
     src = conn.execute("SELECT is_default FROM news_sources WHERE id = ?", (source_id,)).fetchone()
     if src and src["is_default"]:
-        all_users = conn.execute("SELECT tg_user_id FROM users WHERE account_id IS NOT NULL AND account_id != ''").fetchall()
+        # Default source: push to ALL users who have ever interacted with the bot
+        all_users = conn.execute("SELECT tg_user_id FROM users").fetchall()
         default_ids = {r["tg_user_id"] for r in all_users}
         result = (default_ids | explicit_ids) - unsub_ids
     else:
@@ -387,17 +414,18 @@ def increment_ai_usage(tg_user_id: int):
 
 
 def save_user(tg_user_id: int, account_id: str, stark_private_key: str):
+    enc_key = _encrypt(stark_private_key) if stark_private_key else ""
     conn = get_conn()
     existing = conn.execute("SELECT * FROM users WHERE tg_user_id = ?", (tg_user_id,)).fetchone()
     if existing:
         conn.execute(
             "UPDATE users SET account_id = ?, stark_private_key = ? WHERE tg_user_id = ?",
-            (account_id, stark_private_key, tg_user_id),
+            (account_id, enc_key, tg_user_id),
         )
     else:
         conn.execute(
             "INSERT INTO users (tg_user_id, account_id, stark_private_key, created_at) VALUES (?, ?, ?, ?)",
-            (tg_user_id, account_id, stark_private_key, time.time()),
+            (tg_user_id, account_id, enc_key, time.time()),
         )
     conn.commit()
     conn.close()
@@ -407,7 +435,15 @@ def get_user(tg_user_id: int):
     conn = get_conn()
     row = conn.execute("SELECT * FROM users WHERE tg_user_id = ?", (tg_user_id,)).fetchone()
     conn.close()
-    return dict(row) if row else None
+    if not row:
+        return None
+    d = dict(row)
+    # Decrypt sensitive fields transparently
+    if d.get("stark_private_key"):
+        d["stark_private_key"] = _decrypt(d["stark_private_key"])
+    if d.get("ai_api_key"):
+        d["ai_api_key"] = _decrypt(d["ai_api_key"])
+    return d
 
 
 def save_trade(tg_user_id: int, order_id: str, contract_id: str, side: str, size: str, price: str, thesis: str):

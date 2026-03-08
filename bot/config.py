@@ -1,4 +1,5 @@
 import os
+import shutil
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,8 +14,9 @@ EDGEX_WS_URL = os.getenv("EDGEX_WS_URL", "wss://quote.edgex.exchange")
 DEMO_ACCOUNT_ID = os.getenv("DEMO_ACCOUNT_ID", "")
 DEMO_STARK_KEY = os.getenv("DEMO_STARK_KEY", "")
 
-# edgex-cli path (npm global install)
-EDGEX_CLI_PATH = os.getenv("EDGEX_CLI_PATH", "/home/ubuntu/.npm-global/bin/edgex")
+# Tool paths — resolve via env, then shutil.which, then known fallbacks
+EDGEX_CLI_PATH = os.getenv("EDGEX_CLI_PATH") or shutil.which("edgex") or "/home/ubuntu/.npm-global/bin/edgex"
+DROID_CLI_PATH = os.getenv("DROID_CLI_PATH") or shutil.which("droid") or "/home/ubuntu/.local/bin/droid"
 
 # Safety limits
 MAX_POSITION_USD = 500
@@ -44,6 +46,8 @@ CONTRACTS = {
     "XAUT": "10000234", "SILVER": "10000278",
     # Additional
     "CRCL": "10000253",
+    # Index ETF perpetuals
+    "QQQ": "10000284",
 }
 
 SYMBOL_BY_CONTRACT = {v: k for k, v in CONTRACTS.items()}

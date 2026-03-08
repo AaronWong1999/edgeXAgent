@@ -330,8 +330,9 @@ async def _run_cli(account_id: str, stark_key: str, args: list, timeout: int = 3
         return {"code": "ERROR", "error": str(e)}
 
 
-async def place_order(client: Client, contract_id: str, side: str, size: str, price: str) -> dict:
-    """Place a limit order via edgex-cli."""
+async def place_order(client: Client, contract_id: str, side: str, size: str, price: str,
+                      take_profit: str = None, stop_loss: str = None) -> dict:
+    """Place a limit order via edgex-cli with optional TP/SL."""
     try:
         symbol = resolve_symbol(contract_id)
         side_word = "buy" if side.upper() == "BUY" else "sell"
@@ -340,12 +341,14 @@ async def place_order(client: Client, contract_id: str, side: str, size: str, pr
             order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
             return await client.create_limit_order(contract_id=contract_id, size=size, price=price, side=order_side)
 
-        result = await _run_cli(account_id, stark_key, [
-            "order", "create", symbol, side_word, "limit", size, "--price", price, "-y"
-        ])
+        args = ["order", "create", symbol, side_word, "limit", size, "--price", price]
+        if take_profit:
+            args.extend(["--tp", str(take_profit)])
+        if stop_loss:
+            args.extend(["--sl", str(stop_loss)])
+        args.append("-y")
 
-        # If margin error, report it (don't auto-cancel user's orders)
-
+        result = await _run_cli(account_id, stark_key, args)
         return result
     except Exception as e:
         logger.error(f"place_order error: {e}")

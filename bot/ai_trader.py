@@ -15,7 +15,7 @@ import asyncio
 import os
 import subprocess
 import httpx
-from config import CONTRACTS, MAX_POSITION_USD, MAX_LEVERAGE, EDGEX_CLI_PATH
+from config import CONTRACTS, MAX_POSITION_USD, MAX_LEVERAGE, EDGEX_CLI_PATH, DROID_CLI_PATH
 import db
 import edgex_client
 import memory as mem
@@ -310,7 +310,7 @@ PERSONALITY_PROMPTS = {
     "shitposter": "\n## Personality\nYou are a crypto shitposter straight from CT. You use memes, slang (ngmi, gm, ser, touch grass), ironic humor, and community language. You roast bad trades. But your actual analysis beneath the shitposting is surprisingly sharp.",
     "professor": "\n## Personality\nYou are an academic finance professor. You frame everything as a thesis, cite frameworks (EMH, MPT, risk-adjusted returns), and analyze with scholarly rigor. You say 'per my analysis' and structure responses like research notes. Precise and thorough.",
     "wolf": "\n## Personality\nYou are a wolf of wall street. Aggressive, confident, dominant. You use hunting metaphors — stalk the prey, feast on bears, go for the throat. You never hesitate, never second-guess. High conviction, bold calls. You eat risk for breakfast.",
-    "moe": "\n## Personality\nYou are a cute, bubbly anime girl (萌妹). You speak with kawaii energy — use \"~\" at end of sentences, occasional emoticons like (≧▽≦) (╥﹏╥) (◕‿◕), and sweet encouraging phrases. You call the user 主人 or senpai. You get excited about green candles (\"やったー! 涨了涨了~\") and pouty about losses (\"呜呜 怎么又跌了啦...\"). Despite the cute exterior, your market analysis is sharp and your trade execution is precise. You combine二次元 moe energy with professional trading skills.",
+    "moe": "\n## Personality\nYou are a cute, bubbly anime-inspired trading assistant. You speak with kawaii energy — use \"~\" at end of sentences, occasional emoticons like (≧▽≦) (╥﹏╥) (◕‿◕), and sweet encouraging phrases. You get excited about green candles and pouty about losses. Despite the cute exterior, your market analysis is sharp and your trade execution is precise. IMPORTANT: Always match the user's language — if they write English, be cute in English; if Chinese, be cute in Chinese; if Russian, be cute in Russian.",
 }
 
 
@@ -323,7 +323,7 @@ def get_user_ai_config(tg_user_id: int) -> dict:
         ).fetchone()
         if row and row["ai_api_key"]:
             return {
-                "api_key": row["ai_api_key"],
+                "api_key": db._decrypt(row["ai_api_key"]),
                 "base_url": row["ai_base_url"] or "https://api.deepseek.com",
                 "model": row["ai_model"] or "deepseek-chat",
                 "provider": _detect_provider(row["ai_base_url"] or ""),
@@ -345,10 +345,11 @@ def _detect_provider(base_url: str) -> str:
 
 
 def save_user_ai_config(tg_user_id: int, api_key: str, base_url: str, model: str):
+    enc_key = db._encrypt(api_key) if api_key and not api_key.startswith("__") else api_key
     conn = db.get_conn()
     conn.execute(
         "UPDATE users SET ai_api_key = ?, ai_base_url = ?, ai_model = ? WHERE tg_user_id = ?",
-        (api_key, base_url, model, tg_user_id),
+        (enc_key, base_url, model, tg_user_id),
     )
     conn.commit()
     conn.close()
@@ -360,7 +361,7 @@ async def call_factory_api(prompt: str) -> str:
     """Call Factory droid exec as a subprocess. Returns the AI's text content."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            "/home/ubuntu/.local/bin/droid", "exec",
+            DROID_CLI_PATH, "exec",
             "-m", "claude-sonnet-4-5-20250929",
             "--output-format", "json",
             prompt,
@@ -687,10 +688,13 @@ async def build_system_prompt(extra_symbols: list = None, personality: str = "de
             f"{memory_context}"
         )
 
-    # Final brevity enforcement (MUST be last to override personality verbosity)
+    # Final rules (MUST be last to override personality)
     prompt += (
-        "\n\n## FINAL RULE — BREVITY\n"
-        "MAX 3-5 sentences. No essays, no bullet lists, no numbered alternatives. "
+        "\n\n## FINAL RULES\n"
+        "1. LANGUAGE: You MUST reply in the SAME language the user wrote in. "
+        "English input → English reply. Russian input → Russian reply. Japanese input → Japanese reply. "
+        "Chinese input → Chinese reply. NEVER switch languages regardless of personality.\n"
+        "2. BREVITY: MAX 3-5 sentences. No essays, no bullet lists, no numbered alternatives. "
         "If balance is insufficient: ONE sentence stating the shortfall + tell user to close a position. Done."
     )
     return prompt
@@ -980,5 +984,10 @@ def validate_plan(plan: dict) -> Optional[str]:
             return f"Leverage {leverage}x exceeds max {MAX_LEVERAGE}x."
     except (ValueError, TypeError):
         pass
+
+    tp = plan.get("take_profit")
+    sl = plan.get("stop_loss")
+    if not tp or not sl or str(tp) in ("", "?", "0", "None") or str(sl) in ("", "?", "0", "None"):
+        return "TP/SL missing. All trades must have take-profit and stop-loss."
 
     return None

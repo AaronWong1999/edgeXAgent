@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>edgeX Agent Retest Report</title>
+<style>
+:root{--bg:#0a0f1e;--card:#121a31;--line:#2b375f;--text:#eef2ff;--muted:#9cabd3;--good:#22c55e;--warn:#f59e0b;--bad:#ef4444;--blue:#60a5fa}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0a0f1e,#111a33);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.65}.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 72px}.hero h1{margin:0 0 10px;font-size:34px}.hero p{margin:0;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:24px 0}.card,.section{background:rgba(18,26,49,.9);border:1px solid var(--line);border-radius:18px}.card{padding:18px}.metric{font-size:30px;font-weight:800}.muted{color:var(--muted)}.section{padding:20px;margin-top:18px}h2{margin:34px 0 12px;font-size:24px}h3{margin:18px 0 10px;font-size:18px;color:#dbe6ff}.pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin-right:8px}.good{background:rgba(34,197,94,.14);color:#86efac}.warn{background:rgba(245,158,11,.14);color:#fcd34d}.bad{background:rgba(239,68,68,.14);color:#fca5a5}.blue{background:rgba(96,165,250,.14);color:#bfdbfe}.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid var(--line);padding:10px 12px;vertical-align:top}.table th{background:#172243;text-align:left}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a1227;border:1px solid var(--line);border-radius:12px;padding:12px;white-space:pre-wrap;word-break:break-word;font-size:13px}.list{margin:8px 0 0 18px}.list li{margin:6px 0}.footer{margin-top:32px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>edgeX Agent 二次复测报告</h1>
+    <p>基于你指出“必须连上 edgeX 完整走流程”的要求，我重新读取了更新后的原型与代码，并重新用真实 Telegram 会话进行了复测。此次重点不是看他们自己写了什么测试，而是直接看现在这个 bot 在真实交互下表现如何。</p>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="muted">二次结论</div><div class="metric">更差了</div><div class="muted">修了一些表面点，但引入了更严重回归</div></div>
+    <div class="card"><div class="muted">edgeX 连接</div><div class="metric">已完成</div><div class="muted">通过 demo 账号真实连上</div></div>
+    <div class="card"><div class="muted">关键问题</div><div class="metric">响应串线</div><div class="muted">多条消息与命令错位回复</div></div>
+    <div class="card"><div class="muted">YC 视角</div><div class="metric">危险</div><div class="muted">这是资金产品，错位回复会直接杀死信任</div></div>
+  </div>
+
+  <h2>## 一、这次我补做了什么</h2>
+  <div class="section">
+    <ul class="list">
+      <li>重新读取了更新后的 <code>tg_prototype.html</code>、<code>bot/main.py</code>、<code>bot/ai_trader.py</code>、<code>bot/config.py</code></li>
+      <li>真实在 Telegram 中点击 <code>Connect edgeX</code>，并通过 <code>Aaron's Account (temp)</code> 完成 edgeX 连接</li>
+      <li>重新跑了更“创新”的测试用例：跨语言、标的混淆、宏观事件映射、记忆写入/召回、股票小额交易、无效资产、命令与新闻推送混杂等</li>
+      <li>重点检查 Opus 4.6 刚做的修正是否真的有效，还是只是改了表面交互</li>
+    </ul>
+  </div>
+
+  <h2>## 二、最重要的新结论</h2>
+  <div class="section">
+    <p><span class="pill bad">关键结论</span> 他们这次更新后，出现了比上次更严重的系统性问题：<b>消息响应错位 / 串线</b>。</p>
+    <ul class="list">
+      <li>我发 A，bot 回的是前一个问题 B 的答案；</li>
+      <li>我发命令 <code>/status</code>，bot 回来的是一条新闻推送；</li>
+      <li>我发 <code>/pnl</code>，bot 回的是 NVDA 交易建议；</li>
+      <li>我发 <code>/news</code>，bot 回的是上一条俄语 BTC 交易的余额不足提示。</li>
+    </ul>
+    <p>这不是小 bug，这是做交易 agent 最致命的那类 bug：<b>上下文和动作不再可信</b>。</p>
+  </div>
+
+  <h2>## 三、edgeX 连接与主流程复测结果</h2>
+  <div class="section">
+    <table class="table">
+      <tr><th>流程</th><th>结果</th><th>判断</th></tr>
+      <tr><td>/start → Connect edgeX</td><td>正常出现连接菜单</td><td><span class="pill good">通过</span></td></tr>
+      <tr><td>点击 Aaron's Account (temp)</td><td>成功进入已连接 dashboard，显示账户 <code>713029548781863066</code></td><td><span class="pill good">通过</span></td></tr>
+      <tr><td>连接后 Dashboard</td><td>显示 <code>Trade on edgeX / AI Agent / Event Trading</code></td><td><span class="pill good">通过</span></td></tr>
+      <tr><td>/status</td><td>最终能给出真实 equity / available / no open positions，但在另一轮测试中出现被新闻推送打断</td><td><span class="pill warn">有时通过</span></td></tr>
+      <tr><td>/pnl</td><td>最终能显示日报与今日交易数，但也出现过被交易建议串线覆盖</td><td><span class="pill warn">有时通过</span></td></tr>
+      <tr><td>/history</td><td>最终能显示真实 DOGE 历史成交</td><td><span class="pill good">可用</span></td></tr>
+      <tr><td>/news</td><td>最终能进入 Event Trading 页面，但有时返回上一条 unrelated 回复</td><td><span class="pill warn">不稳定</span></td></tr>
+    </table>
+  </div>
+
+  <h2>## 四、创新用例复测：我故意测了哪些“更聪明”的场景</h2>
+  <div class="section">
+    <h3>1. 跨语言 + 商品</h3>
+    <div class="code">输入：白银现在适合做空吗？给我一句最强判断
+期望：SILVER 分析 + 简洁判断
+实际：有时无响应；随后下一条才返回对白银的回答</div>
+    <p><span class="pill warn">结论</span> 模型能分析，但系统消息调度不可靠。</p>
+
+    <h3>2. 标的混淆：CRCL vs CRV</h3>
+    <div class="code">输入：CRCL 和 CRV 不是一个东西，对吧？如果我要交易 Circle 应该做什么
+实际：回答本身是对的，能区分 CRCL=Circle、CRV=Curve，并给出 CRCL 建议。</div>
+    <p><span class="pill good">结论</span> 这部分 symbol resolution 比之前靠谱。</p>
+
+    <h3>3. 宏观事件映射：QQQ 还是 BTC</h3>
+    <div class="code">输入：Trump tariff headlines are everywhere, should I short QQQ or BTC?
+实际：没有即时回复；下一条 DOGE 交易时却返回了这条宏观问题的答案。</div>
+    <p><span class="pill bad">结论</span> 不是分析不行，是消息顺序失真。</p>
+
+    <h3>4. 写入偏好，再做记忆召回</h3>
+    <div class="code">输入1：Remember that I prefer low-risk stock trades and hate memecoins.
+输入2：What kind of trader am I based on what I told you earlier?
+实际：能记住“低风险、偏股票、讨厌 memecoin”，还能总结成 conservative trader。</div>
+    <p><span class="pill good">结论</span> 记忆系统比我第一次判断更强一点，至少偏好写入/召回是成立的。</p>
+
+    <h3>5. 小额 DOGE 交易</h3>
+    <div class="code">输入：long DOGE $50
+实际：不是稳定进入 trade plan；有一轮直接回了前一条 memory recall 的总结，另一轮才给出余额不足。</div>
+    <p><span class="pill bad">结论</span> 对交易产品来说，这个级别的错位不可接受。</p>
+
+    <h3>6. 股票交易</h3>
+    <div class="code">输入：buy NVDA 0.1 with 2x
+实际：曾返回“Longing 0.1 NVDA at ~$182.89 with 2x... Confirm to send it”，看起来像正确 trade intent；但它是被 /pnl 时段串出来的，不可信。</div>
+    <p><span class="pill warn">结论</span> 交易智能有进展，但系统层可靠性把它毁了。</p>
+
+    <h3>7. 无效资产</h3>
+    <div class="code">输入：short BANANAETF $80 now
+实际：能识别为无效合约，并提示 EdgeX 没有这个资产。</div>
+    <p><span class="pill good">结论</span> 防胡编这一点比很多 agent 做得好。</p>
+
+    <h3>8. 新闻推送和命令打架</h3>
+    <div class="code">现象：在测试 /status、/pnl、/news 时，BWEnews 实时推送插入会话，导致命令回复和新闻消息彼此错位。</div>
+    <p><span class="pill bad">结论</span> 这是此次更新最严重的问题，也是你让我重测后最关键的新发现。</p>
+  </div>
+
+  <h2>## 五、Opus 4.6 这次“修正”里，哪些是对的，哪些是错的</h2>
+  <div class="section">
+    <h3>做对了的地方</h3>
+    <ul class="list">
+      <li>确实把 edgeX demo 登录链路保留好了，我这次成功连上了。</li>
+      <li>symbol 提取与按钮逻辑明显改过：<code>_smart_reply_buttons()</code>、<code>_extract_symbols()</code> 是新增的。</li>
+      <li>配置层从硬编码 droid 路径改成了 <code>DROID_CLI_PATH</code> + <code>shutil.which()</code> fallback，这比之前合理。</li>
+      <li>记忆偏好召回看起来比之前更明显，说明 prompt / memory 拼接确实做了加强。</li>
+      <li>新闻推送按钮现在有 <code>Mute / Dismiss</code>，交互上更完整。</li>
+    </ul>
+
+    <h3>做错了、而且错得更严重的地方</h3>
+    <ul class="list">
+      <li><b>他们把 bot 做成了一个会被 push 消息打断的系统。</b> 交易问答、命令回复、新闻推送共享一个聊天线程，但没有做好时序和上下文隔离。</li>
+      <li><b>“自然聊天不要按钮”这个修正表面是对的，但因为响应串线，用户看到的按钮和内容可能根本不对应。</b></li>
+      <li><b>把主按钮文案从 Main Menu 改成 Start</b> 不算真正改进，只是皮肤变化。</li>
+      <li><b>他们强化了“智能感”，却没有先解决“系统可靠性”</b>。这对于交易产品是典型的优先级错误。</li>
+    </ul>
+  </div>
+
+  <h2>## 六、最严重的技术/产品问题：不是 AI，而是并发与消息路由</h2>
+  <div class="section">
+    <p>这次复测最像 root cause 的问题不是单个 callback，而是架构层：</p>
+    <ul class="list">
+      <li>前台用户消息、后台新闻推送、命令回复都在同一 Telegram chat 里竞争用户注意力；</li>
+      <li>用户发送一条问题时，系统没有建立“这个回复就是对应这一条请求”的强绑定；</li>
+      <li>于是实际体验变成：<b>回答内容本身可能还不错，但落到错误的问题上。</b></li>
+    </ul>
+    <div class="code">例子：
+- 我问白银 -> 没立即回
+- 我问 CRCL/CRV -> bot 回了白银
+- 我问 macro QQQ/BTC -> 没立即回
+- 我问 DOGE trade -> bot 回了 macro
+- 我发 /pnl -> bot 回了 NVDA trade suggestion
+- 我发 /news -> bot 回了俄语 BTC 余额不足</div>
+    <p>这意味着：<b>如果用户真的在下单，这种错位会让人完全不敢用。</b></p>
+  </div>
+
+  <h2>## 七、YC partner 视角下，这次复测后的判断变化</h2>
+  <div class="section">
+    <p><span class="pill bad">更新后的判断</span> 我对这项目的评价不是“稳步变好”，而是“聪明度提高了一点，但可靠性显著下降”。</p>
+    <ul class="list">
+      <li>如果我是 YC 合伙人，我会说：<b>你们现在在优化 demo 感，而不是在优化 trust。</b></li>
+      <li>对交易产品来说，trust 的第一性原理不是“能回答很多问题”，而是“系统永远不会把错误答案给到错误时机”。</li>
+      <li>任何一个 serious trader 看到这种消息串线，都会立刻停用。</li>
+    </ul>
+  </div>
+
+  <h2>## 八、我现在对三个功能的重新评分</h2>
+  <div class="section">
+    <table class="table">
+      <tr><th>模块</th><th>第一次看法</th><th>复测后看法</th></tr>
+      <tr><td>TG Bot 控制交易所</td><td>基础可用</td><td><span class="pill good">登录与面板更明确可用</span>，但命令回复会被别的消息打断</td></tr>
+      <tr><td>AI 对话 / 自然语言交易 / 记忆</td><td>部分成立</td><td><span class="pill warn">智能性比上次强</span>，记忆召回也更像回事；但交易上下文错位使整体仍不可信</td></tr>
+      <tr><td>事件驱动交易</td><td>配置层可用，核心闭环未证实</td><td><span class="pill bad">推送本身活跃了</span>，但正因为推送活跃，反而暴露出会话污染问题，严重影响其他功能</td></tr>
+    </table>
+  </div>
+
+  <h2>## 九、代码层新增观察</h2>
+  <div class="section">
+    <ul class="list">
+      <li><code>main.py</code> 新增了 <code>_smart_reply_buttons()</code> 和 symbol 提取，这说明开发者在试图让聊天更自然、更像 agent。</li>
+      <li>但我没有看到与“push 消息隔离 / 用户请求响应绑定”对应的架构级修正。</li>
+      <li><code>news_push.py</code> 仍然会主动把消息打进同一会话流里；如果不做 request/response discipline，这就是事故源。</li>
+      <li>明文敏感信息问题依然存在：<code>.env</code> 真实 token / API key；SQLite 明文存储账户私钥的问题也没有被根治。</li>
+    </ul>
+  </div>
+
+  <h2>## 十、我的最终裁决</h2>
+  <div class="section">
+    <p><span class="pill blue">一句话裁决</span> 这次不是“Opus 4.6 把系统修好了”，而是“Opus 4.6 把 bot 变得更像聪明 demo，但把交易产品最重要的可靠性问题暴露得更彻底了”。</p>
+    <ul class="list">
+      <li>如果这是一次模型能力 PK：<b>它在产品表面智能感上加了分，但在系统工程上丢了大分。</b></li>
+      <li>如果这是一次 founder 评估：<b>他们会做功能，但还没有体现出对高风险产品可靠性边界的敬畏。</b></li>
+      <li>如果这是一次投资判断：<b>我会继续观察，但现在绝不会因为这版更新而提高信心。</b></li>
+    </ul>
+  </div>
+
+  <h2>## 十一、下一步最该怎么修</h2>
+  <div class="section">
+    <ol class="list">
+      <li>把 <b>news push</b> 与 <b>command / chat response</b> 做硬隔离，不要让它们在同一会话线程里抢上下文。</li>
+      <li>任何交易类回复都必须绑定来源请求，必要时加 request id 或只对最近一次用户输入回复。</li>
+      <li>先把“消息永不串线”做到 99.99%，再去优化更花哨的 AI 交互。</li>
+      <li>彻底处理密钥安全：不要明文 .env、不要明文 SQLite 私钥。</li>
+    </ol>
+  </div>
+
+  <div class="footer">
+    保存路径：/Users/aaron/Desktop/aaron/edgeXAgent/edgex_yc_review_round2.html<br>
+    生成时间：2026-03-06
+  </div>
+</div>
+</body>
+</html>

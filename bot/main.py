@@ -3,6 +3,8 @@ Your AI trader. Tell it what you think. It trades for you.
 """
 import asyncio
 import logging
+import warnings
+warnings.filterwarnings("ignore", message=".*per_message.*")
 import os
 import traceback
 import time
@@ -12,6 +14,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotComm
 from telegram.ext import (
     Application,
     CommandHandler,
+    Defaults,
     MessageHandler,
     CallbackQueryHandler,
     ConversationHandler,
@@ -29,7 +32,47 @@ import news_push
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-pending_plans = {}
+pending_plans = {}  # {user_id: (plan, timestamp)}
+_user_msg_times = {}  # {user_id: [timestamps]} — simple rate limiter
+_pending_ai_tasks = {}  # {user_id: asyncio.Event} — cancel stale AI requests when user sends new msg
+
+def _rate_limited(user_id, max_msgs=15, window=60):
+    now = time.time()
+    times = _user_msg_times.get(user_id, [])
+    times = [t for t in times if now - t < window]
+    if len(times) >= max_msgs:
+        return True
+    times.append(now)
+    _user_msg_times[user_id] = times
+    return False
+
+def _set_pending_plan(user_id, plan):
+    pending_plans[user_id] = (plan, time.time())
+
+def _get_pending_plan(user_id):
+    entry = pending_plans.get(user_id)
+    if not entry:
+        return None
+    plan, ts = entry
+    if time.time() - ts > 300:  # 5 min TTL
+        pending_plans.pop(user_id, None)
+        return None
+    return plan
+
+def _pop_pending_plan(user_id):
+    entry = pending_plans.pop(user_id, None)
+    if not entry:
+        return None
+    plan, ts = entry
+    if time.time() - ts > 300:
+        return None
+    return plan
+
+def _cleanup_expired_plans():
+    now = time.time()
+    expired = [uid for uid, (_, ts) in pending_plans.items() if now - ts > 300]
+    for uid in expired:
+        del pending_plans[uid]
 
 PERSONA_BUTTONS = [
     [
@@ -73,6 +116,30 @@ PERSONA_GREETINGS = {
 }
 
 
+def _escape_md(text: str) -> str:
+    """Escape Markdown V1 special chars in dynamic content."""
+    if not text:
+        return text
+    for ch in ('_', '*', '[', ']', '`'):
+        text = text.replace(ch, '\\' + ch)
+    return text
+
+
+def _safe_cb(data: str, max_len: int = 64) -> str:
+    """Ensure callback_data fits within Telegram's 64-byte limit."""
+    encoded = data.encode('utf-8')
+    if len(encoded) <= max_len:
+        return data
+    return encoded[:max_len].decode('utf-8', errors='ignore')
+
+
+def _truncate_msg(msg: str, limit: int = 4000) -> str:
+    """Truncate message to fit Telegram's 4096 char limit."""
+    if len(msg) <= limit:
+        return msg
+    return msg[:limit] + "\n\n... _(truncated)_"
+
+
 def _side_label(side: str) -> str:
     """Convert BUY/SELL to LONG/SHORT for display."""
     s = side.upper()
@@ -87,26 +154,100 @@ def _back_button(label: str = "\U0001f519 Back", cb: str = "back_to_dashboard") 
     """Single Back button — standard for all sub-screens."""
     return InlineKeyboardMarkup([[InlineKeyboardButton(label, callback_data=cb)]])
 
-_main_menu_kb = InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]])
+_main_menu_kb = InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")]])
+
+
+import re as _re
+
+_SYMBOL_PATTERN = _re.compile(r'(?<![A-Za-z])(' + '|'.join(_re.escape(s) for s in sorted(config.CONTRACTS.keys(), key=len, reverse=True)) + r')(?![A-Za-z])')
+
+def _extract_symbols(text: str) -> list:
+    """Extract known trading symbols mentioned in text (max 3, deduplicated)."""
+    found = []
+    seen = set()
+    for m in _SYMBOL_PATTERN.finditer(text):
+        sym = m.group(1).upper()
+        if sym not in seen:
+            seen.add(sym)
+            found.append(sym)
+        if len(found) >= 3:
+            break
+    return found
+
+def _smart_reply_buttons(reply_text: str, has_edgex: bool, user):
+    """Generate context-aware buttons based on AI reply content and user state.
+    Returns InlineKeyboardMarkup or None (no buttons = natural conversation flow)."""
+    buttons = []
+    reply_lower = reply_text.lower()
+
+    # AI not activated — always show activate button
+    user_ai = ai_trader.get_user_ai_config(user.get("tg_user_id")) if user else None
+    if not user_ai:
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton("\u26a1 Activate AI (free)", callback_data="ai_use_free")],
+        ])
+
+    # Extract symbols mentioned in the reply
+    symbols = _extract_symbols(reply_text)
+
+    if not has_edgex:
+        # No edgeX — if AI mentions tradeable content, nudge to connect
+        if symbols or any(w in reply_lower for w in ("trade", "long", "short", "buy", "sell", "position", "order")):
+            buttons.append([InlineKeyboardButton("\U0001f517 Connect edgeX to Trade", callback_data="show_login")])
+    else:
+        _balance_kw = ("insufficient", "not enough", "deposit", "need more",
+                       "\u4f59\u989d\u4e0d\u8db3", "\u94b1\u4e0d\u591f", "\u5165\u91d1",
+                       "\u5dee\u4e86", "\u4e0d\u591f", "\u6ca1\u94b1",
+                       "\u6b8b\u9ad8\u4e0d\u8db3", "\u5165\u91d1\u3057\u3066",
+                       "\u043d\u0435\u0434\u043e\u0441\u0442\u0430\u0442\u043e\u0447\u043d\u043e")
+        has_balance_issue = any(w in reply_lower for w in _balance_kw)
+
+        if has_balance_issue:
+            buttons.append([
+                InlineKeyboardButton("\U0001f534 Close Position", callback_data="quick_close"),
+                InlineKeyboardButton("\U0001f4b0 Deposit", url="https://pro.edgex.exchange/portfolio"),
+            ])
+        if symbols:
+            from news_push import get_user_news_trade_defaults
+            user_id = user.get("tg_user_id")
+            defaults = get_user_news_trade_defaults(user_id)
+            lev = defaults.get("leverage", 3)
+            amounts = defaults.get("amounts", [50, 100])
+            tp_pct = defaults.get("tp_pct", 8.0)
+            sl_pct = defaults.get("sl_pct", 4.0)
+            for sym in symbols[:1]:
+                cb_sym = sym[:10]
+                for amt in amounts[:2]:
+                    buttons.append([InlineKeyboardButton(
+                        f"\u2b06\ufe0f LONG {sym} ${amt} {lev}x | TP +{tp_pct}% SL -{sl_pct}%",
+                        callback_data=f"nt_{cb_sym}_BUY_{lev}_{amt}")])
+                    buttons.append([InlineKeyboardButton(
+                        f"\u2b07\ufe0f SHORT {sym} ${amt} {lev}x | TP +{tp_pct}% SL -{sl_pct}%",
+                        callback_data=f"nt_{cb_sym}_SELL_{lev}_{amt}")])
+
+    # Rule: if no meaningful buttons, return None — let the conversation flow naturally
+    if not buttons:
+        return None
+    return InlineKeyboardMarkup(buttons)
 
 
 def _quick_actions_keyboard(has_edgex: bool = True) -> InlineKeyboardMarkup:
     """Shortcut buttons for command-based screens (e.g. /status, /pnl)."""
-    return _back_button("\U0001f3e0 Main Menu")
+    return _back_button("\U0001f680 Start")
 
 
 def _dashboard_keyboard(has_edgex: bool, has_ai: bool = True) -> InlineKeyboardMarkup:
-    """Main dashboard — always 3 buttons."""
+    """Main dashboard — always 3 buttons. Order: Event Trading → AI Agent → Trade on edgeX."""
     rows = []
-    if has_edgex:
-        rows.append([InlineKeyboardButton("\U0001f4c8 Trade on edgeX", callback_data="trade_hub")])
-    else:
-        rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
+    rows.append([InlineKeyboardButton("\U0001f4f0 Event Trading", callback_data="news_settings")])
     if has_ai:
         rows.append([InlineKeyboardButton("\U0001f916 AI Agent", callback_data="ai_hub")])
     else:
         rows.append([InlineKeyboardButton("\u2728 Activate AI", callback_data="ai_activate_prompt")])
-    rows.append([InlineKeyboardButton("\U0001f4f0 Event Trading", callback_data="news_settings")])
+    if has_edgex:
+        rows.append([InlineKeyboardButton("\U0001f4c8 Trade on edgeX", callback_data="trade_hub")])
+    else:
+        rows.append([InlineKeyboardButton("\U0001f517 Connect edgeX", callback_data="show_login")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -120,10 +261,13 @@ def _dashboard_text(user, user_ai) -> str:
         edgex_line = "\U0001f464 edgeX: not connected"
     ai_line = "\u2728 AI: Active \u2705" if user_ai else "\u2728 AI: not activated"
     return (
-        f"\U0001f916 *edgeX Agent \u2014 Your Own AI Trading Agent*\n\n"
+        f"\U0001f916 *edgeX Agent \u2014 Your Personal AI Trading Agent*\n\n"
         f"{edgex_line}\n{ai_line}\n\n"
+        f"\U0001f4f0 Breaking news \u2192 one-tap trades\n"
+        f"\u2728 Ask anything about any market\n"
+        f"\U0001f4ca Full portfolio control in Telegram\n\n"
         f"\U0001f447 Tap a button or just talk to me:\n\n"
-        f"_\"BTC's looking juicy, should I ape in?\"_\n"
+        f"_\"BTC pumping, should I long?\"_\n"
         f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
         f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
         f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_\n"
@@ -166,12 +310,12 @@ def _friendly_order_error(raw_error: str, plan: dict) -> str:
             f"Go to edgex.exchange \u2192 API Management \u2192 enable API access, "
             f"then try again."
         )
-    # Generic fallback — still explain, don't show raw error
+    # Generic fallback — don't expose raw error to user
+    logger.warning(f"Order error for {asset}: {raw_error[:200]}")
     return (
         f"\u274c *Order couldn't be placed*\n\n"
         f"edgeX returned an error for your {asset} trade. "
-        f"This could be a temporary issue. Try again, or try a different asset.\n\n"
-        f"_Technical detail: {raw_error[:150]}_"
+        f"This could be a temporary issue. Try again, or try a different asset."
     )
 
 
@@ -202,7 +346,7 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"\u274c Something went wrong. Please try again.\n\nError: {str(context.error)[:200]}",
+                text="\u274c Something went wrong. Please try again.",
             )
         except Exception:
             pass
@@ -232,7 +376,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return WAITING_LOGIN_CHOICE
     except Exception as e:
         logger.error(f"cmd_start error: {e}", exc_info=True)
-        await safe_send(context, update.effective_chat.id, f"\u274c Error: {str(e)[:200]}")
+        await safe_send(context, update.effective_chat.id, "❌ Something went wrong. Please try again.")
         return ConversationHandler.END
 
 
@@ -295,7 +439,7 @@ async def handle_login_choice(update: Update, context: ContextTypes.DEFAULT_TYPE
         await safe_edit(query, _dashboard_text(user, user_ai),
             parse_mode="Markdown",
             reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
-        return
+        return ConversationHandler.END
 
     if query.data == "ai_activate_prompt":
         existing = db.get_user(update.effective_user.id)
@@ -410,7 +554,7 @@ async def receive_account_id(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return WAITING_PRIVATE_KEY
     except Exception as e:
         logger.error(f"receive_account_id error: {e}", exc_info=True)
-        await safe_send(context, update.effective_chat.id, f"\u274c Error: {str(e)[:200]}. Send /start to retry.")
+        await safe_send(context, update.effective_chat.id, "❌ Something went wrong. Send /start to retry.")
         return ConversationHandler.END
 
 
@@ -490,10 +634,11 @@ async def receive_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE
                 f"\U0001f464 edgeX: `{account_id}` \u2705\n"
                 f"\u2728 AI: Active \u2705\n\n"
                 f"\U0001f447 Click a button below, or just type and talk to me:\n\n"
-                f"_\"BTC's looking juicy, should I ape in?\"_\n"
+                f"_\"BTC pumping, should I long?\"_\n"
                 f"_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
                 f"_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
-                f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_",
+                f"_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_\n"
+                f"_\"\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 NVDA \u043d\u0430 100$\"_",
                 parse_mode="Markdown",
                 reply_markup=keyboard)
         else:
@@ -508,7 +653,7 @@ async def receive_private_key(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception as e:
         logger.error(f"receive_private_key error: {e}", exc_info=True)
         await safe_send(context, chat_id,
-            f"\u274c Unexpected error: {str(e)[:200]}\n\nSend /start to try again.")
+            "\u274c Unexpected error. Send /start to try again.")
         return ConversationHandler.END
 
 
@@ -548,6 +693,9 @@ def _ai_activate_keyboard():
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Process any text message as a potential trading thesis or AI chat."""
     chat_id = update.effective_chat.id
+    if _rate_limited(update.effective_user.id):
+        await update.message.reply_text("\u23f3 Slow down! Try again in a moment.")
+        return
     try:
         # Check if user is in feedback mode
         if context.user_data.get("awaiting_feedback"):
@@ -571,7 +719,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "\u2705 *Got it!* Your feedback has been recorded. Thanks!",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                        [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")],
                     ]),
                 )
                 return
@@ -630,28 +778,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.save_user(update.effective_user.id, "", "")
             user = db.get_user(update.effective_user.id)
 
-        # Check if AI is configured — if not, prompt the 3-button activation
+        # Check if AI is configured — if not, prompt with a short message + activate button
         user_ai = ai_trader.get_user_ai_config(update.effective_user.id)
         if not user_ai:
             await update.message.reply_text(
-                "\u2728 *Activate AI \u2014 AI Agent*\n\n"
-                "Choose how to power your Agent:\n\n"
-                "\U0001f4b3 *edgeX Balance* \u2014 from your edgeX account (coming soon)\n\n"
-                "\U0001f511 *Own API Key* \u2014 unlimited, OpenAI-compatible / Anthropic / Gemini\n\n"
-                "\u26a1 *Aaron's API* \u2014 temporary for beta testing",
-                parse_mode="Markdown",
-                reply_markup=_ai_activate_keyboard(),
+                "\U0001f916 I need an AI engine to understand you.\n"
+                "Tap below to activate \u2014 takes 2 seconds:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\u26a1 Activate AI (free)", callback_data="ai_use_free")],
+                    [InlineKeyboardButton("\U0001f511 Use My Own API Key", callback_data="ai_own_key_setup")],
+                ]),
             )
             return
+
+        uid = update.effective_user.id
+        orig_msg_id = update.message.message_id
+
+        # Only cancel stale AI request if user sends again within 3 seconds (rapid spam)
+        now = time.time()
+        prev = _pending_ai_tasks.get(uid)
+        if prev and (now - prev[1]) < 3.0:
+            prev[0].set()  # signal old task to abort — user is spam-correcting
+        cancel_event = asyncio.Event()
+        _pending_ai_tasks[uid] = (cancel_event, now)
+
+        # Helper: reply bound to the original user message
+        async def _reply(text, **kwargs):
+            kwargs.setdefault("reply_to_message_id", orig_msg_id)
+            return await context.bot.send_message(chat_id=chat_id, text=text, **kwargs)
 
         # Start persistent typing indicator (keeps alive until AI responds)
         stop_typing = asyncio.Event()
         typing_task = asyncio.create_task(_keep_typing(context.bot, chat_id, stop_typing))
 
         try:
-            # AI generates plan with live edgex-cli data — no need for get_prices_for_all
             plan = await ai_trader.generate_trade_plan(
-                update.message.text, market_prices=None, tg_user_id=update.effective_user.id
+                update.message.text, market_prices=None, tg_user_id=uid
             )
         finally:
             stop_typing.set()
@@ -661,10 +823,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except (asyncio.CancelledError, Exception):
                 pass
 
+        # If user sent a rapid follow-up (<3s) while we were waiting, discard this stale response
+        if cancel_event.is_set():
+            logger.info(f"Discarding stale AI response for user {uid} (rapid follow-up)")
+            return
+
+        # Clean up pending task ref
+        prev = _pending_ai_tasks.get(uid)
+        if prev and prev[0] is cancel_event:
+            _pending_ai_tasks.pop(uid, None)
+
         if plan.get("action") == "NEED_API_KEY":
-            await update.message.reply_text(
-                "\u2728 *Activate AI \u2014 AI Agent*\n\n"
-                "Choose how to power your Agent:",
+            await _reply(
+                "\u2728 *Activate AI \u2014 AI Agent*\n\nChoose how to power your Agent:",
                 parse_mode="Markdown",
                 reply_markup=_ai_activate_keyboard(),
             )
@@ -672,43 +843,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if plan.get("action") == "RATE_LIMITED":
             remaining = plan.get("reply", "Daily limit reached.")
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("\U0001f511 Add my own API Key (unlimited)", callback_data="ai_own_key")],
-            ])
-            await update.message.reply_text(
-                f"\u23f0 {remaining}",
-                reply_markup=keyboard,
-            )
+            await _reply(f"\u23f0 {remaining}",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f511 Add my own API Key (unlimited)", callback_data="ai_own_key")],
+                ]))
             return
 
         if plan.get("action") == "CHAT":
             reply_text = plan.get("reply", "I'm not sure what you mean. Try telling me your market view!")
-            # Safety: strip any leaked JSON wrapper from AI response
             if reply_text.lstrip().startswith("{") and '"action"' in reply_text:
                 reply_text = ai_trader._strip_json_wrapper(reply_text)
-            # Truncate if too long for Telegram (max 4096 chars)
             if len(reply_text) > 4000:
                 reply_text = reply_text[:4000] + "..."
             has_edgex = _has_edgex(user)
-            reply_lower = reply_text.lower()
-            # Context-aware buttons: only show what's relevant
-            if has_edgex and ("balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower):
-                kb = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
-                        InlineKeyboardButton("\U0001f4cb Cancel Orders", callback_data="quick_orders"),
-                    ],
-                    [InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio")],
-                ])
-            else:
-                # Regular chat: just Main Menu — keep it clean
-                kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ])
-            await update.message.reply_text(
-                reply_text,
-                reply_markup=kb,
-            )
+            kb = _smart_reply_buttons(reply_text, has_edgex, user)
+            await _reply(reply_text, reply_markup=kb)
             return
 
         # TRADE action — validate and show confirmation
@@ -716,9 +865,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if error:
             reasoning = plan.get("reasoning", "")
             if reasoning:
-                await update.message.reply_text(reasoning)
+                await _reply(reasoning)
             else:
-                await update.message.reply_text(f"\u26a0\ufe0f {error}\n\nPlease try rephrasing your request.")
+                await _reply(f"\u26a0\ufe0f {error}\n\nPlease try rephrasing your request.")
             return
 
         # validate_plan may convert invalid trades to CHAT — re-check
@@ -728,32 +877,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_text = ai_trader._strip_json_wrapper(reply_text)
             if len(reply_text) > 4000:
                 reply_text = reply_text[:4000] + "..."
-            await update.message.reply_text(
-                reply_text,
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-                ]),
-            )
+            has_edgex = _has_edgex(user)
+            kb = _smart_reply_buttons(reply_text, has_edgex, user)
+            await _reply(reply_text, reply_markup=kb)
             return
 
         # Check if user has edgeX account for trade execution
         has_edgex = user and user.get("account_id") and len(user.get("account_id", "")) > 5
 
         if not has_edgex:
-            # Show the trade plan but explain they need to connect edgeX to execute
             plan_text = ai_trader.format_trade_plan(plan)
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("\U0001f517 Connect edgeX to Execute", callback_data="show_login")],
-            ])
-            await update.message.reply_text(
-                f"{plan_text}\n\n"
-                f"\U0001f512 To execute this trade, connect your edgeX account first.",
+            await _reply(
+                f"{plan_text}\n\n\U0001f512 To execute this trade, connect your edgeX account first.",
                 parse_mode="Markdown",
-                reply_markup=keyboard,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("\U0001f517 Connect edgeX to Execute", callback_data="show_login")],
+                ]),
             )
             return
 
-        pending_plans[update.effective_user.id] = plan
+        _set_pending_plan(uid, plan)
 
         side_word = "LONG" if plan.get("side") == "BUY" else "SHORT"
         side_emoji = "\u2b06\ufe0f" if plan.get("side") == "BUY" else "\u2b07\ufe0f"
@@ -771,16 +914,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reasoning = plan.get("reasoning", "")
         reply_text = f"\u2728 {reasoning}" if reasoning else f"\u2728 {side_word} {asset} looks good."
 
-        await update.message.reply_text(
+        await _reply(
             reply_text,
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton(btn_label, callback_data="show_trade_plan")],
-                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
             ]),
         )
     except Exception as e:
         logger.error(f"handle_message error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error processing your message: {str(e)[:200]}")
+        await safe_send(context, chat_id, "\u274c Something went wrong. Please try again.")
 
 
 WAITING_AI_CONFIG = 10
@@ -879,6 +1021,14 @@ async def receive_ai_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     try:
         text = update.message.text.strip()
+
+        # If message has no '=' at all, user probably isn't entering API config — exit gracefully
+        if "=" not in text:
+            await safe_send(context, chat_id,
+                "\U0001f519 Exited AI setup. Talk to me normally or use /setai to try again.",
+            )
+            return ConversationHandler.END
+
         try:
             await update.message.delete()
         except Exception:
@@ -957,13 +1107,13 @@ async def receive_ai_config(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("\U0001f3ad Choose Personality", callback_data="change_persona")],
-                [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")],
             ]))
         return ConversationHandler.END
 
     except Exception as e:
         logger.error(f"receive_ai_config error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}\n\nTry again or /cancel.")
+        await safe_send(context, chat_id, "❌ Something went wrong. Try again or /cancel.")
         return WAITING_AI_CONFIG
 
 
@@ -979,11 +1129,15 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = update.effective_chat.id
 
     try:
-        # ── Cancel feedback ──
+        # ── Legacy cancel feedback (kept for old messages) ──
         if query.data == "cancel_feedback":
             context.user_data.pop("awaiting_feedback", None)
-            await query.edit_message_text("\u274c Feedback cancelled.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+            user = db.get_user(user_id)
+            user_ai = ai_trader.get_user_ai_config(user_id) if user else None
+            has_edgex = _has_edgex(user)
+            await safe_edit(query, _dashboard_text(user, user_ai),
+                parse_mode="Markdown",
+                reply_markup=_dashboard_keyboard(has_edgex, has_ai=bool(user_ai)))
             return
 
         # ── Trade Hub (L2) — also handles quick_status redirect ──
@@ -1063,10 +1217,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                      InlineKeyboardButton("\U0001f6aa Disconnect", callback_data="logout_confirm")],
                     [InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")],
                 ]
-                await safe_edit(query, msg, parse_mode="Markdown",
+                await safe_edit(query, _truncate_msg(msg), parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}",
+                await safe_edit(query, "\u274c Error loading trade hub. Try again.",
                     reply_markup=_back_button())
             return
 
@@ -1246,7 +1400,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 await safe_edit(query, msg, parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_tb)
+                await safe_edit(query, "❌ Something went wrong. Please try again.", reply_markup=_tb)
             return
 
         # ── Share PnL (open position) ──
@@ -1257,7 +1411,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not user:
                 return
             tg_user = query.from_user
-            display_name = tg_user.full_name or tg_user.username or "Trader"
+            display_name = _escape_md(tg_user.full_name or tg_user.username or "Trader")
             try:
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 summary = await edgex_client.get_account_summary(client)
@@ -1325,7 +1479,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ])
                 await safe_send(context, chat_id, share_text, parse_mode="Markdown", reply_markup=share_kb)
             except Exception as e:
-                await query.answer(f"\u274c Error: {str(e)[:60]}", show_alert=True)
+                logger.error(f"share_pnl error: {e}", exc_info=True)
+                await query.answer("\u274c Failed to generate PnL card.", show_alert=True)
             return
 
         # ── Share PnL (closed trade) ──
@@ -1336,7 +1491,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if not user:
                 return
             tg_user = query.from_user
-            display_name = tg_user.full_name or tg_user.username or "Trader"
+            display_name = _escape_md(tg_user.full_name or tg_user.username or "Trader")
             try:
                 client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
                 history = await edgex_client.get_order_history(client, limit=20)
@@ -1399,7 +1554,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ])
                 await safe_send(context, chat_id, share_text, parse_mode="Markdown", reply_markup=share_kb)
             except Exception as e:
-                await query.answer(f"\u274c Error: {str(e)[:60]}", show_alert=True)
+                logger.error(f"share_closed error: {e}", exc_info=True)
+                await query.answer("\u274c Failed to generate share card.", show_alert=True)
             return
 
         if query.data == "quick_history":
@@ -1449,7 +1605,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     msg += f"{side_emoji} {sym} {side}{type_str}{lev_str} {fill_size} @ {price_str}{pnl_str}{ts_str}\n"
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_tb)
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_tb)
+                await safe_edit(query, "❌ Something went wrong. Please try again.", reply_markup=_tb)
             return
 
         if query.data == "quick_close":
@@ -1501,12 +1657,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     msg += f"{pnl_emoji} *{symbol} {side}*{lev_str}\n"
                     msg += f"  \u251c Value: `{pos_val}` | Entry: `{entry_str}`\n"
                     msg += f"  \u2514 PnL: `{pnl_str}`\n\n"
-                    buttons.append([InlineKeyboardButton(f"\U0001f534 Market Close {symbol} {side}", callback_data=f"close_confirm_{cid}")])
+                    buttons.append([InlineKeyboardButton(f"\U0001f534 Market Close {symbol} {side}", callback_data=_safe_cb(f"close_confirm_{cid}"))])
                 buttons.append([InlineKeyboardButton("\U0001f534 Market Close All", callback_data="close_confirm_all")])
                 buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub")])
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_tb)
+                await safe_edit(query, "❌ Something went wrong. Please try again.", reply_markup=_tb)
             return
 
         # ── Quick Orders (inline) ──
@@ -1552,14 +1708,14 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     if o_id:
                         buttons.append([InlineKeyboardButton(
                             f"\u274c Cancel {sym} {o_side} {o_size}@{o_price}",
-                            callback_data=f"cancelone_confirm_{o_id}"
+                            callback_data=_safe_cb(f"cancelone_confirm_{o_id}")
                         )])
                 buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_confirm_all")])
                 buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub")])
                 await safe_edit(query, "\n".join(lines), parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup(buttons))
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_tb)
+                await safe_edit(query, "❌ Something went wrong. Please try again.", reply_markup=_tb)
             return
 
         # ── Logout flow ──
@@ -1766,6 +1922,179 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ]))
             return
 
+        if query.data == "news_trade_defaults":
+            from news_push import get_user_news_trade_defaults
+            d = get_user_news_trade_defaults(user_id)
+            msg = (
+                "\u2699\ufe0f *Trade Defaults \u2014 Event Trading*\n\n"
+                f"Leverage: *{d['leverage']}x*\n"
+                f"Amounts: *${d['amounts'][0]}* / *${d['amounts'][1]}* / *${d['amounts'][2]}*\n"
+                f"Take Profit: *+{d['tp_pct']}%*\n"
+                f"Stop Loss: *-{d['sl_pct']}%*"
+            )
+            buttons = [
+                [InlineKeyboardButton(f"Leverage: {d['leverage']}x", callback_data="ntd_leverage")],
+                [InlineKeyboardButton(f"Amounts: ${d['amounts'][0]}/${d['amounts'][1]}/${d['amounts'][2]}", callback_data="ntd_amounts")],
+                [InlineKeyboardButton(f"TP: +{d['tp_pct']}%", callback_data="ntd_tp"),
+                 InlineKeyboardButton(f"SL: -{d['sl_pct']}%", callback_data="ntd_sl")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
+            ]
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data == "ntd_leverage":
+            from news_push import get_user_news_trade_defaults
+            d = get_user_news_trade_defaults(user_id)
+            options = [2, 3, 5]
+            buttons = []
+            row = []
+            for lev in options:
+                label = f"{'> ' if lev == d['leverage'] else ''}{lev}x"
+                row.append(InlineKeyboardButton(label, callback_data=f"ntd_setlev_{lev}"))
+            buttons.append(row)
+            buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_trade_defaults")])
+            await safe_edit(query,
+                "\u2699\ufe0f *Leverage \u2014 Trade Defaults*\n\n"
+                f"Current: *{d['leverage']}x*\n\nSelect default leverage:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data.startswith("ntd_setlev_"):
+            from news_push import save_user_news_trade_defaults
+            lev = int(query.data.split("_")[-1])
+            save_user_news_trade_defaults(user_id, "leverage", lev)
+            # Re-show defaults screen
+            from news_push import get_user_news_trade_defaults as _gd
+            d = _gd(user_id)
+            msg = (
+                "\u2699\ufe0f *Trade Defaults \u2014 Event Trading*\n\n"
+                f"Leverage: *{d['leverage']}x*\n"
+                f"Amounts: *${d['amounts'][0]}* / *${d['amounts'][1]}* / *${d['amounts'][2]}*\n"
+                f"Take Profit: *+{d['tp_pct']}%*\n"
+                f"Stop Loss: *-{d['sl_pct']}%*"
+            )
+            buttons = [
+                [InlineKeyboardButton(f"Leverage: {d['leverage']}x", callback_data="ntd_leverage")],
+                [InlineKeyboardButton(f"Amounts: ${d['amounts'][0]}/${d['amounts'][1]}/${d['amounts'][2]}", callback_data="ntd_amounts")],
+                [InlineKeyboardButton(f"TP: +{d['tp_pct']}%", callback_data="ntd_tp"),
+                 InlineKeyboardButton(f"SL: -{d['sl_pct']}%", callback_data="ntd_sl")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
+            ]
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data.startswith("ntd_setamt_"):
+            from news_push import save_user_news_trade_defaults, get_user_news_trade_defaults as _gd
+            parts = query.data.split("_")
+            amounts = [int(parts[2]), int(parts[3]), int(parts[4])]
+            save_user_news_trade_defaults(user_id, "amounts", amounts)
+            d = _gd(user_id)
+            msg = (
+                "\u2699\ufe0f *Trade Defaults \u2014 Event Trading*\n\n"
+                f"Leverage: *{d['leverage']}x*\n"
+                f"Amounts: *${d['amounts'][0]}* / *${d['amounts'][1]}* / *${d['amounts'][2]}*\n"
+                f"Take Profit: *+{d['tp_pct']}%*\n"
+                f"Stop Loss: *-{d['sl_pct']}%*"
+            )
+            buttons = [
+                [InlineKeyboardButton(f"Leverage: {d['leverage']}x", callback_data="ntd_leverage")],
+                [InlineKeyboardButton(f"Amounts: ${d['amounts'][0]}/${d['amounts'][1]}/${d['amounts'][2]}", callback_data="ntd_amounts")],
+                [InlineKeyboardButton(f"TP: +{d['tp_pct']}%", callback_data="ntd_tp"),
+                 InlineKeyboardButton(f"SL: -{d['sl_pct']}%", callback_data="ntd_sl")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
+            ]
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data.startswith("ntd_settp_"):
+            from news_push import save_user_news_trade_defaults, get_user_news_trade_defaults as _gd
+            pct = float(query.data.split("_")[-1])
+            save_user_news_trade_defaults(user_id, "tp_pct", pct)
+            d = _gd(user_id)
+            msg = (
+                "\u2699\ufe0f *Trade Defaults \u2014 Event Trading*\n\n"
+                f"Leverage: *{d['leverage']}x*\n"
+                f"Amounts: *${d['amounts'][0]}* / *${d['amounts'][1]}* / *${d['amounts'][2]}*\n"
+                f"Take Profit: *+{d['tp_pct']}%*\n"
+                f"Stop Loss: *-{d['sl_pct']}%*"
+            )
+            buttons = [
+                [InlineKeyboardButton(f"Leverage: {d['leverage']}x", callback_data="ntd_leverage")],
+                [InlineKeyboardButton(f"Amounts: ${d['amounts'][0]}/${d['amounts'][1]}/${d['amounts'][2]}", callback_data="ntd_amounts")],
+                [InlineKeyboardButton(f"TP: +{d['tp_pct']}%", callback_data="ntd_tp"),
+                 InlineKeyboardButton(f"SL: -{d['sl_pct']}%", callback_data="ntd_sl")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
+            ]
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data.startswith("ntd_setsl_"):
+            from news_push import save_user_news_trade_defaults, get_user_news_trade_defaults as _gd
+            pct = float(query.data.split("_")[-1])
+            save_user_news_trade_defaults(user_id, "sl_pct", pct)
+            d = _gd(user_id)
+            msg = (
+                "\u2699\ufe0f *Trade Defaults \u2014 Event Trading*\n\n"
+                f"Leverage: *{d['leverage']}x*\n"
+                f"Amounts: *${d['amounts'][0]}* / *${d['amounts'][1]}* / *${d['amounts'][2]}*\n"
+                f"Take Profit: *+{d['tp_pct']}%*\n"
+                f"Stop Loss: *-{d['sl_pct']}%*"
+            )
+            buttons = [
+                [InlineKeyboardButton(f"Leverage: {d['leverage']}x", callback_data="ntd_leverage")],
+                [InlineKeyboardButton(f"Amounts: ${d['amounts'][0]}/${d['amounts'][1]}/${d['amounts'][2]}", callback_data="ntd_amounts")],
+                [InlineKeyboardButton(f"TP: +{d['tp_pct']}%", callback_data="ntd_tp"),
+                 InlineKeyboardButton(f"SL: -{d['sl_pct']}%", callback_data="ntd_sl")],
+                [InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")],
+            ]
+            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data == "ntd_amounts":
+            from news_push import get_user_news_trade_defaults
+            d = get_user_news_trade_defaults(user_id)
+            presets = [[25, 50, 100], [50, 100, 200], [100, 200, 500]]
+            buttons = []
+            for p in presets:
+                label = f"{'> ' if p == d['amounts'] else ''}${p[0]}/${p[1]}/${p[2]}"
+                buttons.append([InlineKeyboardButton(label, callback_data=f"ntd_setamt_{p[0]}_{p[1]}_{p[2]}")])
+            buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_trade_defaults")])
+            await safe_edit(query,
+                "\u2699\ufe0f *Trade Amounts \u2014 Trade Defaults*\n\n"
+                f"Current: *${d['amounts'][0]} / ${d['amounts'][1]} / ${d['amounts'][2]}*\n\nSelect 3 tiers:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data == "ntd_tp":
+            from news_push import get_user_news_trade_defaults
+            d = get_user_news_trade_defaults(user_id)
+            options = [5, 8, 10, 15]
+            row = []
+            for pct in options:
+                label = f"{'> ' if pct == d['tp_pct'] else ''}+{pct}%"
+                row.append(InlineKeyboardButton(label, callback_data=f"ntd_settp_{pct}"))
+            buttons = [row, [InlineKeyboardButton("\U0001f519 Back", callback_data="news_trade_defaults")]]
+            await safe_edit(query,
+                "\u2699\ufe0f *Take Profit \u2014 Trade Defaults*\n\n"
+                f"Current: *+{d['tp_pct']}%*\n\nSelect default TP:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
+        if query.data == "ntd_sl":
+            from news_push import get_user_news_trade_defaults
+            d = get_user_news_trade_defaults(user_id)
+            options = [3, 4, 5, 8]
+            row = []
+            for pct in options:
+                label = f"{'> ' if pct == d['sl_pct'] else ''}-{pct}%"
+                row.append(InlineKeyboardButton(label, callback_data=f"ntd_setsl_{pct}"))
+            buttons = [row, [InlineKeyboardButton("\U0001f519 Back", callback_data="news_trade_defaults")]]
+            await safe_edit(query,
+                "\u2699\ufe0f *Stop Loss \u2014 Trade Defaults*\n\n"
+                f"Current: *-{d['sl_pct']}%*\n\nSelect default SL:",
+                parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+            return
+
         if query.data.startswith("news_mute_"):
             source_id = query.data[len("news_mute_"):]
             db.set_user_subscription(user_id, source_id, False)
@@ -1785,6 +2114,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         # ── Inline translation — full news card ──
         if query.data.startswith("tl_"):
+            await query.answer("\U0001f30d Translating...")
             lang_code = query.data[3:]
             LANG_NAMES = {
                 "zh": "Chinese", "ja": "Japanese", "ko": "Korean", "ru": "Russian",
@@ -1798,31 +2128,36 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             target_lang = LANG_NAMES.get(lang_code, lang_code)
             msg_text = query.message.text or ""
             lines = msg_text.split("\n")
-            # Parse original card: line 0 = "Source: headline", find timestamp, find sentiment
+            # Parse original card: line 0 = "Source: headline", find AI reason line
             first_line = lines[0].strip()
             source_prefix = "BWEnews"
             headline = first_line
             if ": " in first_line:
                 source_prefix, headline = first_line.split(": ", 1)
-            # Find timestamp line and sentiment line
+            # Find AI reason line (starts with 🟢 or 🔴) and timestamp line
             ts_line = ""
-            sentiment_line = ""
+            reason_line = ""
             for line in lines:
-                line = line.strip()
-                if line and line[0].isdigit() and "UTC" in line:
-                    ts_line = line
-                if line and ("\u2b06\ufe0f" in line or "\u2b07\ufe0f" in line):
-                    sentiment_line = line
+                stripped = line.strip()
+                if stripped and stripped[0].isdigit() and "UTC" in stripped:
+                    ts_line = stripped
+                if stripped and (stripped.startswith("\U0001f7e2") or stripped.startswith("\U0001f534")):
+                    reason_line = stripped
             if not headline or len(headline) < 5:
                 await safe_send(context, chat_id, "\u274c No headline to translate.")
                 return
+            # Build translation prompt: headline + reason together
+            to_translate = headline[:500]
+            if reason_line:
+                reason_text = reason_line.lstrip("\U0001f7e2\U0001f534 ")
+                to_translate += "\n---\n" + reason_text
             try:
                 await context.bot.send_chat_action(chat_id=chat_id, action="typing")
                 factory_key = os.environ.get("FACTORY_API_KEY", "")
                 proc = await asyncio.create_subprocess_exec(
-                    "/home/ubuntu/.local/bin/droid", "exec",
+                    config.DROID_CLI_PATH, "exec",
                     "-m", "claude-sonnet-4-5-20250929",
-                    f"Translate the following news headline to {target_lang}. Return ONLY the translation, nothing else:\n\n{headline}",
+                    f"Translate the following to {target_lang}. Keep the --- separator if present. Return ONLY the translations, nothing else:\n\n{to_translate}",
                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                     env={"PATH": "/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin",
                          "HOME": "/home/ubuntu", "FACTORY_API_KEY": factory_key},
@@ -1839,17 +2174,20 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 if not translation:
                     await safe_send(context, chat_id, "\u274c Translation failed.")
                     return
+                # Split translated headline and reason
+                tl_headline = translation
+                tl_reason = ""
+                if "---" in translation:
+                    parts = translation.split("---", 1)
+                    tl_headline = parts[0].strip()
+                    tl_reason = parts[1].strip()
                 # Build translated news card
-                card = f"*{source_prefix}: {translation}*"
+                card = f"*{_escape_md(source_prefix)}: {_escape_md(tl_headline)}*"
+                if tl_reason:
+                    reason_emoji = "\U0001f7e2" if "\U0001f7e2" in reason_line else "\U0001f534"
+                    card += f"\n\n{reason_emoji} {_escape_md(tl_reason)}"
                 if ts_line:
                     card += f"\n\n{'─' * 16}\n{ts_line}"
-                if sentiment_line:
-                    # Translate sentiment labels
-                    tl_map = SENTIMENT_TL.get(lang_code, {})
-                    tl_sent = sentiment_line
-                    for en, loc in tl_map.items():
-                        tl_sent = tl_sent.replace(en, loc)
-                    card += f"\n\n{tl_sent}"
                 # Same buttons as original
                 await safe_send(context, chat_id, card, parse_mode="Markdown",
                     reply_markup=query.message.reply_markup)
@@ -1861,93 +2199,100 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 await safe_send(context, chat_id, "\u274c Translation service unavailable.")
             return
 
-        if query.data.startswith("news_trade_"):
-            # Format: news_trade_{asset}_{side}_{leverage}_{notional}
+        if query.data.startswith("nt_") or query.data.startswith("news_trade_"):
+            # Format: nt_{asset}_{side}_{leverage}_{notional}
             parts = query.data.split("_")
-            if len(parts) >= 6:
+            if query.data.startswith("nt_") and len(parts) >= 5:
+                asset = parts[1]
+                side = parts[2]
+                leverage = parts[3]
+                notional_str = parts[4]
+            elif len(parts) >= 6:
                 asset = parts[2]
-                side = parts[3]  # BUY or SELL
+                side = parts[3]
                 leverage = parts[4]
-                notional_str = parts[5]  # dollar amount or legacy "small"/"medium"
+                notional_str = parts[5]
+            else:
+                await query.answer("\u274c Invalid trade data")
+                return
 
-                user = db.get_user(user_id)
-                if not user or not _has_edgex(user):
-                    await query.answer("\u274c Connect your edgeX account first. Use /start", show_alert=True)
-                    return
+            user = db.get_user(user_id)
+            if not user or not _has_edgex(user):
+                await query.answer("\u274c Connect your edgeX account first. Use /start", show_alert=True)
+                return
 
-                user_ai = ai_trader.get_user_ai_config(user_id)
-                if not user_ai:
-                    await query.answer("\u274c Activate AI first. Use /setai", show_alert=True)
-                    return
+            user_ai = ai_trader.get_user_ai_config(user_id)
+            if not user_ai:
+                await query.answer("\u274c Activate AI first. Use /setai", show_alert=True)
+                return
 
+            try:
+                if notional_str == "small":
+                    notional = 50.0
+                elif notional_str == "medium":
+                    notional = 150.0
+                else:
+                    notional = float(notional_str)
+                action_word = "long" if side == "BUY" else "short"
+                from news_push import get_user_news_trade_defaults
+                ntd = get_user_news_trade_defaults(user_id)
+                prompt = (f"{action_word} {asset} with ${notional:.0f} at {leverage}x leverage, "
+                          f"set TP at +{ntd['tp_pct']}% and SL at -{ntd['sl_pct']}%, execute immediately")
+
+                await query.answer()
+                await safe_send(context, chat_id,
+                    f"\U0001f504 *{action_word.upper()} {asset} \u2014 Trade on edgeX*\n\nGenerating trade plan (~${notional:.0f}, {leverage}x)...",
+                    parse_mode="Markdown")
+
+                stop_typing = asyncio.Event()
+                typing_task = asyncio.create_task(_keep_typing(context.bot, chat_id, stop_typing))
                 try:
-                    # Handle legacy "small"/"medium" labels from old alerts
-                    if notional_str == "small":
-                        notional = 50.0
-                    elif notional_str == "medium":
-                        notional = 150.0
-                    else:
-                        notional = float(notional_str)
-                    action_word = "long" if side == "BUY" else "short"
-                    prompt = f"{action_word} {asset} with ${notional:.0f} at {leverage}x leverage, execute immediately"
-
-                    # Don't replace news — send new message below
-                    await query.answer()
-                    await safe_send(context, chat_id,
-                        f"\U0001f504 *{action_word.upper()} {asset} \u2014 Trade on edgeX*\n\nGenerating trade plan (~${notional:.0f}, {leverage}x)...",
-                        parse_mode="Markdown")
-
-                    # Keep typing indicator alive while AI generates the plan
-                    stop_typing = asyncio.Event()
-                    typing_task = asyncio.create_task(_keep_typing(context.bot, chat_id, stop_typing))
+                    plan = await ai_trader.generate_trade_plan(
+                        prompt, market_prices=None, tg_user_id=user_id
+                    )
+                finally:
+                    stop_typing.set()
+                    typing_task.cancel()
                     try:
-                        plan = await ai_trader.generate_trade_plan(
-                            prompt, market_prices=None, tg_user_id=user_id
-                        )
-                    finally:
-                        stop_typing.set()
-                        typing_task.cancel()
-                        try:
-                            await typing_task
-                        except (asyncio.CancelledError, Exception):
-                            pass
+                        await typing_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
 
-                    if plan.get("action") == "TRADE":
-                        error = ai_trader.validate_plan(plan)
-                        if error:
-                            await safe_send(context, chat_id, f"\u26a0\ufe0f {error}", reply_markup=_quick_actions_keyboard())
-                            return
-                        pending_plans[user_id] = plan
-                        await safe_send(context, chat_id,
-                            ai_trader.format_trade_plan(plan),
-                            parse_mode="Markdown",
-                            reply_markup=InlineKeyboardMarkup([
-                                [InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
-                                 InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade")],
-                            ]))
+                if plan.get("action") == "TRADE":
+                    error = ai_trader.validate_plan(plan)
+                    if error:
+                        await safe_send(context, chat_id, f"\u26a0\ufe0f {error}", reply_markup=_quick_actions_keyboard())
+                        return
+                    _set_pending_plan(user_id, plan)
+                    await safe_send(context, chat_id,
+                        ai_trader.format_trade_plan(plan),
+                        parse_mode="Markdown",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
+                             InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade")],
+                        ]))
+                else:
+                    reply = plan.get("reply", "Could not generate trade plan. Try asking directly.")
+                    if reply.lstrip().startswith("{") and '"action"' in reply:
+                        reply = ai_trader._strip_json_wrapper(reply)
+                    reply_lower = reply.lower()
+                    if "balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower:
+                        kb = InlineKeyboardMarkup([
+                            [
+                                InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                                InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
+                            ],
+                            [
+                                InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                                InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard"),
+                            ],
+                        ])
                     else:
-                        reply = plan.get("reply", "Could not generate trade plan. Try asking directly.")
-                        if reply.lstrip().startswith("{") and '"action"' in reply:
-                            reply = ai_trader._strip_json_wrapper(reply)
-                        # Smart buttons: if AI mentions balance/margin issues, add deposit + close
-                        reply_lower = reply.lower()
-                        if "balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower:
-                            kb = InlineKeyboardMarkup([
-                                [
-                                    InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
-                                    InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
-                                ],
-                                [
-                                    InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                                    InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
-                                ],
-                            ])
-                        else:
-                            kb = _quick_actions_keyboard()
-                        await safe_send(context, chat_id, reply, parse_mode="Markdown", reply_markup=kb)
-                except Exception as e:
-                    logger.error(f"News trade error: {e}", exc_info=True)
-                    await safe_send(context, chat_id, f"\u274c Trade failed: {str(e)[:200]}", reply_markup=_quick_actions_keyboard())
+                        kb = _quick_actions_keyboard()
+                    await safe_send(context, chat_id, reply, parse_mode="Markdown", reply_markup=kb)
+            except Exception as e:
+                logger.error(f"News trade error: {e}", exc_info=True)
+                await safe_send(context, chat_id, "❌ Trade failed. Please try again.", reply_markup=_quick_actions_keyboard())
             return
 
         # settings_menu redirects to ai_hub (Settings removed)
@@ -2015,7 +2360,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 "\u2514 Model: `claude-sonnet-4.5`",
                 parse_mode="Markdown", reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("\U0001f3ad Choose Personality", callback_data="change_persona")],
-                    [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")],
                 ]))
             return
 
@@ -2091,7 +2436,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data == "cancel_trade":
-            pending_plans.pop(user_id, None)
+            _pop_pending_plan(user_id)
             await query.answer("\u274c Cancelled", show_alert=False)
             await safe_edit(query,
                 "\u274c *Trade Cancelled \u2014 Trade on edgeX*\n\nNo order was placed.",
@@ -2099,7 +2444,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data == "show_trade_plan":
-            plan = pending_plans.get(user_id)
+            plan = _get_pending_plan(user_id)
             if not plan:
                 await query.answer()
                 await safe_edit(query,
@@ -2117,14 +2462,14 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return
 
         if query.data == "confirm_trade":
-            plan = pending_plans.pop(user_id, None)
+            plan = _pop_pending_plan(user_id)
             if not plan:
                 await query.answer()
                 await safe_edit(query,
                     "\u274c *Trade Expired \u2014 Trade on edgeX*\n\nSend a new request.",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                        [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")]]))
                 return
 
             user = db.get_user(user_id)
@@ -2134,7 +2479,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     "\u274c *Not Connected \u2014 Trade on edgeX*\n\nUse /start to connect.",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                        [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")]]))
                 return
 
             await query.answer()
@@ -2144,12 +2489,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 parse_mode="Markdown", reply_markup=None)
             _exec_msg_id = query.message.message_id
 
-            async def _edit_exec(text, *kw):
+            async def _edit_exec(text, **kw):
                 try:
                     await context.bot.edit_message_text(
-                        chat_id=chat_id, message_id=_exec_msg_id, text=text, *kw)
+                        chat_id=chat_id, message_id=_exec_msg_id, text=text, **kw)
                 except Exception:
-                    await safe_send(context, chat_id, text, *kw)
+                    await safe_send(context, chat_id, text, **kw)
 
             client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
             contract_id = await edgex_client.resolve_contract_id(plan["asset"])
@@ -2161,7 +2506,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     f"Try BTC, ETH, or SOL.",
                     parse_mode="Markdown",
                     reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                        [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")]]))
                 return
 
             # Sanitize size/price: strip non-numeric chars, resolve "market" price
@@ -2175,7 +2520,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         f"\u274c *Price Unavailable \u2014 Trade on edgeX*\n\nCouldn't fetch price for {plan['asset']}.",
                         parse_mode="Markdown",
                         reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")]]))
+                            [InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")]]))
                     return
             raw_price = re.sub(r'[^\d.]', '', raw_price)
 
@@ -2195,6 +2540,8 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 side=plan["side"],
                 size=raw_size,
                 price=raw_price,
+                take_profit=plan.get("take_profit"),
+                stop_loss=plan.get("stop_loss"),
             )
 
             if result.get("code") == "SUCCESS":
@@ -2237,7 +2584,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 await _edit_exec(friendly, parse_mode="Markdown", reply_markup=_main_menu_kb)
             return
 
-        # ── Close confirmation (second step) ──
+        # ── Close confirmation (second step) ── ORDER MATTERS: must be before close_
         if query.data.startswith("close_confirm_"):
             target = query.data.replace("close_confirm_", "")
             await query.answer()
@@ -2356,7 +2703,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                         msg += f"\u274c {sym} {sd}: {r.get('error', r.get('msg', 'failed'))[:60]}\n"
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=_main_menu_kb)
             except Exception as e:
-                await safe_edit(query, f"\u274c Error: {str(e)[:200]}", reply_markup=_main_menu_kb)
+                await safe_edit(query, "❌ Something went wrong. Please try again.", reply_markup=_main_menu_kb)
             return
 
         if query.data.startswith("close_"):
@@ -2425,10 +2772,10 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     f"Cancel orders to free margin, then retry."
                 )
                 kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton(f"\u274c Cancel All {symbol} Orders", callback_data=f"cancelorders_{contract_id}")],
+                    [InlineKeyboardButton(f"\u274c Cancel All {symbol} Orders", callback_data=_safe_cb(f"cancelorders_{contract_id}"))],
                     [InlineKeyboardButton(f"\U0001f504 Retry Close {symbol}", callback_data=f"close_{contract_id}")],
-                    [InlineKeyboardButton("\U0001f4cb View Orders", callback_data=f"vieworders_{contract_id}"),
-                     InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
+                    [InlineKeyboardButton("\U0001f4cb View Orders", callback_data=_safe_cb(f"vieworders_{contract_id}")),
+                     InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")],
                 ])
                 await safe_edit(query, msg, parse_mode="Markdown", reply_markup=kb)
                 return
@@ -2533,15 +2880,15 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 if o_id:
                     buttons.append([InlineKeyboardButton(
                         f"\u274c Cancel {o_side} {o_size}@{o_price}",
-                        callback_data=f"cancelone_{o_id}"
+                        callback_data=_safe_cb(f"cancelone_{o_id}")
                     )])
 
             buttons.append([InlineKeyboardButton(
                 f"\u274c Cancel All {symbol} Orders",
-                callback_data=f"cancelorders_{contract_id}"
+                callback_data=_safe_cb(f"cancelorders_{contract_id}")
             )])
             buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="trade_hub"),
-                           InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
+                           InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")])
 
             await safe_edit(query,
                 "\n".join(lines), parse_mode="Markdown",
@@ -2575,7 +2922,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 f"\u26a0\ufe0f Cancel this order?{detail}",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("\u2705 Yes, cancel", callback_data=f"cancelone_{order_id}")],
+                    [InlineKeyboardButton("\u2705 Yes, cancel", callback_data=_safe_cb(f"cancelone_{order_id}"))],
                     [InlineKeyboardButton("\u274c Keep order", callback_data="cancel_dismiss")],
                 ]))
             return
@@ -2643,7 +2990,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     except Exception as e:
         logger.error(f"handle_trade_callback error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}")
+        await safe_send(context, chat_id, "❌ Something went wrong. Please try again.")
 
 
 # ──────────────────────────────────────────
@@ -2691,7 +3038,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\u2514 Available: `${avail_str}`\n"
         )
 
-        positions = summary.get("positions", [])
+        positions = [p for p in summary.get("positions", []) if isinstance(p, dict) and float(p.get("size", "0")) != 0]
 
         if positions:
             msg += f"\n\U0001f4c8 *Open Positions ({len(positions)}):*\n"
@@ -2725,12 +3072,12 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             msg += "\nNo open positions."
 
-        await update.message.reply_text(msg, parse_mode="Markdown",
+        await update.message.reply_text(_truncate_msg(msg), parse_mode="Markdown",
             reply_markup=_quick_actions_keyboard())
 
     except Exception as e:
         logger.error(f"cmd_status error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
+        await safe_send(context, chat_id, "❌ Something went wrong. Please try again.",
             reply_markup=_quick_actions_keyboard())
 
 
@@ -2771,13 +3118,13 @@ async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if o_id:
                 buttons.append([InlineKeyboardButton(
                     f"\u274c Cancel {symbol} {o_side} {o_size}@{o_price}",
-                    callback_data=f"cancelone_{o_id}"
+                    callback_data=_safe_cb(f"cancelone_{o_id}")
                 )])
 
-        buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_all")])
+        buttons.append([InlineKeyboardButton("\u274c Cancel All Orders", callback_data="cancelorders_confirm_all")])
         buttons.append([
             InlineKeyboardButton("\U0001f534 Close", callback_data="quick_close"),
-            InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard"),
+            InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard"),
         ])
 
         await safe_send(context, chat_id,
@@ -2785,7 +3132,7 @@ async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(buttons))
     except Exception as e:
         logger.error(f"cmd_orders error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}")
+        await safe_send(context, chat_id, "❌ Something went wrong. Please try again.")
 
 
 # ──────────────────────────────────────────
@@ -2840,14 +3187,14 @@ async def cmd_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except (ValueError, TypeError):
                 pnl_str = f"${pnl_raw}"
             msg += f"\n\u2022 {symbol} {side} | Size: {size} | PnL: {pnl_str}"
-            buttons.append([InlineKeyboardButton(f"Close {symbol} {side}", callback_data=f"close_{cid}")])
+            buttons.append([InlineKeyboardButton(f"Close {symbol} {side}", callback_data=_safe_cb(f"close_confirm_{cid}"))])
 
-        buttons.append([InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")])
+        buttons.append([InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")])
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
 
     except Exception as e:
         logger.error(f"cmd_close error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
+        await safe_send(context, chat_id, "❌ Something went wrong. Please try again.",
             reply_markup=_quick_actions_keyboard())
 
 
@@ -2911,12 +3258,12 @@ async def cmd_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
             side_emoji = "\u2b06\ufe0f" if side == "BUY" else "\u2b07\ufe0f"
             msg += f"\n{side_emoji} {symbol} {side} | {size} @ {price_f} | PnL: {pnl_str} | {ts}"
 
-        await update.message.reply_text(msg, parse_mode="Markdown",
+        await update.message.reply_text(_truncate_msg(msg), parse_mode="Markdown",
             reply_markup=_quick_actions_keyboard())
 
     except Exception as e:
         logger.error(f"cmd_history error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error: {str(e)[:200]}",
+        await safe_send(context, chat_id, "❌ Something went wrong. Please try again.",
             reply_markup=_quick_actions_keyboard())
 
 
@@ -2963,7 +3310,7 @@ async def cmd_pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
         win_rate = (winning / total_trades * 100) if total_trades > 0 else 0
 
         # Unrealized PnL from open positions
-        positions = summary.get("positions", [])
+        positions = [p for p in summary.get("positions", []) if isinstance(p, dict) and float(p.get("size", "0")) != 0]
         unrealized_pnl = 0
         for p in positions:
             try:
@@ -3029,7 +3376,7 @@ async def cmd_pnl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logger.error(f"cmd_pnl error: {e}", exc_info=True)
-        await safe_send(context, chat_id, f"\u274c Error generating report: {str(e)[:200]}",
+        await safe_send(context, chat_id, "❌ Error generating report. Please try again.",
             reply_markup=_quick_actions_keyboard())
 
 
@@ -3057,11 +3404,11 @@ async def cmd_logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.error(f"cmd_logout error: {e}", exc_info=True)
-        await safe_send(context, update.effective_chat.id, f"\u274c Error: {str(e)[:200]}")
+        await safe_send(context, update.effective_chat.id, "❌ Something went wrong. Please try again.")
 
 
 # ──────────────────────────────────────────
-# /news — News alerts subscription management
+# /event — Event Trading management
 # ──────────────────────────────────────────
 
 def _news_main_menu(user_id: int) -> tuple:
@@ -3093,11 +3440,12 @@ def _news_main_menu(user_id: int) -> tuple:
         row.append(InlineKeyboardButton("\U0001f5d1", callback_data=f"news_remove_{sid}"))
         buttons.append(row)
     buttons.append([InlineKeyboardButton("\u2795 Add News Source", callback_data="news_add")])
+    buttons.append([InlineKeyboardButton("\u2699\ufe0f Trade Defaults", callback_data="news_trade_defaults")])
     buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
     return msg, InlineKeyboardMarkup(buttons)
 
 
-async def cmd_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_event(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     msg, keyboard = _news_main_menu(user_id)
     await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=keyboard)
@@ -3109,43 +3457,65 @@ async def cmd_news(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "\U0001f916 *edgeX Agent* \u2014 talk to me like a degen, I'll trade like a pro\n\n"
-        "_\"BTC\u2019s looking juicy, should I ape in?\"_\n"
+        "\U0001f916 *edgeX Agent \u2014 Your Personal AI Trading Agent*\n\n"
+        "Just talk to me in any language:\n"
+        "_\"BTC pumping, should I long?\"_\n"
         "_\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"_\n"
         "_\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"_\n"
         "_\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"_\n"
         "_\"\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 NVDA \u043d\u0430 100$\"_\n\n"
-        "*Commands:*\n"
-        "/start \u2014 dashboard\n"
-        "/status \u2014 check your bags\n"
-        "/close \u2014 close a position\n"
+        "*Trading:*\n"
+        "/start \u2014 dashboard & main menu\n"
+        "/status \u2014 account equity & open positions\n"
+        "/close \u2014 close a position with confirmation\n"
         "/orders \u2014 view & cancel open orders\n"
         "/history \u2014 recent trades\n"
-        "/pnl \u2014 today's damage report\n"
-        "/setai \u2014 switch AI provider\n"
-        "/memory \u2014 view your Agent's memory\n"
-        "/news \u2014 manage news alerts\n"
-        "/feedback \u2014 suggest features or report bugs\n"
-        "/logout \u2014 disconnect",
+        "/pnl \u2014 daily P&L report & win rate\n\n"
+        "*AI & Events:*\n"
+        "/setai \u2014 configure AI provider & model\n"
+        "/memory \u2014 view what your Agent remembers\n"
+        "/event \u2014 event trading & news alerts\n\n"
+        "*Other:*\n"
+        "/feedback \u2014 send feedback to the team\n"
+        "/logout \u2014 disconnect edgeX account\n"
+        "/help \u2014 this message",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("\U0001f3e0 Main Menu", callback_data="back_to_dashboard")],
-        ]),
+        reply_markup=_main_menu_kb,
     )
 
 
 async def cmd_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_feedback"] = True
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("\u274c Cancel", callback_data="cancel_feedback")],
-    ])
     await update.message.reply_text(
         "\U0001f4ac *Feedback*\n\n"
         "Tell us what you'd like to see, or what's not working well.\n"
-        "Type your feedback below:",
+        "Type your message below \u2014 it goes straight to the team:",
         parse_mode="Markdown",
-        reply_markup=kb,
     )
+
+
+ADMIN_IDS = {7894288399}  # Aaron
+
+async def cmd_feedback_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin: view all feedback."""
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    feedbacks = db.get_all_feedback()
+    if not feedbacks:
+        await update.message.reply_text("\u2705 No feedback yet.")
+        return
+    msg = "\U0001f4cb *Feedback Dashboard*\n\n"
+    for fb in feedbacks[:20]:
+        fb_id = fb.get("id", "?")
+        name = _escape_md(str(fb.get("tg_first_name", "") or fb.get("tg_username", "?")))
+        text = _escape_md(str(fb.get("message", ""))[:100])
+        status = fb.get("status", "new")
+        ts = fb.get("created_at", 0)
+        date_str = datetime.fromtimestamp(ts).strftime("%m/%d %H:%M") if ts else "?"
+        icon = "\U0001f7e2" if status == "resolved" else "\U0001f7e1" if status == "in_progress" else "\U0001f534"
+        msg += f"{icon} *#{fb_id}* {name} ({date_str})\n{text}\n\n"
+    await update.message.reply_text(_truncate_msg(msg), parse_mode="Markdown",
+        reply_markup=_main_menu_kb)
 
 
 # ──────────────────────────────────────────
@@ -3207,21 +3577,38 @@ async def post_init(application: Application):
     for attempt in range(3):
         try:
             await application.bot.set_my_commands([
-                BotCommand("start", "Start"),
+                BotCommand("start", "Dashboard & main menu"),
+                BotCommand("status", "Account equity & positions"),
+                BotCommand("event", "Event trading & news alerts"),
+                BotCommand("close", "Close a position"),
+                BotCommand("orders", "View & cancel open orders"),
+                BotCommand("history", "Recent trades"),
+                BotCommand("pnl", "Daily P&L report"),
+                BotCommand("setai", "Configure AI provider"),
+                BotCommand("memory", "What your Agent remembers"),
+                BotCommand("feedback", "Send feedback to the team"),
+                BotCommand("help", "All commands & examples"),
+                BotCommand("logout", "Disconnect edgeX account"),
             ])
             # Start news push loop (polls all MCP sources including BWEnews)
             news_push.start_news_loop(application.bot)
+            # Periodic cleanup of expired pending trade plans
+            async def _cleanup_job(context):
+                _cleanup_expired_plans()
+            application.job_queue.run_repeating(_cleanup_job, interval=120, first=120)
             await application.bot.set_my_description(
-                "Your personal AI trading agent on edgeX.\n\n"
-                "Tell it your market view in any language — it analyzes, plans, and executes.\n\n"
-                "\"BTC's pumping, should I ape in?\"\n"
-                "\"帮我做空0.01个ETH\"\n"
-                "\"SOL 지금 사도 될까?\"\n\n"
-                "290+ assets: Crypto, US stocks, Gold, Silver\n"
-                "One-tap trading. Real-time data. Remembers your style."
+                "Your personal AI trading agent \u2014 breaking news, market analysis, "
+                "and one-tap trades on edgeX, all in Telegram.\n\n"
+                "\"BTC pumping, should I long?\"\n"
+                "\"\u30bd\u30e9\u30ca\u3092\u30ed\u30f3\u30b0\u3057\u305f\u3044\u3001\u5c11\u3057\u3060\u3051\"\n"
+                "\"\uc9c0\uae08 SILVER \uc0c1\ud669 \uc5b4\ub54c?\"\n"
+                "\"CRCL\u6da8\u7684\u79bb\u8c31\uff0c\u600e\u4e48\u64cd\u4f5c\"\n"
+                "\"\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 NVDA \u043d\u0430 100$\"\n\n"
+                "290+ assets: Crypto, US stocks, Gold, Silver"
             )
             await application.bot.set_my_short_description(
-                "Your personal AI trading agent — talk to it, it trades on edgeX for you."
+                "Your personal AI trading agent \u2014 breaking news, market analysis, "
+                "and one-tap trades on edgeX, all in Telegram."
             )
             logger.info("Bot commands and description set successfully")
             return
@@ -3238,7 +3625,9 @@ def main():
     app = (
         Application.builder()
         .token(config.TELEGRAM_BOT_TOKEN)
+        .defaults(Defaults(do_quote=True))
         .post_init(post_init)
+        .concurrent_updates(True)
         .connect_timeout(30)
         .read_timeout(30)
         .write_timeout(30)
@@ -3265,6 +3654,8 @@ def main():
             CommandHandler("history", cmd_history),
             CommandHandler("pnl", cmd_pnl),
             CommandHandler("memory", cmd_memory),
+            CommandHandler("event", cmd_event),
+            CommandHandler("news", cmd_event),
             CommandHandler("logout", cmd_logout),
             CommandHandler("help", cmd_help),
             CommandHandler("cancel", cancel_setup),
@@ -3280,21 +3671,25 @@ def main():
                 CallbackQueryHandler(handle_trade_callback),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_ai_config),
             ],
+            ConversationHandler.TIMEOUT: [MessageHandler(filters.ALL, cancel_setup)],
         },
         fallbacks=[CommandHandler("cancel", cancel_setup)],
         per_message=False,
+        conversation_timeout=120,  # auto-exit after 2 min inactivity
     )
 
     app.add_handler(setup_handler)
     app.add_handler(ai_setup_handler)
     app.add_handler(CommandHandler("feedback", cmd_feedback))
+    app.add_handler(CommandHandler("fb", cmd_feedback_admin))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("close", cmd_close))
     app.add_handler(CommandHandler("orders", cmd_orders))
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("pnl", cmd_pnl))
     app.add_handler(CommandHandler("memory", cmd_memory))
-    app.add_handler(CommandHandler("news", cmd_news))
+    app.add_handler(CommandHandler("event", cmd_event))
+    app.add_handler(CommandHandler("news", cmd_event))  # silent alias → /event
     app.add_handler(CommandHandler("logout", cmd_logout))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CallbackQueryHandler(handle_trade_callback))
