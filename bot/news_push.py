@@ -44,7 +44,7 @@ def _can_push_to_user(user_id: int, source_id: str) -> bool:
     """Check if user hasn't exceeded their per-source max_per_hour.
     BWEnews has no rate limit — trusted source.
     """
-    if source_id == "bwenews":
+    if source_id in ("bwenews", "bwetradfi"):
         return True
     max_per_hour = db.get_user_news_frequency(user_id, source_id)
     if max_per_hour <= 0:

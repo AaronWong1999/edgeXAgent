@@ -1,8 +1,8 @@
-"""BWEnews MCP Server — standalone service that monitors @BWEnews TG channel
-and serves news via MCP JSON-RPC protocol.
+"""BWE MCP Server — standalone service that monitors @BWEnews and @BWEtradfi
+TG channels and serves news via MCP JSON-RPC protocol.
 
-Architecture: polls recent messages from @BWEnews every 30s using Telethon
-get_messages (reliable, no event listener dependency).
+Architecture: polls recent messages from both channels every 30s using Telethon
+get_messages (reliable, no event listener dependency). Single TG session for both.
 
 Run as: python3 bwenews_mcp.py
 Listens on http://localhost:8788/mcp
@@ -27,13 +27,18 @@ logger = logging.getLogger("bwenews_mcp")
 TG_API_ID = int(os.environ.get("TG_API_ID", "0"))
 TG_API_HASH = os.environ.get("TG_API_HASH", "")
 BWENEWS_CHANNEL = "BWEnews"
+BWETRADFI_CHANNEL = "BWEtradfi"
 MCP_PORT = int(os.environ.get("BWENEWS_MCP_PORT", "8788"))
 
 _articles = deque(maxlen=100)
+_tradfi_articles = deque(maxlen=100)
 _seen_ids = set()
+_tradfi_seen_ids = set()
 _telethon_client = None
 _channel_entity = None
+_tradfi_channel_entity = None
 _last_poll_time = 0
+_last_tradfi_poll_time = 0
 POLL_INTERVAL = 30
 
 
@@ -135,6 +140,62 @@ async def _poll_channel():
                 logger.error(f"Reconnect failed: {re}")
 
 
+async def _poll_tradfi_channel():
+    """Poll @BWEtradfi for recent messages and add to tradfi articles deque."""
+    global _last_tradfi_poll_time
+    if not _telethon_client or not _tradfi_channel_entity:
+        return
+
+    now = time.time()
+    if now - _last_tradfi_poll_time < POLL_INTERVAL:
+        return
+    _last_tradfi_poll_time = now
+
+    try:
+        msgs = await _telethon_client.get_messages(_tradfi_channel_entity, limit=10)
+        new_count = 0
+        for m in reversed(msgs):
+            if m.id in _tradfi_seen_ids:
+                continue
+            _tradfi_seen_ids.add(m.id)
+
+            text = m.text or m.message or ""
+            if not text or len(text) < 10:
+                continue
+
+            headline = _extract_headline(text)
+            if not headline or len(headline) < 15:
+                continue
+
+            url = _extract_url(text)
+            post_time = m.date.timestamp() if m.date else time.time()
+
+            article = {
+                "title": headline,
+                "url": url,
+                "body": "",
+                "source": "BWETradFi",
+                "categories": "tradfi,finance,stocks,breaking",
+                "published_at": post_time,
+            }
+            _tradfi_articles.appendleft(article)
+            new_count += 1
+            logger.info(f"New TradFi article: {headline[:80]}")
+
+        if new_count:
+            logger.info(f"Polled {new_count} new articles from @BWEtradfi")
+    except Exception as e:
+        logger.error(f"TradFi poll error: {e}")
+        if "AuthKey" in str(e) or "connection" in str(e).lower() or "disconnect" in str(e).lower():
+            logger.info("Attempting reconnect...")
+            try:
+                await _telethon_client.disconnect()
+                await _telethon_client.connect()
+                logger.info("Reconnected successfully")
+            except Exception as re:
+                logger.error(f"Reconnect failed: {re}")
+
+
 async def mcp_handler(request):
     try:
         body = await request.json()
@@ -148,14 +209,24 @@ async def mcp_handler(request):
     if method == "tools/list":
         return web.json_response({
             "jsonrpc": "2.0", "id": req_id,
-            "result": {"tools": [{
-                "name": "get_bwenews",
-                "description": "Get latest breaking news from BWEnews (@BWEnews)",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {"limit": {"type": "integer", "default": 10}},
+            "result": {"tools": [
+                {
+                    "name": "get_bwenews",
+                    "description": "Get latest breaking crypto/finance news from BWEnews (@BWEnews)",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {"limit": {"type": "integer", "default": 10}},
+                    },
                 },
-            }]},
+                {
+                    "name": "get_bwetradfi",
+                    "description": "Get latest TradFi/stocks/macro news from BWETradFi (@BWEtradfi)",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {"limit": {"type": "integer", "default": 10}},
+                    },
+                },
+            ]},
         })
 
     if method == "tools/call":
@@ -166,6 +237,14 @@ async def mcp_handler(request):
         if tool_name == "get_bwenews":
             await _poll_channel()
             articles = list(_articles)[:limit]
+            return web.json_response({
+                "jsonrpc": "2.0", "id": req_id,
+                "result": {"content": [{"type": "text", "text": json.dumps(articles)}]},
+            })
+
+        if tool_name == "get_bwetradfi":
+            await _poll_tradfi_channel()
+            articles = list(_tradfi_articles)[:limit]
             return web.json_response({
                 "jsonrpc": "2.0", "id": req_id,
                 "result": {"content": [{"type": "text", "text": json.dumps(articles)}]},
@@ -185,18 +264,23 @@ async def mcp_handler(request):
 async def health_handler(request):
     return web.json_response({
         "status": "ok",
-        "articles": len(_articles),
-        "channel": BWENEWS_CHANNEL,
+        "bwenews_articles": len(_articles),
+        "bwetradfi_articles": len(_tradfi_articles),
+        "channels": [BWENEWS_CHANNEL, BWETRADFI_CHANNEL],
     })
 
 
 async def poll_loop():
-    """Background loop: poll channel every POLL_INTERVAL seconds."""
+    """Background loop: poll both channels every POLL_INTERVAL seconds."""
     while True:
         try:
             await _poll_channel()
         except Exception as e:
-            logger.error(f"Poll loop error: {e}")
+            logger.error(f"BWEnews poll loop error: {e}")
+        try:
+            await _poll_tradfi_channel()
+        except Exception as e:
+            logger.error(f"BWETradFi poll loop error: {e}")
         await asyncio.sleep(POLL_INTERVAL)
 
 
@@ -213,9 +297,18 @@ async def start_telethon(app):
     _channel_entity = await _telethon_client.get_entity(BWENEWS_CHANNEL)
     logger.info(f"Connected to @{BWENEWS_CHANNEL} (id={_channel_entity.id})")
 
-    # Initial load: fetch last 10 messages
+    try:
+        _tradfi_channel_entity = await _telethon_client.get_entity(BWETRADFI_CHANNEL)
+        logger.info(f"Connected to @{BWETRADFI_CHANNEL} (id={_tradfi_channel_entity.id})")
+    except Exception as e:
+        logger.warning(f"Could not connect to @{BWETRADFI_CHANNEL}: {e}")
+
+    # Initial load: fetch last 10 messages from both channels
     await _poll_channel()
-    logger.info(f"Initial load: {len(_articles)} articles")
+    logger.info(f"BWEnews initial load: {len(_articles)} articles")
+    if _tradfi_channel_entity:
+        await _poll_tradfi_channel()
+        logger.info(f"BWETradFi initial load: {len(_tradfi_articles)} articles")
 
     # Start background poll loop
     asyncio.ensure_future(poll_loop())

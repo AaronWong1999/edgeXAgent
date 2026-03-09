@@ -184,6 +184,12 @@ def init_db():
     """, (time.time(),))
     c.execute("UPDATE news_sources SET is_default = 1, mcp_url = 'http://127.0.0.1:8788/mcp', mcp_tool = 'get_bwenews', poll_interval_sec = 30 WHERE id = 'bwenews'")
     c.execute("UPDATE news_sources SET is_default = 0 WHERE id = 'free_crypto_news'")
+    # BWETradFi — TradFi/stocks/macro news (default OFF, user must opt-in)
+    c.execute("""
+        INSERT OR IGNORE INTO news_sources (id, name, mcp_url, mcp_tool, category, is_default, enabled, poll_interval_sec, created_at)
+        VALUES ('bwetradfi', 'BWETradFi', 'http://127.0.0.1:8788/mcp', 'get_bwetradfi', 'tradfi', 0, 1, 30, ?)
+    """, (time.time(),))
+    c.execute("UPDATE news_sources SET mcp_url = 'http://127.0.0.1:8788/mcp', mcp_tool = 'get_bwetradfi', poll_interval_sec = 30 WHERE id = 'bwetradfi'")
     conn.commit()
     conn.close()
 

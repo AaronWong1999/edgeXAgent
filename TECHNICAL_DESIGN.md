@@ -62,7 +62,7 @@
 | `news_push.py` | ~511 | News: MCP polling, AI analysis, alert formatting, push delivery |
 | `config.py` | ~55 | Constants: contracts, limits, CLI path |
 | `memory.py` | ~200 | Conversation memory: 3-tier (T0 working, T1 summaries, T2 preferences) |
-| `bwenews_mcp.py` | ~220 | BWEnews MCP server: Telethon polling, HTTP JSON-RPC endpoint |
+| `bwenews_mcp.py` | ~280 | BWE MCP server: Telethon polling @BWEnews + @BWEtradfi, HTTP JSON-RPC (get_bwenews, get_bwetradfi) |
 | `auth_bwenews.py` | ~50 | One-time Telethon session authentication |
 | `tg_prototype.html` | ~220 | Interactive prototype: 68 screens, all flows |
 
@@ -283,16 +283,26 @@ edgex --json order create BTC buy limit 0.014 \
 ### 6.1 Architecture
 
 ```
-BWEnews MCP Server (port 8788)          News Push System (main bot)
+BWE MCP Server (port 8788)              News Push System (main bot)
 ┌──────────────────────────┐            ┌──────────────────────────┐
-│ Telethon polling (30s)   │            │ APScheduler (120s)       │
-│ → _poll_channel()        │   HTTP     │ → poll_and_push()        │
-│ → deque(maxlen=100)      │◄──────────►│ → fetch_mcp_news()       │
-│ → _seen_ids dedup        │  JSON-RPC  │ → analyze_news_with_ai() │
-│                          │            │ → format_news_alert()    │
-│ Session: bwenews_session │            │ → bot.send_message()     │
+│ Single Telethon session  │            │ poll_and_push() (10s)    │
+│ → 2 channels:            │   HTTP     │ → fetch_mcp_news()       │
+│   @BWEnews  (crypto)     │◄──────────►│ → analyze_news_with_ai() │
+│   @BWEtradfi (tradfi)    │  JSON-RPC  │ → format_news_alert()    │
+│ → _poll_channel() (30s)  │            │ → bot.send_message()     │
+│ → _poll_tradfi_channel() │            │                          │
+│ → 2 deques, 2 tools      │            │                          │
+│ Session: bwenews_session │            │                          │
 │ NEVER touch while running│            │                          │
 └──────────────────────────┘            └──────────────────────────┘
+
+MCP Tools:
+  - get_bwenews    → @BWEnews articles (crypto/finance/breaking)
+  - get_bwetradfi  → @BWEtradfi articles (tradfi/stocks/macro)
+
+Default Sources:
+  - BWEnews    (is_default=1, auto-subscribed, all users)
+  - BWETradFi  (is_default=0, opt-in, user must enable)
 ```
 
 ### 6.2 News Analysis (AI)
@@ -399,6 +409,7 @@ Dashboard (L1) — 3 states
 │   └── 💬 Chat → Trade Plan (shared) → Execute → ✅/❌/Cancelled
 │
 ├── 📰 Event Trading (L2)
+│   ├── Default sources: BWEnews (ON), BWETradFi (OFF — user opt-in)
 │   ├── ⏱ Frequency (L3)
 │   ├── 🔴/🟢 Toggle (L3, in-place)
 │   ├── ➕ Add Source (L3) → ✅ Added / ❌ Failed
@@ -408,7 +419,7 @@ Dashboard (L1) — 3 states
 │   │   ├── Amounts Picker (L3)
 │   │   ├── TP Picker (L3)
 │   │   └── SL Picker (L3)
-│   └── 📰 News Alert (Push) → Translation / Trade tier → Unified Trade Flow
+│   └── 📰 News Alert (Push) → Translation / Trade tier → Direct Execution
 ```
 
 ### 7.3 Callback Data Registry
@@ -497,15 +508,16 @@ ssh -i key.pem ubuntu@147.224.247.125 "sudo systemctl restart edgex-agent"
 ssh -i key.pem ubuntu@147.224.247.125 "sudo journalctl -u edgex-agent -n 5"
 ```
 
-### 10.4 BWEnews MCP Service
+### 10.4 BWE MCP Service
 
 ```ini
 # Separate systemd service: bwenews-mcp
 ExecStart=/home/ubuntu/bwenews-mcp/venv/bin/python3 bwenews_mcp.py
-# Port 8788, polls Telegram channel every 30 seconds
+# Port 8788, single Telethon session polls @BWEnews + @BWEtradfi every 30s
+# Tools: get_bwenews, get_bwetradfi
 ```
 
-**CRITICAL**: Never access the Telethon session file while the service is running. Telegram permanently revokes sessions on dual-access (`AuthKeyDuplicatedError`). Test only via MCP HTTP: `curl http://127.0.0.1:8788/mcp`
+**CRITICAL**: Never access the Telethon session file while the service is running. Telegram permanently revokes sessions on dual-access (`AuthKeyDuplicatedError`). Test only via MCP HTTP: `curl http://127.0.0.1:8788/health`
 
 ## 11. Testing
 
