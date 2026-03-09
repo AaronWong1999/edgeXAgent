@@ -314,19 +314,34 @@ Asset Resolution Rules:
 ```
 *{title}*
 
-{🟢|🔴} {asset} | {BULLISH|BEARISH} | {███} {confidence}
-{⬆️|⬇️} {LONG|SHORT} @ ${price} | {lev}x | TP ${tp} SL ${sl}
+{🟢|🔴} {AI reason — one sentence analysis}
 [Source](url)
 
-[⬆️ LONG {asset} ${amt1} {lev}x]  ← 3 tiers from user Trade Defaults
-[⬆️ LONG {asset} ${amt2} {lev}x]
-[⬆️ LONG {asset} ${amt3} {lev}x]
+[⬆️ LONG {lev}x {asset} 💰${amt1} | TP {tp} SL {sl}]  ← 3 tiers
+[⬆️ LONG {lev}x {asset} 💰${amt2} | TP {tp} SL {sl}]
+[⬆️ LONG {lev}x {asset} 💰${amt3} | TP {tp} SL {sl}]
 [🇨🇳] [🇯🇵] [🇰🇷] [🇷🇺]           ← translation flags
 ```
 
 - Real-time price via `_get_price_fast()` (edgex-cli, no auth)
 - TP = price × (1 + tp_pct/100), SL = price × (1 - sl_pct/100) for LONG
 - TP = price × (1 - tp_pct/100), SL = price × (1 + sl_pct/100) for SHORT
+
+### 6.3.1 Direct Trade Execution (from news/chat button click)
+
+```
+Button click (nt_{asset}_{side}_{lev}_{amt})
+    │
+    ├── 1. Get market price (edgex-cli)
+    ├── 2. size = floor((notional * leverage / price) / stepSize) * stepSize
+    ├── 3. TP/SL = round(price * (1 ± pct) / tickSize) * tickSize
+    ├── 4. pre_trade_check (balance + min order validation)
+    └── 5. place_order → success/fail
+```
+
+- **No AI plan generation** — direct execution, ~2-3s response time
+- stepSize/tickSize from `get_contract_specs()` (cached 1hr)
+- Balance errors show Close Position + Deposit buttons
 
 ### 6.4 User Trade Defaults
 

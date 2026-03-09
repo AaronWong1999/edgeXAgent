@@ -79,7 +79,7 @@ Many callbacks are handled in **BOTH** `handle_login_choice` and `handle_trade_c
 | 49 | 1897 | `news_mute_{sourceId}` (startswith) | "🔕 Source muted" (toast) — removes reply markup | N/A | N/A |
 | 50 | 1907 | `news_dismiss` | Deletes message or shows "✔️ Dismissed" | N/A | N/A |
 | 51 | 1915 | `tl_{lang_code}` (startswith, e.g. `tl_zh`, `tl_ja`, `tl_ko`, `tl_ru`) | Translated news card: "*{source}: {translation}*" | Same buttons as original news card | N/A (sends new message) |
-| 52 | 1992 | `nt_{asset}_{side}_{lev}_{notional}` (startswith) | "🔄 *{LONG/SHORT} {asset} — Trade on edgeX*\nGenerating trade plan (~${n}, {lev}x)..." → then trade confirmation | `confirm_trade`, `cancel_trade` (if TRADE) or `back_to_dashboard` | `back_to_dashboard` |
+| 52 | 1992 | `nt_{asset}_{side}_{lev}_{notional}` (startswith) | "🔄 *{LONG/SHORT} {lev}x {asset} 💰${n} — Trade on edgeX*\nPlacing order..." → DIRECT EXECUTION (no AI plan, no confirm step) | `quick_close`, `back_to_dashboard` (on fail) | `back_to_dashboard` |
 | 53 | 1992 | `news_trade_{asset}_{side}_{lev}_{notional}` (startswith) | Same as `nt_` above | Same | Same |
 | 54 | 2094 | `settings_menu` | Redirects → same as `ai_hub`: "🤖 *AI Agent — AI Agent*..." | `change_persona`, `ai_activate_prompt`, `settings_memory`, `back_to_dashboard` | `back_to_dashboard` |
 | 55 | 2118 | `settings_memory` | "📝 *Memory — AI Agent*\n\n├ Messages: `{n}`\n└ Summaries: `{n}`" | `memory_clear_confirm`, `ai_hub` | `ai_hub` |

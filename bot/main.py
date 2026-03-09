@@ -219,10 +219,10 @@ def _smart_reply_buttons(reply_text: str, has_edgex: bool, user):
                 cb_sym = sym[:10]
                 for amt in amounts[:2]:
                     buttons.append([InlineKeyboardButton(
-                        f"\u2b06\ufe0f LONG {sym} ${amt} {lev}x | TP +{tp_pct}% SL -{sl_pct}%",
+                        f"\u2b06\ufe0f LONG {lev}x {sym} \U0001f4b0${amt} | TP +{tp_pct}% SL -{sl_pct}%",
                         callback_data=f"nt_{cb_sym}_BUY_{lev}_{amt}")])
                     buttons.append([InlineKeyboardButton(
-                        f"\u2b07\ufe0f SHORT {sym} ${amt} {lev}x | TP +{tp_pct}% SL -{sl_pct}%",
+                        f"\u2b07\ufe0f SHORT {lev}x {sym} \U0001f4b0${amt} | TP +{tp_pct}% SL -{sl_pct}%",
                         callback_data=f"nt_{cb_sym}_SELL_{lev}_{amt}")])
 
     # Rule: if no meaningful buttons, return None — let the conversation flow naturally
@@ -2201,6 +2201,7 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if query.data.startswith("nt_") or query.data.startswith("news_trade_"):
             # Format: nt_{asset}_{side}_{leverage}_{notional}
+            # Direct execution — no AI plan generation, just execute immediately
             parts = query.data.split("_")
             if query.data.startswith("nt_") and len(parts) >= 5:
                 asset = parts[1]
@@ -2221,78 +2222,126 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 await query.answer("\u274c Connect your edgeX account first. Use /start", show_alert=True)
                 return
 
-            user_ai = ai_trader.get_user_ai_config(user_id)
-            if not user_ai:
-                await query.answer("\u274c Activate AI first. Use /setai", show_alert=True)
-                return
-
             try:
-                if notional_str == "small":
-                    notional = 50.0
-                elif notional_str == "medium":
-                    notional = 150.0
-                else:
-                    notional = float(notional_str)
-                action_word = "long" if side == "BUY" else "short"
-                from news_push import get_user_news_trade_defaults
-                ntd = get_user_news_trade_defaults(user_id)
-                prompt = (f"{action_word} {asset} with ${notional:.0f} at {leverage}x leverage, "
-                          f"set TP at +{ntd['tp_pct']}% and SL at -{ntd['sl_pct']}%, execute immediately")
+                notional = float(notional_str) if notional_str not in ("small", "medium") else (50.0 if notional_str == "small" else 150.0)
+                lev = int(leverage)
+                action_word = "LONG" if side == "BUY" else "SHORT"
 
                 await query.answer()
-                await safe_send(context, chat_id,
-                    f"\U0001f504 *{action_word.upper()} {asset} \u2014 Trade on edgeX*\n\nGenerating trade plan (~${notional:.0f}, {leverage}x)...",
+                exec_msg = await safe_send(context, chat_id,
+                    f"\U0001f504 *{action_word} {lev}x {asset} \U0001f4b0${notional:.0f} \u2014 Trade on edgeX*\n\nPlacing order...",
                     parse_mode="Markdown")
 
-                stop_typing = asyncio.Event()
-                typing_task = asyncio.create_task(_keep_typing(context.bot, chat_id, stop_typing))
-                try:
-                    plan = await ai_trader.generate_trade_plan(
-                        prompt, market_prices=None, tg_user_id=user_id
-                    )
-                finally:
-                    stop_typing.set()
-                    typing_task.cancel()
+                async def _edit_nt(text, **kw):
                     try:
-                        await typing_task
-                    except (asyncio.CancelledError, Exception):
-                        pass
+                        await context.bot.edit_message_text(
+                            chat_id=chat_id, message_id=exec_msg.message_id, text=text, **kw)
+                    except Exception:
+                        await safe_send(context, chat_id, text, **kw)
 
-                if plan.get("action") == "TRADE":
-                    error = ai_trader.validate_plan(plan)
-                    if error:
-                        await safe_send(context, chat_id, f"\u26a0\ufe0f {error}", reply_markup=_quick_actions_keyboard())
-                        return
-                    _set_pending_plan(user_id, plan)
-                    await safe_send(context, chat_id,
-                        ai_trader.format_trade_plan(plan),
-                        parse_mode="Markdown",
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("\u2705 Confirm Execute", callback_data="confirm_trade"),
-                             InlineKeyboardButton("\u274c Cancel", callback_data="cancel_trade")],
-                        ]))
+                # Get price and calculate size
+                price_str = await edgex_client.get_market_price(asset)
+                if not price_str:
+                    await _edit_nt(f"\u274c *Price Unavailable* \u2014 Couldn't fetch price for {asset}.",
+                        parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
+                    return
+                import re
+                price = float(re.sub(r'[^\d.]', '', price_str))
+                if price <= 0:
+                    await _edit_nt(f"\u274c *Price Unavailable* \u2014 {asset} price is zero.",
+                        parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
+                    return
+
+                # notional = margin amount, position_value = notional * leverage
+                position_value = notional * lev
+                raw_size = position_value / price
+
+                contract_id = await edgex_client.resolve_contract_id(asset)
+                if not contract_id:
+                    await _edit_nt(f"\u274c *Asset Not Found* \u2014 `{asset}` not available on edgeX.",
+                        parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
+                    return
+
+                client = await edgex_client.create_client(user["account_id"], user["stark_private_key"])
+
+                # Round size to stepSize precision
+                specs = await edgex_client.get_contract_specs(client, contract_id)
+                step = float(specs.get("stepSize", "0.001")) if specs else 0.001
+                if step > 0:
+                    import math
+                    size = math.floor(raw_size / step) * step
                 else:
-                    reply = plan.get("reply", "Could not generate trade plan. Try asking directly.")
-                    if reply.lstrip().startswith("{") and '"action"' in reply:
-                        reply = ai_trader._strip_json_wrapper(reply)
-                    reply_lower = reply.lower()
-                    if "balance" in reply_lower or "margin" in reply_lower or "insufficient" in reply_lower:
+                    size = raw_size
+
+                if size <= 0:
+                    await _edit_nt(f"\u274c *Order Too Small* \u2014 ${notional:.0f} margin is too small for {asset}.",
+                        parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
+                    return
+
+                # Pre-trade check
+                preflight = await edgex_client.pre_trade_check(client, contract_id, side, str(size))
+                if not preflight["ok"]:
+                    error_msg = preflight["error"]
+                    suggestion = preflight.get("suggestion", "")
+                    # Check if balance issue
+                    combined = (error_msg + suggestion).lower()
+                    if "balance" in combined or "margin" in combined or "insufficient" in combined:
                         kb = InlineKeyboardMarkup([
-                            [
-                                InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
-                                InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio"),
-                            ],
-                            [
-                                InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
-                                InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard"),
-                            ],
+                            [InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                             InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio")],
+                            [InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                             InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")],
                         ])
                     else:
                         kb = _quick_actions_keyboard()
-                    await safe_send(context, chat_id, reply, parse_mode="Markdown", reply_markup=kb)
+                    await _edit_nt(f"\u274c {error_msg}\n{suggestion}", parse_mode="Markdown", reply_markup=kb)
+                    return
+
+                # Calculate TP/SL with proper tick size rounding
+                from news_push import get_user_news_trade_defaults
+                ntd = get_user_news_trade_defaults(user_id)
+                tick = float(specs.get("tickSize", "0.1")) if specs else 0.1
+                def _round_tick(p, t):
+                    if t > 0:
+                        return round(round(p / t) * t, 10)
+                    return round(p, 2)
+                if side == "BUY":
+                    tp_price = str(_round_tick(price * (1 + ntd["tp_pct"] / 100), tick))
+                    sl_price = str(_round_tick(price * (1 - ntd["sl_pct"] / 100), tick))
+                else:
+                    tp_price = str(_round_tick(price * (1 - ntd["tp_pct"] / 100), tick))
+                    sl_price = str(_round_tick(price * (1 + ntd["sl_pct"] / 100), tick))
+
+                result = await edgex_client.place_order(
+                    client, contract_id=contract_id, side=side,
+                    size=str(size), price=price_str,
+                    take_profit=tp_price, stop_loss=sl_price)
+
+                if result.get("code") == "SUCCESS":
+                    oid = result.get("data", {}).get("orderId", "?") if isinstance(result.get("data"), dict) else "?"
+                    await _edit_nt(
+                        f"\u2705 *{action_word} {lev}x {asset} \U0001f4b0${notional:.0f} \u2014 Order Placed*\n\n"
+                        f"\u251c Entry: `${price_str}`\n"
+                        f"\u251c TP: `${tp_price}` (+{ntd['tp_pct']}%)\n"
+                        f"\u251c SL: `${sl_price}` (-{ntd['sl_pct']}%)\n"
+                        f"\u2514 Order: `{oid}`",
+                        parse_mode="Markdown", reply_markup=_quick_actions_keyboard())
+                else:
+                    err = result.get("error", "") or result.get("msg", "") or str(result)
+                    err_lower = err.lower()
+                    if "balance" in err_lower or "margin" in err_lower or "insufficient" in err_lower:
+                        kb = InlineKeyboardMarkup([
+                            [InlineKeyboardButton("\U0001f534 Close a Position", callback_data="quick_close"),
+                             InlineKeyboardButton("\U0001f4b0 Deposit USDT", url="https://pro.edgex.exchange/portfolio")],
+                            [InlineKeyboardButton("\U0001f4ca Status", callback_data="quick_status"),
+                             InlineKeyboardButton("\U0001f680 Start", callback_data="back_to_dashboard")],
+                        ])
+                    else:
+                        kb = _quick_actions_keyboard()
+                    await _edit_nt(f"\u274c *Trade Failed*\n\n{err}", parse_mode="Markdown", reply_markup=kb)
             except Exception as e:
                 logger.error(f"News trade error: {e}", exc_info=True)
-                await safe_send(context, chat_id, "❌ Trade failed. Please try again.", reply_markup=_quick_actions_keyboard())
+                await safe_send(context, chat_id, "\u274c Trade failed. Please try again.", reply_markup=_quick_actions_keyboard())
             return
 
         # settings_menu redirects to ai_hub (Settings removed)

@@ -484,7 +484,7 @@ async def format_news_alert(article: dict, analysis: dict, tg_user_id: int) -> t
         side = "BUY" if action == "LONG" else "SELL"
         cb_asset = asset[:10]
         for amt in amounts:
-            label = f"{side_emoji} {side_word} {asset} ${amt} {leverage}x | TP {tp_str} SL {sl_str}"
+            label = f"{side_emoji} {side_word} {leverage}x {asset} \U0001f4b0${amt} | TP {tp_str} SL {sl_str}"
             buttons.append([InlineKeyboardButton(label,
                 callback_data=f"nt_{cb_asset}_{side}_{leverage}_{amt}")])
 
