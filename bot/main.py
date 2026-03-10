@@ -1852,6 +1852,15 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
+        if query.data.startswith("news_source_"):
+            source_id = query.data[len("news_source_"):]
+            result = _news_source_page(user_id, source_id)
+            if not result:
+                await query.answer("Source not found")
+                return
+            await safe_edit(query, result[0], parse_mode="Markdown", reply_markup=result[1])
+            return
+
         if query.data.startswith("news_noop_"):
             await query.answer()
             return
@@ -1862,8 +1871,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             source_id = remainder[:last_underscore]
             enable = remainder[last_underscore + 1:] == "on"
             db.set_user_subscription(user_id, source_id, enable)
-            msg, keyboard = _news_main_menu(user_id)
-            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
+            result = _news_source_page(user_id, source_id)
+            if result:
+                await safe_edit(query, result[0], parse_mode="Markdown", reply_markup=result[1])
+            else:
+                msg, keyboard = _news_main_menu(user_id)
+                await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_freq_"):
@@ -1892,8 +1905,12 @@ async def handle_trade_callback(update: Update, context: ContextTypes.DEFAULT_TY
             source_id = remainder[:last_underscore]
             max_per_hour = int(remainder[last_underscore + 1:])
             db.set_user_news_frequency(user_id, source_id, max_per_hour)
-            msg, keyboard = _news_main_menu(user_id)
-            await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
+            result = _news_source_page(user_id, source_id)
+            if result:
+                await safe_edit(query, result[0], parse_mode="Markdown", reply_markup=result[1])
+            else:
+                msg, keyboard = _news_main_menu(user_id)
+                await safe_edit(query, msg, parse_mode="Markdown", reply_markup=keyboard)
             return
 
         if query.data.startswith("news_remove_"):
@@ -3463,7 +3480,7 @@ async def cmd_logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def _news_main_menu(user_id: int) -> tuple:
     """Build the news management main menu message + keyboard."""
     subs = db.get_user_subscriptions(user_id)
-    freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr", 99: "unlimited"}
+    freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr", 99: "\u221e"}
 
     msg = "\U0001f4f0 *Event Trading \u2014 Event Trading*\n\nAI-analyzed news with one-tap trade buttons.\n\n"
     if not subs:
@@ -3480,17 +3497,51 @@ def _news_main_menu(user_id: int) -> tuple:
         is_on = bool(s.get("subscribed"))
         sid = s["id"]
         name = s["name"]
-        row = []
+        mph = s.get("user_max_per_hour", 2)
+        freq = freq_labels.get(mph, f"{mph}/hr")
         if is_on:
-            row.append(InlineKeyboardButton(f"{name} \U0001f7e2ON", callback_data=f"news_toggle_{sid}_off"))
+            label = f"{name} \U0001f7e2ON \u00b7 {freq}"
         else:
-            row.append(InlineKeyboardButton(f"{name} \U0001f534OFF", callback_data=f"news_toggle_{sid}_on"))
-        row.append(InlineKeyboardButton("\U0001f552", callback_data=f"news_freq_{sid}"))
-        row.append(InlineKeyboardButton("\U0001f5d1", callback_data=f"news_remove_{sid}"))
-        buttons.append(row)
+            label = f"{name} \U0001f534OFF"
+        buttons.append([InlineKeyboardButton(label, callback_data=f"news_source_{sid}")])
     buttons.append([InlineKeyboardButton("\u2795 Add News Source", callback_data="news_add")])
     buttons.append([InlineKeyboardButton("\u2699\ufe0f Trade Defaults", callback_data="news_trade_defaults")])
     buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="back_to_dashboard")])
+    return msg, InlineKeyboardMarkup(buttons)
+
+
+def _news_source_page(user_id: int, source_id: str):
+    """Build the per-source settings page. Returns (msg, keyboard) or None."""
+    subs = db.get_user_subscriptions(user_id)
+    src = next((s for s in subs if s["id"] == source_id), None)
+    if not src:
+        return None
+    is_on = bool(src.get("subscribed"))
+    mph = src.get("user_max_per_hour", 2)
+    freq_labels = {1: "1/hr", 2: "2/hr", 3: "3/hr", 5: "5/hr", 10: "10/hr"}
+    freq = freq_labels.get(mph, f"{mph}/hr")
+    status_emoji = "\U0001f7e2" if is_on else "\U0001f534"
+    status_word = "ON" if is_on else "OFF"
+    msg = (f"\U0001f4f0 *{src['name']} \u2014 Event Trading*\n\n"
+           f"Status: {status_emoji} *{status_word}*\n"
+           f"Frequency: *{freq}*")
+    buttons = []
+    if is_on:
+        buttons.append([InlineKeyboardButton(f"\U0001f534 Turn OFF", callback_data=f"news_toggle_{source_id}_off")])
+    else:
+        buttons.append([InlineKeyboardButton(f"\U0001f7e2 Turn ON", callback_data=f"news_toggle_{source_id}_on")])
+    options = [1, 2, 3, 5, 10]
+    freq_row = []
+    for n in options:
+        label = f"{'> ' if n == mph else ''}{n}/hr"
+        freq_row.append(InlineKeyboardButton(label, callback_data=f"news_setfreq_{source_id}_{n}"))
+        if len(freq_row) == 3:
+            buttons.append(freq_row)
+            freq_row = []
+    if freq_row:
+        buttons.append(freq_row)
+    buttons.append([InlineKeyboardButton("\U0001f5d1 Remove", callback_data=f"news_remove_{source_id}")])
+    buttons.append([InlineKeyboardButton("\U0001f519 Back", callback_data="news_settings")])
     return msg, InlineKeyboardMarkup(buttons)
 
 

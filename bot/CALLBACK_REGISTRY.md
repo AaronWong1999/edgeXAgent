@@ -63,10 +63,11 @@ Many callbacks are handled in **BOTH** `handle_login_choice` and `handle_trade_c
 | 33 | 1677 | `ai_own_key` | "🔑 *AI Provider — AI Agent*\n\nChoose your provider:" | `setai_openai`, `setai_anthropic`, `setai_gemini`, `ai_activate_prompt` | `ai_activate_prompt` |
 | 34 | 1684 | `back_to_start` (DUPLICATE) | Dashboard text | Dashboard buttons | IS the dashboard |
 | 35 | 1684 | `back_to_dashboard` (DUPLICATE) | Dashboard text | Dashboard buttons | IS the dashboard |
-| 36 | 1694 | `news_settings` | "📰 *Event Trading — Event Trading*\n\nAI-analyzed news with one-tap trade buttons..." | `news_toggle_{id}_{on/off}`, `news_freq_{id}`, `news_remove_{id}`, `news_add`, `news_trade_defaults`, `back_to_dashboard` | `back_to_dashboard` |
+| 36 | 1694 | `news_settings` | "📰 *Event Trading — Event Trading*\n\nAI-analyzed news with one-tap trade buttons..." | `news_source_{id}` (per-source settings), `news_add`, `news_trade_defaults`, `back_to_dashboard` | `back_to_dashboard` |
 | 37 | 1699 | `news_noop_{...}` (startswith) | (no-op, just answers query) | N/A | N/A |
-| 38 | 1703 | `news_toggle_{sourceId}_{on/off}` (startswith) | Re-renders news_settings main menu | Same as `news_settings` | `back_to_dashboard` |
-| 39 | 1713 | `news_freq_{sourceId}` (startswith) | "⏱ *Push Frequency — Event Trading*\n\nHow many alerts per hour?\nCurrent: *{n}/hr*" | `news_setfreq_{sourceId}_{1,2,3,5,10}`, `news_settings` | `news_settings` |
+| 37b | 1855 | `news_source_{sourceId}` (startswith) | "📰 *{name} — Event Trading*\n\nStatus: {ON/OFF}\nFrequency: {n/hr}" — per-source settings page | `news_toggle_{id}_{on/off}`, `news_setfreq_{id}_{n}`, `news_remove_{id}`, `news_settings` | `news_settings` |
+| 38 | 1870 | `news_toggle_{sourceId}_{on/off}` (startswith) | Re-renders source settings page | Same as `news_source_{id}` | `news_settings` |
+| 39 | 1890 | `news_freq_{sourceId}` (startswith) | Standalone freq picker (fallback) | `news_setfreq_{sourceId}_{n}`, `news_settings` | `news_settings` |
 | 40 | 1733 | `news_setfreq_{sourceId}_{n}` (startswith) | Re-renders news_settings main menu | Same as `news_settings` | `back_to_dashboard` |
 | 41 | 1743 | `news_remove_{sourceId}` (startswith) | Re-renders news_settings main menu | Same as `news_settings` | `back_to_dashboard` |
 | 42 | 1755 | `news_add` | "➕ *Add News Source — Event Trading*\n\nSend an MCP news server URL:..." | `news_settings` | `news_settings` |
@@ -159,9 +160,10 @@ Dashboard (back_to_dashboard / back_to_start)
 │           └── memory_clear_no
 │
 ├── 📰 Event Trading (news_settings)
-│   ├── news_toggle_{id}_{on/off}
-│   ├── news_freq_{id} → news_setfreq_{id}_{n}
-│   ├── news_remove_{id}
+│   ├── news_source_{id} (per-source settings)
+│   │   ├── news_toggle_{id}_{on/off}
+│   │   ├── news_setfreq_{id}_{n}
+│   │   └── news_remove_{id}
 │   ├── ➕ Add Source (news_add) → awaits MCP URL text
 │   └── ⚙️ Trade Defaults (news_trade_defaults)
 │       ├── ntd_leverage → ntd_setlev_{n}
